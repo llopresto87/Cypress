@@ -539,6 +539,16 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 - **And:** `--log` exits 1 with a `BLOCK:` line naming that review until a
   `security` spawn is logged after it, then exits 0
 
+### Contract: IMPLEMENTER_WRITES_A_DESIGN_NOTE
+- **Test file:** `tests/seed-lint.py`
+- **Given:** the implementer charter `agents/02-implementer.md`
+- **When:** seed-lint reads it
+- **Then:** it holds that, for a new flow or a stateful contract, the
+  implementer writes a note naming each piece of state's owner and every
+  transition (inputs and external events, rejection or failure, restart of
+  the component that holds state, environment change) with its observable
+  result, codes to it, and that the reviewer checks the code against it
+
 ### Contract: SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS
 - **Test file:** `tests/test-brief.sh`
 - **Given:** a plant with `docs/graph/brief.py` and `method/security-controls.md`
@@ -2487,6 +2497,7 @@ gives.
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | (none) the `TRUST_PATH_TAKES_THE_SECURITY_PASS` row of seed-lint's `TEXT_RULES`: `protocols/test-first.md` holds that the security pass is the one fix round of reviewer findings on the covered files; red id: `TRUST_PATH_TAKES_THE_SECURITY_PASS: protocols/test-first.md does not hold 'the security pass is their one fix round'` | tests/seed-lint.py | real-tree | green |
 | BRIEF_DERIVES_THE_SPAWN_EFFORT | X502 six role, kind and label fixtures print their effort; the log records it; an unknown kind is refused; X503 a first review of trust paths reads `first-trust`; seen red first | tests/test-brief.sh | fixture | green |
 | REVIEW_BRIEF_NAMES_THE_SECURITY_PASS | X503 a review naming `app/trusted/Launcher.kt` with `app/trusted/Gate.kt` uncommitted prints both; a review of `app/ui/Screen.kt` prints nothing; `--log` blocks until a security spawn follows; seen red first | tests/test-brief.sh | fixture | green |
+| IMPLEMENTER_WRITES_A_DESIGN_NOTE | (none) the `IMPLEMENTER_WRITES_A_DESIGN_NOTE` row of seed-lint's `TEXT_RULES`; red id: `IMPLEMENTER_WRITES_A_DESIGN_NOTE: agents/02-implementer.md does not hold 'restart of the component that holds state'`; seen red first | tests/seed-lint.py | real-tree | green |
 | SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS | X498 a tester brief with `--security-path` carries the block, which names every class, the path tests and the confirmation | tests/test-brief.sh | fixture | green |
 | AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK | M23 case_agents_recompose: a plant appends a line to `method/engineering-posture.md`; `--check` names `02-implementer.md` STALE with `--recompose-agents`; that run leaves every file outside `.claude/agents/` byte-identical, the implementer carries the line, `--check` is up to date; seen red first (the STALE line said re-run the install) | tests/test-install-placement.sh | integration | green |
 | PLAN_ROLE_LEAVES_OUT_THE_ROLES_OWN_PROMPT | X499 PlanRoleTests.test_x499_role_leaves_out_its_own_prompt: the GREEN task line with `--role implementer` drops `agent.implementer` and `skill.holistic-editing`, keeps `protocol.verify`; seen red first | tests/test_graph_lint.py | integration (installed plant) | green |
@@ -2928,3 +2939,5 @@ kept outside the seed.
   measurement in the next A/B arm. Added BRIEF_DERIVES_THE_SPAWN_EFFORT (X502,
   seen red first): `brief.py --kind` derives the effort from the table in
   `delegation.effort` and prints it for the caller to pass on the spawn.
+- 2026-11-09 — the owner's review of a live run's architecture. Added
+  IMPLEMENTER_WRITES_A_DESIGN_NOTE, held by seed-lint (seen red first).

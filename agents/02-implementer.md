@@ -119,6 +119,18 @@ If any precondition is missing, fix it (or hand back) before writing
 code. The orchestrator should not have routed work to you without
 these; if it did, push back.
 
+## Design note before code
+
+For a new flow or a stateful contract, write a short note in your work
+directory first, code to it, and name it in the handback; the reviewer
+checks the code against it:
+
+- **Ownership:** which component owns each piece of state (domain or
+  authority, coordination or flow, presentation).
+- **Transitions:** every input or external event, rejection or failure,
+  restart of the component that holds state, and environment change,
+  each with the resulting observable state.
+
 ## Integrate, don't bolt on
 
 "Minimum" governs the *behavior* you add: nothing speculative, nothing

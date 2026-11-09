@@ -1561,6 +1561,9 @@ TEXT_RULES = (
     # the reviewer reads the builder's gate evidence and leaves the builds to it
     ("REVIEWER_RUNS_NO_BUILD", "require", lambda: ["agents/03-reviewer.md"],
      re.escape("the builder runs the builds and test suites"), {"collapse": True}),
+    # the implementer codes a new flow to a written ownership and transition note
+    ("IMPLEMENTER_WRITES_A_DESIGN_NOTE", "require", lambda: ["agents/02-implementer.md"],
+     re.escape("restart of the component that holds state"), {"collapse": True}),
     # a reviewer finding on a trust path is fixed inside the security pass
     ("TRUST_PATH_TAKES_THE_SECURITY_PASS", "require", lambda: ["protocols/test-first.md"],
      re.escape("the security pass is their one fix round"), {"collapse": True}),
