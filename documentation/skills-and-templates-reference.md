@@ -1625,8 +1625,9 @@ byte-identical; every other seed file references this file. The first block
 (`GRAPH DISCIPLINE — execute before reading any source`) has seven numbered
 steps:
 
-1. Run `python3 docs/graph/graph-lint.py --plan "{{exact delegated task}}"`
-   and report the route as ids in the handback's `graph_route:` field,
+1. Run `python3 docs/graph/graph-lint.py --plan "{{exact delegated task}}" --role {{role}}`
+   (the route leaves out the worker's own charter and always-loaded nodes,
+   which its system prompt carries) and report the route as ids in the handback's `graph_route:` field,
    never the router's output.
 2. Load only the reported nodes plus their `requires:` closure.
 3. Check the route against the files you will touch, before reading them:

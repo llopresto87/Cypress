@@ -355,6 +355,17 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   surface. `protocol.test-first` now holds those findings for the security
   pass, whose one implementer fixes them with its own; when the RED predates
   the security path, the security spawn writes the missing controls.
+- **A worker's route leaves out its own prompt and names missing
+  expertise.** In the same run the implementer's task line, "make the
+  increment tests pass (GREEN)", routed its own charter and holistic editing,
+  both already in its system prompt, and no expertise node; it loaded its
+  stack's expertise at call 143, after the code was written.
+  `graph-lint.py --plan TASK --role R` now leaves out R's charter and its
+  `always_loads:`, the bootstrap block's step 1 passes `--role` (the six brief
+  templates carry it byte-identical), and `brief.py` tells the caller when the
+  task line routes no `expertise.*` or `subsystem.*` node. SPEC-0005 adds
+  PLAN_ROLE_LEAVES_OUT_THE_ROLES_OWN_PROMPT and
+  BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 

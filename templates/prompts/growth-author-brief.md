@@ -112,7 +112,7 @@ each section is keyed to the deliverable it feeds. Also load
 
 ```
 GRAPH DISCIPLINE — execute before reading any source:
-1. Run: python3 docs/graph/graph-lint.py --plan "{{exact delegated task}}"
+1. Run: python3 docs/graph/graph-lint.py --plan "{{exact delegated task}}" --role {{role}}
    Report it in `graph_route:` as ids, never the router's output.
 2. Load ONLY the reported nodes plus their `requires:` closure.
    Everything else a loaded node lists (leaves, children, links,

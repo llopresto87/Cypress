@@ -87,6 +87,23 @@ for want in ("one negative control per class", "n/a: <why>", "import or alias", 
     if want not in block:
         sys.exit(f"  the SECURITY PATH block lacks: {want}")
 PY
+# X500 PLAN_ROLE_LEAVES_OUT_THE_ROLES_OWN_PROMPT: step 1 routes with the
+# worker's role, and the caller hears when a task line routes no expertise
+grep -q -- '--plan "write the RED tests for SPEC-0001 increment 2" --role tester' <<<"$out" \
+  && ok "X500 PLAN_ROLE_LEAVES_OUT_THE_ROLES_OWN_PROMPT: step 1 carries --role <role>" || bad "X500 --role" "step 1 lacks --role tester"
+err="$(cd "$T" && "$PY" docs/graph/brief.py --role implementer --spawn-id o.9.implementer.1 \
+      --task "make the increment 15 tests pass (GREEN)" --route r --part part.txt 2>&1 >/dev/null)"
+grep -q "routes no expertise" <<<"$err" \
+  && ok "X500 BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE: a generic task line is named to the caller" \
+  || bad "X500 BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE" "no warning: $err"
+printf -- '---\nid: expertise.kotlin\ntier: 2\nkind: expertise\norigin: project\ntitle: kotlin\nowns:\n  - kotlin.applicability\nload_when:\n  - "kotlin compose screen"\nest_tokens: 100\n---\n\nKotlin.\n' \
+  > "$T/docs/graph/nodes/expertise.kotlin.md"
+err="$(cd "$T" && "$PY" docs/graph/brief.py --role implementer --spawn-id o.9.implementer.2 \
+      --task "make the kotlin compose screen tests pass" --route r --part part.txt 2>&1 >/dev/null)"
+grep -q "routes no expertise" <<<"$err" \
+  && bad "X500 BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE" "warned on a task line that routes expertise.kotlin: $err" \
+  || ok "X500 BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE: a task line that routes expertise composes quietly"
+rm -f "$T/docs/graph/nodes/expertise.kotlin.md"
 rc=0; (cd "$T" && "$PY" docs/graph/brief.py --role nobody --spawn-id s --task t --route r --part part.txt) >/dev/null 2>&1 || rc=$?
 [[ $rc -ne 0 ]] && ok "unknown role refused" || bad "unknown role" "exit 0"
 [[ "$fail" == 0 ]] && echo "test-brief: PASS" || { echo "test-brief: FAIL"; exit 1; }

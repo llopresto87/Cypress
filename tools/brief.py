@@ -8,7 +8,10 @@ HANDBACK block of templates/prompts/handback-payload.md are copied byte for
 byte, with their slots filled, so a brief carries them verbatim by
 construction and neither the caller nor the worker reads the templates.
 `--charter` prepends the role's charter body (frontmatter dropped) for a host
-whose spawn has no agent type to carry it (Prime Agent). A `security` brief, and
+whose spawn has no agent type to carry it (Prime Agent). Step 1 routes with
+`--role`, so the worker's route leaves out what its system prompt carries, and
+a task line whose route loads no expertise.* or subsystem.* node is named on
+stderr. A `security` brief, and
 any brief composed with `--security-path` (a RED for a security contract), also
 carries the SECURITY PATH block of method/security-controls.md byte for byte
 (`test-first.security-path`).
@@ -37,6 +40,7 @@ import argparse
 import datetime
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -60,6 +64,18 @@ def charter(role: str) -> str:
         if text.startswith("---") and re.search(rf"^name:\s*{re.escape(role)}\s*$", text.split("---", 2)[1], re.M):
             return text.split("---", 2)[2].strip()
     raise SystemExit(f"brief: no agent charter named {role!r} in {AGENTS}")
+
+
+def routes_expertise(task: str, role: str) -> bool:
+    """Whether the worker's own route of `task` loads an expertise or subsystem
+    node. A route that cannot run counts as routing one: the warning is advice."""
+    try:
+        r = subprocess.run([sys.executable, str(GRAPH / "graph-lint.py"), f"--plan-json={task}",
+                            "--role", role], capture_output=True, text=True, timeout=60)
+        load = json.loads(r.stdout)["load"]
+    except (OSError, ValueError, KeyError, subprocess.SubprocessError):
+        return True
+    return any(e["id"].startswith(("expertise.", "subsystem.")) for e in load)
 
 
 def spawn_log(plan: Path) -> Path:
@@ -112,7 +128,8 @@ def main() -> int:
     try:
         body = charter(a.role)
         part = sys.stdin.read() if a.part == "-" else Path(a.part).read_text(encoding="utf-8")
-        graph = fenced(BOOTSTRAP, "GRAPH DISCIPLINE").replace("{{exact delegated task}}", a.task)
+        graph = (fenced(BOOTSTRAP, "GRAPH DISCIPLINE").replace("{{exact delegated task}}", a.task)
+                 .replace("{{role}}", a.role))
         comp = fenced(BOOTSTRAP, "COMPANION")
         comp = re.sub(r"\{\{the protocol phase.*?\}\}", a.route, comp, flags=re.S)
         payload = fenced(HANDBACK, "HANDBACK")
@@ -142,6 +159,10 @@ def main() -> int:
     out += ["", "## Task", "", part.rstrip("\n"), "",
             "## Handback (fill these fields; the rules are in docs/graph/templates/prompts/handback-payload.md)",
             "", "```", payload.rstrip("\n"), "```"]
+    if not routes_expertise(a.task, a.role):
+        print("brief: the task line routes no expertise.* or subsystem.* node; name the files it "
+              "touches or their stack in --task, so the worker loads that expertise "
+              "(graph-session-bootstrap.md, Stack expertise)", file=sys.stderr)
     log = spawn_log(Path(a.plan))
     log.parent.mkdir(parents=True, exist_ok=True)
     rec = {"spawn_id": a.spawn_id, "role": a.role, "task": a.task, "route": a.route,
