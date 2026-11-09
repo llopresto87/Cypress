@@ -348,7 +348,8 @@ GENERATED_VIEWS = (
     ".claude/commands/", ".opencode/commands/", ".prime/agent/prompts/",
     ".github/agents/", ".github/prompts/", ".github/instructions/",
 )
-GENERATED_FILES = (".codex/codex-config-snippet.toml",)
+GENERATED_FILES = (".codex/codex-config-snippet.toml",
+                   ".claude/output-styles/orchestrator.md")   # MAIN_SESSION_PLAYS_THE_ORCHESTRATOR
 # `.cypress/seed.json` is the installer's own derived state, replaced without a
 # backup by design (place_state), so it never reaches this audit.
 
@@ -373,6 +374,8 @@ def _always_loaded_texts(charter: str, seed: Path) -> list:
 
 def generator_for(rel: str, seed: Path):
     """The seed node a generated harness view was projected FROM, or None."""
+    if rel == ".claude/output-styles/orchestrator.md":
+        return seed / "agents/00-orchestrator.md"
     if rel in GENERATED_FILES:
         return seed / "integrations/codex/config.toml.example"
     if not rel.startswith(GENERATED_VIEWS):
@@ -988,8 +991,9 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
             # replaced body carry a plant customization signal?
             gen = generator_for(rel, seed)
             if gen is not None and gen.exists():
+                gen_text = gen.read_text(errors="replace")
                 hit = signals(b.read_text(errors="replace"),
-                              [gen.read_text(errors="replace")])
+                              [gen_text] + _always_loaded_texts(gen_text, seed))
                 if hit:
                     counts["CUSTOMIZED"] += 1
                     customized.append((b.relative_to(plant).as_posix(), hit))

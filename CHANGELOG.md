@@ -334,6 +334,20 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   SECURITY PATH block counts every input channel (pointer, keyboard,
   assistive technology) and every state change between enabling and effect
   (resize, recreation) as a path that needs its own test.
+- **The Claude Code main session plays the orchestrator.** The main session
+  is no subagent, so `.claude/agents/00-orchestrator.md` and its
+  `always_loads:` never reached it: in a live A/B run the session spawned five
+  ruling passes where the charter's nodes allow one (about $4.10 of $31.94).
+  `install.sh claude-code` now places the orchestrator's composition as the
+  project output style `.claude/output-styles/orchestrator.md`, and
+  `settings.json` selects it. An output style with `keep-coding-instructions:
+  true` adds to Claude Code's own prompt and CLAUDE.md still loads, where the
+  `agent` setting or `--agent` would replace the default prompt. `--check`
+  names a drifted style and `--recompose-agents` rewrites it. A `claude -p`
+  probe in a fresh plant quoted the charter's second sentence and an
+  always-loaded heading, and quoted neither with the setting removed. Every
+  Claude Code session now loads 69,117 bytes, recorded in `EAGER_EXEMPTIONS`.
+  SPEC-0005 adds MAIN_SESSION_PLAYS_THE_ORCHESTRATOR.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 
