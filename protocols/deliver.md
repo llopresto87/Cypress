@@ -227,6 +227,8 @@ role, routing line, effort, and any emulation. Then run these checks:
   returned a HIGH band for specialist X but the work was produced by a
   generic role (`general-purpose` / `claude`) or a different specialist and
   the logged route carries no rationale, flag it.
+- **A trust-path review with no later `security` spawn → BLOCK.** `--log`
+  names it and exits 1 (`test-first.security-path`).
 - **Role emulation → FLAG unless logged.** A worker that ran as a generic
   type wearing a specialist's role is composed with `--emulated "<reason>"`,
   so its record says so; an unlogged emulation looks like the real role, and

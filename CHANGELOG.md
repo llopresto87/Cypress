@@ -402,6 +402,15 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   13.7K tokens), the tester from 47,378 to 41,299, and the others shrink by
   2 to 5%. The Claude Code every-session load is 67,148 bytes. SPEC-0005 adds
   ALWAYS_LOADS_COMPOSES_ONLY_WHAT_THE_ROLE_NEEDS.
+- **A trust-path review names the security pass.** In a live run an
+  increment's diff touched eight files its trust crosscut claims, and the
+  session never spawned `security`: nothing mechanical said the pass was owed.
+  `brief.py --role reviewer` now checks the changed files (uncommitted, in the
+  plant and each repository under it) and the files the task part names with
+  `graph-lint.py --trust-claims`, prints `SECURITY PASS REQUIRED after this
+  review: <files>`, and logs them; `brief.py --log` exits 1 with a BLOCK line
+  until a `security` spawn follows that review. SPEC-0005 adds
+  REVIEW_BRIEF_NAMES_THE_SECURITY_PASS (X503).
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 

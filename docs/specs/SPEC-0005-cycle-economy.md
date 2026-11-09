@@ -512,6 +512,19 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 - **And:** `protocol.test-first` holds reviewer findings on the covered files
   for the security pass, which is their one fix round
 
+### Contract: REVIEW_BRIEF_NAMES_THE_SECURITY_PASS
+- **Test file:** `tests/test-brief.sh`
+- **Given:** a plant graph with a `trust: true` crosscut claiming `app/trusted/**`,
+  a repository at `app/` with an uncommitted file under that path, and a task
+  part naming a committed one
+- **When:** `brief.py --role reviewer` composes the review's brief, and later
+  `brief.py --log` runs
+- **Then:** the caller reads `SECURITY PASS REQUIRED after this review:` with
+  both files on stderr, and the spawn log records them; a review of files no
+  trust crosscut claims prints no such line
+- **And:** `--log` exits 1 with a `BLOCK:` line naming that review until a
+  `security` spawn is logged after it, then exits 0
+
 ### Contract: SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS
 - **Test file:** `tests/test-brief.sh`
 - **Given:** a plant with `docs/graph/brief.py` and `method/security-controls.md`
@@ -2458,6 +2471,7 @@ gives.
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | X494 TrustClaimTests: a path claimed by `repo:` and one by a file pattern name the trust crosscut; `trust: false` and subsystem paths name none; `trust:` on a subsystem is an error | tests/test_graph_lint.py | fixture | green |
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | X495 the security brief carries the SECURITY PATH block byte for byte; a tester brief does not | tests/test-brief.sh | fixture | green |
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | (none) the `TRUST_PATH_TAKES_THE_SECURITY_PASS` row of seed-lint's `TEXT_RULES`: `protocols/test-first.md` holds that the security pass is the one fix round of reviewer findings on the covered files; red id: `TRUST_PATH_TAKES_THE_SECURITY_PASS: protocols/test-first.md does not hold 'the security pass is their one fix round'` | tests/seed-lint.py | real-tree | green |
+| REVIEW_BRIEF_NAMES_THE_SECURITY_PASS | X503 a review naming `app/trusted/Launcher.kt` with `app/trusted/Gate.kt` uncommitted prints both; a review of `app/ui/Screen.kt` prints nothing; `--log` blocks until a security spawn follows; seen red first | tests/test-brief.sh | fixture | green |
 | SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS | X498 a tester brief with `--security-path` carries the block, which names every class, the path tests and the confirmation | tests/test-brief.sh | fixture | green |
 | AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK | M23 case_agents_recompose: a plant appends a line to `method/engineering-posture.md`; `--check` names `02-implementer.md` STALE with `--recompose-agents`; that run leaves every file outside `.claude/agents/` byte-identical, the implementer carries the line, `--check` is up to date; seen red first (the STALE line said re-run the install) | tests/test-install-placement.sh | integration | green |
 | PLAN_ROLE_LEAVES_OUT_THE_ROLES_OWN_PROMPT | X499 PlanRoleTests.test_x499_role_leaves_out_its_own_prompt: the GREEN task line with `--role implementer` drops `agent.implementer` and `skill.holistic-editing`, keeps `protocol.verify`; seen red first | tests/test_graph_lint.py | integration (installed plant) | green |
@@ -2889,3 +2903,8 @@ kept outside the seed.
   implementer and tester compose only the build-relevant sections of
   engineering posture, and the implementer only the build-relevant sections
   of design posture.
+- 2026-11-09 — audit of a live run. An increment's diff touched eight files
+  its trust crosscut claims, and the session never spawned `security`: nothing
+  mechanical told it the pass was owed. Added REVIEW_BRIEF_NAMES_THE_SECURITY_PASS
+  (X503, seen red first): the reviewer's brief names the pass, and the
+  attribution assertion blocks until a `security` spawn follows the review.
