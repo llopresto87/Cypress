@@ -101,20 +101,23 @@ err="$(cd "$T" && "$PY" docs/graph/brief.py --role implementer --spawn-id o.9.im
 grep -q "routes no expertise" <<<"$err" \
   && ok "X500 BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE: a generic task line is named to the caller" \
   || bad "X500 BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE" "no warning: $err"
-printf -- '---\nid: expertise.kotlin\ntier: 2\nkind: expertise\norigin: project\ntitle: kotlin\nowns:\n  - kotlin.applicability\nload_when:\n  - "kotlin compose screen"\nest_tokens: 100\n---\n\nKotlin.\n' \
-  > "$T/docs/graph/nodes/expertise.kotlin.md"
+printf -- '---\nid: expertise.widget\ntier: 2\nkind: expertise\norigin: project\ntitle: widget\nowns:\n  - widget.applicability\nload_when:\n  - "widget toolkit screen"\nest_tokens: 100\n---\n\nWidget.\n' \
+  > "$T/docs/graph/nodes/expertise.widget.md"
 err="$(cd "$T" && "$PY" docs/graph/brief.py --role implementer --spawn-id o.9.implementer.2 \
-      --task "make the kotlin compose screen tests pass" --route r --part part.txt 2>&1 >/dev/null)"
+      --task "make the widget toolkit screen tests pass" --route r --part part.txt 2>&1 >/dev/null)"
 grep -q "routes no expertise" <<<"$err" \
-  && bad "X500 BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE" "warned on a task line that routes expertise.kotlin: $err" \
+  && bad "X500 BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE" "warned on a task line that routes expertise.widget: $err" \
   || ok "X500 BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE: a task line that routes expertise composes quietly"
-rm -f "$T/docs/graph/nodes/expertise.kotlin.md"
+rm -f "$T/docs/graph/nodes/expertise.widget.md"
 # X502 BRIEF_DERIVES_THE_SPAWN_EFFORT: the role and task kind (and the
 # increment's label) give the spawn's effort, printed to the caller and logged
 eff() { (cd "$T" && "$PY" docs/graph/brief.py --spawn-id "o.9.eff.$1" --task t --route r --part part.txt "${@:2}" 2>&1 >/dev/null) || return $?; }
 x502=0
 for row in "1|effort: low (reviewer recheck)|--role reviewer --kind recheck" \
-           "2|effort: medium (implementer increment, label hard, capped at medium)|--role implementer --kind increment --label hard" \
+           "2|effort: medium (implementer increment, label hard)|--role implementer --kind increment --label hard" \
+           "2e|effort: medium (implementer increment, label medium-hard)|--role implementer --kind increment --label medium-hard" \
+           "2f|effort: low (implementer increment, label medium)|--role implementer --kind increment --label medium" \
+           "2g|effort: low (implementer increment)|--role implementer --kind increment" \
            "2b|effort: high (tester red, label hard)|--role tester --kind red --label hard" \
            "2c|effort: medium (implementer flow)|--role implementer --kind flow" \
            "2d|effort: low (implementer fix)|--role implementer --kind fix" \

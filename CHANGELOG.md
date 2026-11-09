@@ -367,7 +367,7 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   PLAN_ROLE_LEAVES_OUT_THE_ROLES_OWN_PROMPT and
   BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE.
 - **The reviewer runs no build.** In the same run the reviewer built a
-  simulation project and ran the build on the build host; a ten-minute build
+  simulation project and ran the full build itself; a ten-minute build
   let its prompt cache expire, and the rewrite cost $0.91 of the review's
   $4.13. The reviewer charter now reviews the diff and the gate evidence the
   builder reports, names a doubted gate as a finding with the run to make, and
@@ -435,6 +435,14 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   new flow and a trust-surface change medium, a fix set and a mechanical edit
   low. `brief.py` prints `capped at medium` when the cap applies; the other
   roles are unchanged.
+- **A whole-increment GREEN defaults to low implementer effort; a hard
+  increment runs at medium.** A delta replay of a whole increment with the
+  implementer at low effort cost $8.17 against $12.68 at medium and graded
+  17/24 against 14/24 by the same blind grader, while a single feature built
+  alone dropped at low (3/5 against 4/5). The implementer's `increment` row
+  of `delegation.effort` becomes low by default and medium when the hardest
+  label is medium-hard or hard, still never above medium; flow and trust stay
+  medium, fix and mechanical low (SPEC-0005, X502).
 - **The implementer composes design posture whole again.** With design
   §1, 3, 4 and 9 (smallest structure, cohesion and coupling, stable contracts,
   variation at a seam) left out, the next run's implementer put every draft

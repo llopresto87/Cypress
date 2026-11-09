@@ -1381,7 +1381,7 @@ xr_run() {  # xr_run <dup|own> -> $GR/xr-<arm>/{zephyrplant,stage,run.out,run.er
   rm -f "$p/.cypress/recreated-nodes.txt"
   printf -- '---\nid: protocol.toolcraft\ntier: 2\nkind: protocol\norigin: seed\ntitle: toolcraft, a protocol the seed folded into skill.toolcraft\nowns:\n  - %s\nrequires:\nload_when:\n  - "retired toolcraft protocol"\nest_tokens: 60\n---\n# toolcraft\n\nA seed protocol whose rules moved into skill.toolcraft.\n' \
     "$owns" > "$p/docs/graph/protocols/toolcraft.md"
-  printf '# grill\n\n## 6. Decisions Made\n| Decision | Evidence | Reversibility |\n|---|---|---|\n| Ship one signed bundle | build.gradle | expensive after go-live |\n' \
+  printf '# grill\n\n## 6. Decisions Made\n| Decision | Evidence | Reversibility |\n|---|---|---|\n| Ship one signed bundle | build config | expensive after go-live |\n' \
     > "$p/docs/graph/plans/grill.md"
   # X497: a crosscut with no trust: field and a trust: true one that claims no path
   printf -- '---\nid: crosscut.privacy\nkind: crosscut\n---\n# Privacy\n' > "$p/docs/graph/nodes/crosscut.privacy.md"
