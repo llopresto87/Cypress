@@ -158,19 +158,19 @@ from the table above, and to `medium` where the table has no row
 | medium | `implementer` (routine GREEN), `tester` (RED for a new contract), `reviewer` (standard batch review), `product` (spec §3 and §9), `docs-librarian` (the canonize librarian), `research-scout` (library research), `growth-scout` (artifact discovery, low to medium) |
 
 **Each spawn's effort follows its role and task kind** (the owner's decision of
-2026-11-09, pending measurement in the next A/B arm). `brief.py --kind KIND
+2026-11-09, pending measurement). `brief.py --kind KIND
 [--label LABEL]` prints and logs `effort: <value> (<reason>)` from the first
 match, and the caller passes that value on the spawn: (1) `security`,
 `--security-path`, a harvest's faithful-import review, diagnosing a red gate:
 `high`; (2) the row below (`by label`: the hardest increment label of
 `delegation.effort-scale`, low or medium-low → low, medium → medium,
 medium-hard or hard → high; a `first` review of trust-claimed files reads
-`first-trust`; `at most` caps it); (3) the definition's default. The implementer caps at medium (owner, 2026-11-09): replays measured new-screen GREEN 3/5 low, 4/5 medium, 5/5 high at +50% cost, and fix sets 4/5 at low and medium, low at half the cost. A whole-increment GREEN defaults to low (measured on 2026-11-09): a delta replay of a whole increment cost $8.17 at low against $12.68 at medium and graded 17/24 against 14/24 by the same blind grader, while a single feature built alone dropped at low (3/5 against 4/5); so low by default, medium for a medium-hard or hard increment.
+`first-trust`; `at most` caps it); (3) the definition's default. The implementer caps at medium (owner, 2026-11-09): replays of a new flow's GREEN graded higher with each step up in effort, high only marginally above medium at half again the cost, and fix sets graded alike at low and medium, low at half the cost. A whole-increment GREEN defaults to low (measured on 2026-11-09): a replay of a whole increment at low cost about a third less than at medium and graded no worse, while a single feature built alone graded lower at low; so low by default, medium for a medium-hard or hard increment.
 
 | Role | Kind | Effort |
 |---|---|---|
 | implementer | `increment`: an increment batch | low; medium when labelled medium-hard or hard |
-| implementer | `flow`: a new screen, flow or stateful contract, unlabelled | medium |
+| implementer | `flow`: a new user-facing feature, flow or stateful contract, unlabelled | medium |
 | implementer | `trust`: a change on a trust surface | medium |
 | implementer | `fix`: a contained change or a review-fix set | low |
 | implementer | `mechanical`: an edit, rename or one-line fix | low |

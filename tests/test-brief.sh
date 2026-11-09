@@ -144,17 +144,17 @@ rc=0; msg="$(eff 7 --role reviewer --kind sweep)" || rc=$?
 printf -- '---\nid: crosscut.gate\ntier: 2\ntrust: true\nkind: crosscut\norigin: project\ntitle: gate\nowns:\n  - gate.menu\nload_when:\n  - "app/trusted/**"\nest_tokens: 100\n---\n\nGate.\n' \
   > "$T/docs/graph/nodes/crosscut.gate.md"
 mkdir -p "$T/app/trusted" "$T/app/ui"
-printf 'class Launcher\n' > "$T/app/trusted/Launcher.kt"; printf 'class Screen\n' > "$T/app/ui/Screen.kt"
+printf 'class Session:\n    pass\n' > "$T/app/trusted/session.py"; printf 'class Page:\n    pass\n' > "$T/app/ui/page.py"
 git -C "$T/app" init -q && git -C "$T/app" add -A && git -C "$T/app" -c user.email=t@t -c user.name=t commit -qm base
-printf 'class Gate\n' > "$T/app/trusted/Gate.kt"
-printf 'Review the diff; the launcher is app/trusted/Launcher.kt.\n' > "$T/rev.txt"
-printf 'Review app/ui/Screen.kt.\n' > "$T/rev-ui.txt"
+printf 'class Gate:\n    pass\n' > "$T/app/trusted/gate.py"
+printf 'Review the diff; the session is app/trusted/session.py.\n' > "$T/rev.txt"
+printf 'Review app/ui/page.py.\n' > "$T/rev-ui.txt"
 x503=0
 err="$(cd "$T" && "$PY" docs/graph/brief.py --role reviewer --kind first --spawn-id o.9.reviewer.1 --task t --route r --part rev.txt 2>&1 >/dev/null)" || true
-grep -q "SECURITY PASS REQUIRED after this review: app/trusted/Gate.kt, app/trusted/Launcher.kt" <<<"$err" \
+grep -q "SECURITY PASS REQUIRED after this review: app/trusted/gate.py, app/trusted/session.py" <<<"$err" \
   && grep -qF "effort: high (reviewer first-trust)" <<<"$err" \
   || { bad "X503 REVIEW_BRIEF_NAMES_THE_SECURITY_PASS" "no or wrong line: $err"; x503=1; }
-rm "$T/app/trusted/Gate.kt"
+rm "$T/app/trusted/gate.py"
 err="$(cd "$T" && "$PY" docs/graph/brief.py --role reviewer --kind first --spawn-id o.9.reviewer.2 --task t --route r --part rev-ui.txt 2>&1 >/dev/null)" || true
 grep -q "SECURITY PASS" <<<"$err" && { bad "X503 REVIEW_BRIEF_NAMES_THE_SECURITY_PASS" "named for a non-trust diff: $err"; x503=1; }
 rc=0; msg="$(cd "$T" && "$PY" docs/graph/brief.py --log 2>&1 >/dev/null)" || rc=$?
