@@ -441,6 +441,12 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   result, then codes to it; the reviewer checks the code against the note.
   Owner-approved on 2026-11-09 after a live run's architecture was graded
   down. SPEC-0005 adds IMPLEMENTER_WRITES_A_DESIGN_NOTE.
+- **A test holds its evidence.** `skill.test-first`'s Test shape gains one
+  rule: each path to an effect is tested, not one entry point; an assertion
+  fails when its evidence is missing; assertions target the component under
+  test; stateful behaviour is tested again after rebuilding the component
+  that holds the state. Owner-approved on 2026-11-09. SPEC-0005 adds
+  RED_TEST_HOLDS_ITS_EVIDENCE.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 
