@@ -1226,6 +1226,11 @@ Run the apply install, and every remedy that re-runs it, with
 `--keep-diverged`: each file the plant edited that the ledger classes
 KEEP-PLANT or MERGE stays the plant's, so Phase 3's reconciliation is what
 the plant carries.
+On Claude Code a role's agent file is composed from its charter and the nodes
+its `always_loads:` names; when `install.sh claude-code --check` names one
+STALE because a node was kept, merged or restored, run
+`install.sh claude-code --recompose-agents`, which writes `.claude/agents/`
+only.
 
 `python3 <seed>/tools/graft-run.py <plant> <seed> --stage <dir>` rehearses the
 mechanical half on a copy outside the plant: the ledger, the install with its

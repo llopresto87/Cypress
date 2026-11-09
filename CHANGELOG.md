@@ -300,6 +300,13 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   `graft-run.py` installs that way, and its `graft.gate.kept-deltas` row
   blocks on a replaced file, naming its backup, and on a MERGE that lacks a
   line the seed added. SPEC-0001 adds INSTALL_KEEPS_DIVERGED_MACHINERY.
+- **A STALE composed agent has a remedy that keeps the node.** When a
+  steward restored a kept or merged always-loaded node, `--check` called the
+  composed agent STALE and told them to re-run the install, which
+  fast-forwarded the node again. `install.sh claude-code --recompose-agents`
+  rewrites `.claude/agents/` from the nodes on disk and nothing else; the
+  STALE line and graft Phase 7 name it. SPEC-0005 adds
+  AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 

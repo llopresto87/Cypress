@@ -96,6 +96,10 @@
 #                        (a file the plant deleted is placed again). Needs
 #                        the ledger's base; without one the run stops before
 #                        writing anything.
+#   --recompose-agents   With `claude-code`: rewrite .claude/agents/ from the
+#                        charters and always-loaded nodes on disk, and write
+#                        nothing else: the remedy when --check names a
+#                        composed agent STALE because a node was edited.
 #   --print-config       For `codex`: print the config.toml lines with
 #                         resolved paths instead of editing anything.
 #   --check              Verify the generated views are in sync; write
@@ -1283,7 +1287,7 @@ check_claude_projections() {
         log "claude-code agents up to date."
         return 0
     fi
-    warn "claude-code agents are STALE: ${stale[*]}. Re-run: install.sh claude-code"
+    warn "claude-code agents are STALE: ${stale[*]}. Recompose them from the nodes on disk: install.sh claude-code --recompose-agents (it writes .claude/agents/ only)"
     return 1
 }
 
@@ -2595,6 +2599,7 @@ while [[ $# -gt 0 ]]; do
         --copy)    LINK_MODE="copy";    shift ;;
         --force)   FORCE=1; shift ;;
         --keep-diverged) KEEP_DIVERGED=1; shift ;;
+        --recompose-agents) RECOMPOSE_AGENTS=1; shift ;;
         --print-config) PRINT_CONFIG=1; shift ;;
         --check)   CHECK=1; shift ;;
         --environment-class)   PLANT_ENV="$2";  shift 2 ;;
@@ -3253,6 +3258,21 @@ check_harness_homes() {
     fi
     printf '%s\n' "$out" | sed 's/^/[seed] --check: /'
 }
+
+# --recompose-agents: the Claude Code agents alone, from the charters and the
+# always-loaded nodes on disk (render_claude_agents), so a node a graft kept
+# or merged is composed as it stands rather than fast-forwarded first.
+if [[ ${RECOMPOSE_AGENTS:-0} -eq 1 ]]; then
+    [[ ${CHECK:-0} -eq 0 && " ${expanded[*]} " == " claude-code " ]] \
+        || die "--recompose-agents takes claude-code alone and no --check. Nothing has been written."
+    [[ -d "$PROJECT_DIR/docs/graph/agents" ]] \
+        || die "--recompose-agents: $PROJECT_DIR has no docs/graph/agents/ to compose from. Nothing has been written."
+    _rendered="$(stage claude/agents)"
+    render_claude_agents "$_rendered" || exit 1
+    project_agents "$PROJECT_DIR/.claude/agents" "$_rendered"
+    log "recomposed .claude/agents/ from docs/graph/; nothing else was written."
+    exit 0
+fi
 
 if [[ ${CHECK:-0} -eq 1 ]]; then
     hooks_rc=0
