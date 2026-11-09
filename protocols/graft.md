@@ -1222,6 +1222,10 @@ parallelism is exactly what `graft.gate.cross-author` exists to reconcile.
 
 Apply the ratified upgrade **additively**, on top of the baseline commit, and
 commit each checkpoint the apply and its remedies reach (*Reversibility*, (d)).
+Run the apply install, and every remedy that re-runs it, with
+`--keep-diverged`: each file the plant edited that the ledger classes
+KEEP-PLANT or MERGE stays the plant's, so Phase 3's reconciliation is what
+the plant carries.
 
 `python3 <seed>/tools/graft-run.py <plant> <seed> --stage <dir>` rehearses the
 mechanical half on a copy outside the plant: the ledger, the install with its
@@ -1251,11 +1255,11 @@ whose remedy is an installer re-run for every adapter in the stamp's `tools`.
 An audit taken after any of them, with the date left to default, audits the
 remedy's own writes and prints `clean` over the graft it was supposed to
 examine. So: audit first, remediate second, name the date every time, and after
-any remediating re-run re-audit under **both** dates. A remedy's re-run also
-overwrites the files Phase 3 merged or kept, with a backup and no question, and
-the backup audit reads such a file as an ordinary version advance. The last row,
-`graft.gate.kept-deltas`, therefore checks each of those files against the
-record, after every remedy has run.
+any remediating re-run re-audit under **both** dates. A re-run without
+`--keep-diverged` overwrites the files Phase 3 merged or kept, with a backup and
+no question, and the backup audit reads such a file as an ordinary version
+advance. The last row, `graft.gate.kept-deltas`, therefore checks each of those
+files against the ledger and the record, after every remedy has run.
 
 | Gate | Asserts | Command | On failure | Class |
 |---|---|---|---|---|
@@ -1279,7 +1283,7 @@ record, after every remedy has run.
 | `graft.gate.projection-drift` | every tool-dir projection still matches the node it is a projection of | read-only, and in two halves, because the projections are of two kinds. Where the stamp's `agent_projections` entry says `"verbatim": true`, the projection is a placed copy, so `diff <plant>/docs/graph/agents/<n>.md <plant>/<adapter path>` is the whole check. Where it says `false` (`github-copilot`, whose views are transformed), `install.sh github-copilot --check` regenerates to a temp dir and diffs, writing nothing to the plant | BLOCK: regenerate by re-running the installer for the affected adapter, never hand-patch the copy. That re-run is an apply: it writes, it creates a new backup date, and a tree regenerated that way matches by construction, so it is a remedy and never the detector | soft |
 | `graft.gate.pure-graph` | the Phase 6 rebalance ledger closed | none: **the graft reviewer (authoring class), the same judge as `graft.gate.minimum-sufficient`**, reads the ledger row by row against the pure-graph spec: no seed-class machinery or superfluous always-loaded instruction outside a node, no fact with two homes, no unlisted obsolete residue. Judge: the graft reviewer (authoring class) | BLOCK: or surface the residual drift with a remediation and a reason | judgment |
 | `graft.gate.cross-author` | a parallel absorption reconciled across author boundaries | none: **`docs-librarian` judges**, in one final spawn seeing the whole graph at once, followed by a structural audit, pass/fail per node. Judge: `docs-librarian`, in one final whole-graph spawn | BLOCK: see *When a gate blocks*; N-A where no phase used parallel authors | judgment |
-| `graft.gate.kept-deltas` | every file the graft record lists as merged or kept still carries its plant delta at the end of the graft, after every remedy that re-ran the installer | `tools/graft-audit.py <plant> <seed> --record <plant>/docs/graph/changelog.md`, run last, once the record's entry is written. The entry it reads is the newest by date among the headings that name a graft, in any case and at any position (the form in *Output format*, and the forms earlier grafts wrote, `## <date> — graft: …` among them). From that entry it reads the `Merged` and `Kept as the plant's` files and prints `LOST` for a file byte-equal to its seed source and `MISSING` for one the plant no longer carries. An entry whose lists yield no file fails, as a record with no entry does, because nothing re-checked is not a pass; a graft that truly merged and kept nothing writes `- none` under those headings, and the audit then passes saying there is nothing to re-check | BLOCK: re-apply the delta from the newest backup or checkpoint commit that holds it, then re-run the row; never edit the record to match the loss | soft |
+| `graft.gate.kept-deltas` | every file the graft record lists as merged or kept still carries its plant delta at the end of the graft, after every remedy that re-ran the installer | `tools/graft-run.py` checks the ledger half on the stage: each KEEP-PLANT or MERGE file the plant carried is still the plant's after the install, naming the `.bak` of one that was replaced, and each MERGE carries every line the seed added since the base, else it is not merged yet. Then `tools/graft-audit.py <plant> <seed> --record <plant>/docs/graph/changelog.md`, run last, once the record's entry is written. The entry it reads is the newest by date among the headings that name a graft, in any case and at any position (the form in *Output format*, and the forms earlier grafts wrote, `## <date> — graft: …` among them). From that entry it reads the `Merged` and `Kept as the plant's` files and prints `LOST` for a file byte-equal to its seed source and `MISSING` for one the plant no longer carries. An entry whose lists yield no file fails, as a record with no entry does, because nothing re-checked is not a pass; a graft that truly merged and kept nothing writes `- none` under those headings, and the audit then passes saying there is nothing to re-check | BLOCK: re-apply the delta from the newest backup or checkpoint commit that holds it, then re-run the row; never edit the record to match the loss | soft |
 
 Every row names its command, or the judgment and who owns it (`rule.verify`): a
 row whose Command cell reads `none` names its judge.

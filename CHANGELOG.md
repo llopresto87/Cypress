@@ -292,6 +292,14 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   seed added since the base as re-created deletions and blocked the gate.
   `tools/graft-run.py` now leaves out each node the ledger classes SEED-NEW.
   SPEC-0001 adds GRAFT_RUN_RECREATED_LEAVES_OUT_SEED_NEW.
+- **A graft keeps the files the plant edited.** The same graft replaced
+  `method/tiers.md`, which both the plant and the seed had changed, and the
+  plant's legal corpus index, losing 16 plant rows, while the customization
+  and rootstock rows passed. `install.sh --keep-diverged` now leaves as the
+  plant's each file `tools/graft-ledger.py` classes KEEP-PLANT or MERGE;
+  `graft-run.py` installs that way, and its `graft.gate.kept-deltas` row
+  blocks on a replaced file, naming its backup, and on a MERGE that lacks a
+  line the seed added. SPEC-0001 adds INSTALL_KEEPS_DIVERGED_MACHINERY.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 

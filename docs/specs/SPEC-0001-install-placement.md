@@ -1269,6 +1269,22 @@ its own record, and that slug stays as written in §12's history.
 - **And:** an error line that names no RETIRED node's id is not counted, and
   with no such line the clause is absent
 
+### Contract: INSTALL_KEEPS_DIVERGED_MACHINERY
+- **Given:** a plant that edited seed-owned files: one the seed left as the
+  base had it (graft-ledger KEEP-PLANT), one the seed also changed (MERGE),
+  and a node a charter's `always_loads:` names
+- **When:** `install.sh <host> --keep-diverged` runs on it, as
+  `tools/graft-run.py` runs it on the stage copy
+- **Then:** each of those files is the plant's bytes after the run, with a
+  `kept the plant's <path> (<class>, --keep-diverged)` line and no backup,
+  and the Claude Code composition carries the kept node's body
+- **And:** graft-run's `graft.gate.kept-deltas` row BLOCKs on a MERGE file
+  that lacks a line the seed added since the base, and on a KEEP-PLANT or
+  MERGE file the install replaced, naming its `.bak`; a MERGE that carries
+  the seed's lines passes
+- **And:** a file the plant deleted is placed again (no edit to keep), and
+  a run whose ledger cannot be built stops before its first write
+
 ### Contract: GRAFT_RUN_RECREATED_LEAVES_OUT_SEED_NEW
 - **Given:** a plant whose base seed lacks a graph node the seed now ships,
   so the plant never carried it and graft-ledger classes it SEED-NEW
@@ -2058,6 +2074,7 @@ $ head -1 /p/docs/graph/libraries/rxjs.md
 | CHECK_FLAGS_RETIRED_GRAPH_NODE | M13 case_retired_flag, graph-node arm (8.1.2, graft finding F1): the every-host install copy also carries an `origin: seed` `docs/graph/protocols/<name>.md` the seed does not ship and an `origin: project` protocol of another name: `claude-code --check` exits 0, names the seed one `RETIRED` and not the project one, and leaves the tree byte-identical; `graft-audit.py` names it `RETIRED` with its clean-copy exit code; the node is still on disk | tests/test-install-placement.sh | integration | green |
 | GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES | X469 case_run_ties_lint_errors_to_retired_nodes, a GR case of `tools/graft-run.py` (8.1.2, graft finding F1): a synthetic plant carrying an `origin: seed` `docs/graph/protocols/<name>.md` the seed does not ship, whose `owns:` repeats a fact-key of a seed skill node: the `graft.gate.routes` row is BLOCK, names the path among the `RETIRED` entries and carries `RETIRED_LINT_CLAUSE` with the node's id and a count of 1; arm: the same node with that fact-key dropped from its `owns:` carries no clause; the node is on disk after the run | tests/test-graft-tools.sh | integration (synthetic plant) | green |
 | GRAFT_RUN_NAMES_PLAN_DEFECTS_THE_UPGRADE_RAISES | X493 case_run_names_plan_defects_the_upgrade_raises: a plant whose engine lacks the press check and whose plan has an unpressed `expensive` row: the plans row is BLOCK with one raised defect naming the row and counts the plan's other defects; control: the seed's own engine before the graft, the row is PASS | tests/test-graft-tools.sh | integration | green |
+| INSTALL_KEEPS_DIVERGED_MACHINERY | X500 case_run_keeps_diverged_machinery: on the X499 seed copy, the plant edits two method nodes the seed left alone (one in the implementer's `always_loads:`) and two the seed also changed (one already carrying the seed's line): after the rehearsal all four are the plant's bytes, the composed implementer carries the kept line, and the kept-deltas row BLOCKs naming only the unmerged `tiers.md`; seen red first (the install replaced them) | tests/test-graft-tools.sh | integration (seed copy) | green |
 | GRAFT_RUN_RECREATED_LEAVES_OUT_SEED_NEW | X499 case_run_recreated_excludes_seed_new: a copy of this seed tagged as the base, a plant installed from it, then a method node added to the seed copy: the ledger rows it SEED-NEW and the recreated-nodes row is PASS without naming it; seen red first (BLOCK, the node named re-created) | tests/test-graft-tools.sh | integration (seed copy) | green |
 | HOOKS_RUN_ON_THE_FLOOR_INTERPRETER | E16 case_interpreter_floor (a), (c), (d): on a PATH whose `python3` fails the floor probe and that holds `python<floor>`, claude-code and prime-agent install, every `.claude/settings.json` hook command and both extensions' `PYTHON` name `python<floor>`, a NEXT STEP names the bare `python3`, and `--check` runs the four hooks; with one command edited to name `python3.99`, `--check` exits non-zero naming it; the Copilot `route.json` and `status.json` name it; on a `python3` at the floor `.claude/settings.json` is the seed's bytes | tests/test-full-install.sh | integration | green |
 | HOOKS_RUN_ON_THE_FLOOR_INTERPRETER | E19 the floor sweep: `install.sh`'s `PYTHON_FLOOR` equals SPEC-0005 §5's, every shipped script compiles on an interpreter at the floor and every tool answers `--help` on it | tests/test-tool-help.sh | unit; red on arrival (no `PYTHON_FLOOR`) | green |
@@ -2744,3 +2761,7 @@ only version surface it has, and it moves with each entry here.
 - 2026-11-09 — graft verification findings. A graft of a plant on 8.2.0 onto
   8.3.0 reported three nodes new in the seed as re-created and blocked the
   gate on them. GRAFT_RUN_RECREATED_LEAVES_OUT_SEED_NEW is new, held by X499.
+  The same graft replaced a MERGE file and a KEEP-PLANT corpus index (16 plant
+  rows lost) while the customization and rootstock rows passed.
+  INSTALL_KEEPS_DIVERGED_MACHINERY is new, held by X500: `--keep-diverged`
+  leaves each such file the plant's, and the kept-deltas row checks it.

@@ -313,6 +313,10 @@ If you copied (the default), re-run the installer to pull seed updates:
 ./install.sh <tool> --force
 ```
 
+A re-run replaces every seed-owned file you edited, keeping a backup. Add
+`--keep-diverged` to leave as yours each one `tools/graft-ledger.py` classes
+KEEP-PLANT or MERGE (you edited it; a graft's apply runs this way).
+
 If you used `--symlink`, edits to the seed propagate automatically:
 `git pull` or otherwise update the seed source, and no re-install is needed.
 
