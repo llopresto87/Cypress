@@ -72,7 +72,12 @@ From the seed system directory:
 `<tool>` is one of the list below. Every tool gets the kernel under both
 names, `CLAUDE.md` and `AGENTS.md`: the first one placed holds it, and the
 other is a symlink to it.
-- `claude-code`: drops `CLAUDE.md` + `.claude/`.
+- `claude-code`: drops `CLAUDE.md` + `.claude/`. A charter that names
+  `always_loads:` is composed into `.claude/agents/` with those nodes; after
+  editing one of them, `install.sh claude-code --recompose-agents` rewrites
+  `.claude/agents/` alone. The hooks include `.claude/resume-hook.py`, and
+  delegated work is logged to `docs/graph/plans/spawns.jsonl`
+  ([Claude Code integration](integrations/claude-code/README.md#hooks)).
 - `opencode`: drops `AGENTS.md` + `.opencode/` + `opencode.json`, with each
   agent's `model:` line written from the plant's model map,
   `docs/graph/models.md`.

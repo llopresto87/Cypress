@@ -103,6 +103,9 @@ RULE_HOMES = {
     "rule.canonize": "protocols/canonize.md",
     "rule.toolcraft": "skills/toolcraft/SKILL.md",
 }
+# The surfaces a graft steward or a grower acts from.
+LIFECYCLE_SURFACES = ("protocols/graft.md", "protocols/grow.md", "INSTALL.md",
+                      "integrations/claude-code/README.md")
 # "Installed but not spawnable": one home, and every surface that dispatches a
 # specialist by name or installs the projection points at the fact key.
 REGISTRATION_FACT = "delegation.harness-registration"
@@ -1535,7 +1538,14 @@ TEXT_RULES = (
     ("TRUST_MARKER_IS_SETTLED", "require", lambda: ["protocols/grow.md"],
      re.escape("graph-lint.py --trust-unsettled"),
      {"section": r"(?m)^\| `grow\.gate\.disclosure` .*$", "where": " grow.gate.disclosure"}),
-)
+    ("ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES", "require", lambda: ["protocols/graft.md"],
+     re.escape("install.sh claude-code --check"),
+     {"section": r"(?m)^\| `graft\.gate\.projection-drift` .*$", "where": " graft.gate.projection-drift"}),
+) + tuple(
+    # each surface a steward or grower acts from points at the Claude Code
+    # machinery it acts on: the composed agents, the spawn log, the resume hook
+    ("CLAUDE_CODE_MACHINERY_POINTER", "require", lambda: list(LIFECYCLE_SURFACES), re.escape(word), {})
+    for word in ("always_loads", "spawns.jsonl", "resume-hook"))
 
 
 def check_text_rules() -> None:
