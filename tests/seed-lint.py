@@ -1531,6 +1531,10 @@ TEXT_RULES = (
      r"docs/(" + _KNOWLEDGE.format("specs|") + r")/", {}),
     ("KNOWLEDGE_PATHS", "forbid", lambda: _files(("docs",), ("CHANGELOG.md",), _CODE),
      r"docs/(" + _KNOWLEDGE.format("") + r")/", {}),
+    # the lifecycle gates run the check that sees the machinery as it now is
+    ("TRUST_MARKER_IS_SETTLED", "require", lambda: ["protocols/grow.md"],
+     re.escape("graph-lint.py --trust-unsettled"),
+     {"section": r"(?m)^\| `grow\.gate\.disclosure` .*$", "where": " grow.gate.disclosure"}),
 )
 
 
