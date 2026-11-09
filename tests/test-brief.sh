@@ -39,6 +39,11 @@ for want in ("compiled", "executed (", "statically inspected", "device-tested", 
         sys.exit(f"  missing: {want}")
 PY
 grep -q '^name: tester' <<<"$out" && bad "charter off by default" "frontmatter present" || ok "no charter unless asked"
+rc=0; msg="$(cd "$T" && "$PY" docs/graph/brief.py --role tester --spawn-id s.0 --task t --route r --charter --part part.txt 2>&1 >/dev/null)" || rc=$?
+[[ $rc -eq 2 ]] && grep -q "Prime Agent" <<<"$msg" \
+  && ok "X501 CHARTER_FLAG_ONLY_FOR_PRIME_AGENT: --charter is refused where .claude/agents/ carries the role" \
+  || bad "X501 CHARTER_FLAG_ONLY_FOR_PRIME_AGENT" "rc $rc: $msg"
+mkdir -p "$T/.prime/agent"
 out2="$(cd "$T" && "$PY" docs/graph/brief.py --role tester --spawn-id s.1 --task t --route r --charter --part part.txt)"
 grep -q 'You are the test engineer' <<<"$out2" && ! grep -q '^routing_triggers:' <<<"$out2" \
   && ok "--charter carries the body without frontmatter" || bad "--charter" "body missing or frontmatter kept"

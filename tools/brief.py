@@ -116,7 +116,8 @@ def main() -> int:
     ap.add_argument("--task", required=True, help="the exact task line the worker routes")
     ap.add_argument("--route", required=True, help="the agent-lint --route line, or the override rationale")
     ap.add_argument("--effort", default="")
-    ap.add_argument("--charter", action="store_true", help="prepend the role's charter body")
+    ap.add_argument("--charter", action="store_true",
+                    help="prepend the role's charter body; Prime Agent only, whose spawn has no agent type")
     ap.add_argument("--part", required=True, help="file holding the task part, or - for stdin")
     ap.add_argument("--out", default="", help="write the brief here and print only a pointer prompt")
     ap.add_argument("--plan", default=str(GRAPH / "plans" / "grill.md"))
@@ -137,6 +138,12 @@ def main() -> int:
                     if a.role == "security" or a.security_path else "")
     except SystemExit as e:
         print(e, file=sys.stderr)
+        return 2
+    plant = GRAPH.parent.parent
+    if a.charter and not (plant / ".prime" / "agent").is_dir() \
+            and any((plant / ".claude" / "agents").glob("*.md")):
+        print("brief: --charter is for Prime Agent, whose spawn has no agent type; on Claude Code "
+              "the agent type carries the charter in its system prompt", file=sys.stderr)
         return 2
     if "{{" in graph + comp:
         print("brief: a bootstrap slot this tool does not fill is left in the template", file=sys.stderr)
