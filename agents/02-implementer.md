@@ -24,7 +24,7 @@ requires:
   - skill.holistic-editing
 always_loads:
   - method.engineering-posture#1,2,4,9,12
-  - method.design-posture#2,5,6,7,10,11
+  - method.design-posture
   - method.contract-posture
   - method.minimum-sufficient-work
   - skill.holistic-editing
