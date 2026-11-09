@@ -185,6 +185,9 @@ findings in)
 - Names clear and matching the rest of the codebase.
 - Names, comments, docstrings still true after the change (dead code and
   stitched-in seams are caught under Integration coherence above).
+- A comment, label, doc string or test name claiming more than the code
+  enforces (a rule that "blocks every path" while the code checks one
+  shape; a test name its assertion does not check) is a finding.
 - No commented-out blocks or debug prints.
 - Public surface documented; internal complexity commented at the cause,
   not the effect.
