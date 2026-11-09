@@ -1015,16 +1015,17 @@ place_tree() {
 # conventions (templates, the routing corpus) and are handled explicitly or
 # not at all.
 # project_agents takes an optional RENDERED_DIR: a host whose agents carry a
-# per-plant line (opencode, render_opencode_agents) places each agent from its
-# rendering there, through place_generated, so the projection is a real file in
-# both link modes. Without it, each agent is its graph home, placed as is.
+# per-plant line (opencode, render_opencode_agents) or a composition (Claude
+# Code, render_claude_agents) places each agent rendered there through
+# place_generated, so the projection is a real file in both link modes. An
+# agent with no rendering is its graph home, placed as is.
 project_agents() {
     local dest="$1" rendered="${2:-}" home="$PROJECT_DIR/docs/graph/agents" f name
     for f in "$home"/*.md; do
         [[ -f "$f" ]] || continue           # -f follows a symlinked home
         name="${f##*/}"
         case "$name" in _*|index.md|README.md) continue ;; esac
-        if [[ -n "$rendered" ]]; then
+        if [[ -n "$rendered" && -f "$rendered/$name" ]]; then
             place_generated "$rendered/$name" "$dest/$name"
         else
             place_file "$f" "$dest/$name"
@@ -1174,6 +1175,96 @@ for name in names:
     open(rendered, "wb").write(raw)
 print(inherits, len(names))
 PYEOF
+}
+
+# render_claude_agents DEST_DIR
+# The Claude Code projection of the roster (SPEC-0001
+# ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES). A charter whose frontmatter
+# names `always_loads:` is rendered into DEST_DIR as the charter followed, in
+# that order, by each named node's body under "## Always loaded: <id>", its
+# frontmatter stripped, so the role's system prompt carries those nodes and is
+# the same bytes on every spawn (a cache-friendly prefix). The nodes stay the
+# only home: the composed file is generated, and --check compares it with a
+# fresh composition (check_claude_projections). A charter that names none is
+# not rendered, and project_agents places it as it is. An id with no node in
+# docs/graph/{method,skills,protocols}/ stops the run before the first agent is
+# placed, naming the charter and the id.
+render_claude_agents() {
+    run_python -B - "$PROJECT_DIR/docs/graph" "$1" "$SEED_ROOT/templates/knowledge-graph" <<'PYEOF'
+import os, sys
+graph, dest, reader = sys.argv[1:4]
+sys.path.insert(0, reader)
+from frontmatter import parse, FrontmatterError
+
+home = {}
+for sub in ("method", "skills", "protocols"):
+    d = os.path.join(graph, sub)
+    for name in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+        f = os.path.join(d, name)
+        if not (name.endswith(".md") and os.path.isfile(f)):
+            continue
+        try:
+            meta, body = parse(open(f, encoding="utf-8").read(), f)
+        except (FrontmatterError, UnicodeDecodeError):
+            continue
+        if isinstance(meta.get("id"), str):
+            home.setdefault(meta["id"], body)
+
+agents = os.path.join(graph, "agents")
+out = {}
+for name in sorted(os.listdir(agents)) if os.path.isdir(agents) else []:
+    f = os.path.join(agents, name)
+    if not name.endswith(".md") or name.startswith("_") or name in ("index.md", "README.md") \
+            or not os.path.isfile(f):
+        continue
+    text = open(f, encoding="utf-8").read()
+    try:
+        meta, _ = parse(text, f)
+    except FrontmatterError:
+        continue
+    ids = meta.get("always_loads") or []
+    if not isinstance(ids, list) or not ids:
+        continue
+    parts = [text.rstrip("\n")]
+    for i in ids:
+        if i not in home:
+            sys.stderr.write(f"ERROR: docs/graph/agents/{name}: always_loads names {i!r}, "
+                             f"which no node in docs/graph/{{method,skills,protocols}}/ carries. "
+                             f"Fix the charter and re-run; the Claude Code agents are unchanged.\n")
+            sys.exit(1)
+        parts.append(f"## Always loaded: {i}\n\n" + home[i].strip("\n"))
+    out[name] = "\n\n".join(parts) + "\n"
+os.makedirs(dest, exist_ok=True)
+for name, text in out.items():
+    with open(os.path.join(dest, name), "w", encoding="utf-8") as fh:
+        fh.write(text)
+PYEOF
+}
+
+# check_claude_projections: --check for the Claude Code agents
+# (ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES). Composes what an install would
+# place and compares each agent with .claude/agents/: a composed one with its
+# composition, any other with its charter. Writes nothing into the target.
+# Returns 1 when one is stale.
+check_claude_projections() {
+    local dest="$PROJECT_DIR/.claude/agents" home="$PROJECT_DIR/docs/graph/agents"
+    local rendered f name want stale=()
+    [[ -d "$dest" && -d "$home" ]] || return 0
+    rendered="$(stage claude-check/agents)"
+    render_claude_agents "$rendered" || exit 1
+    for f in "$home"/*.md; do
+        [[ -f "$f" ]] || continue
+        name="${f##*/}"
+        case "$name" in _*|index.md|README.md) continue ;; esac
+        want="$f"; [[ -f "$rendered/$name" ]] && want="$rendered/$name"
+        cmp -s "$want" "$dest/$name" || stale+=("$name")
+    done
+    if [[ ${#stale[@]} -eq 0 ]]; then
+        log "claude-code agents up to date."
+        return 0
+    fi
+    warn "claude-code agents are STALE: ${stale[*]}. Re-run: install.sh claude-code"
+    return 1
 }
 
 # check_opencode_projections: --check for the opencode projections
@@ -2021,7 +2112,12 @@ install_claude_code() {
     # harness directories below are projections of it. Projecting before the home
     # exists would project the previous run's tree.
     place_docs_skeleton
-    project_agents "$PROJECT_DIR/.claude/agents"
+    # Each charter that names `always_loads:` is composed with those nodes'
+    # bodies (render_claude_agents); every other is placed as it is.
+    local claude_rendered
+    claude_rendered="$(stage claude/agents)"
+    render_claude_agents "$claude_rendered" || exit 1
+    project_agents "$PROJECT_DIR/.claude/agents" "$claude_rendered"
     project_skills "$PROJECT_DIR/.claude/skills"
     # Slash commands — generated projections of the command-protocol nodes
     # (those declaring `command: true`). No authored command tree; the node
@@ -3141,6 +3237,9 @@ if [[ ${CHECK:-0} -eq 1 ]]; then
     hooks_rc=0
     check_wired_hooks || hooks_rc=1
     check_harness_homes || hooks_rc=1
+    if [[ " ${expanded[*]} " == *" claude-code "* ]]; then
+        check_claude_projections || hooks_rc=1
+    fi
     check_expertise || hooks_rc=1
     check_opencode=0
     [[ " ${expanded[*]} " == *" opencode "* && "$_recorded_tools" == *" opencode "* ]] \
@@ -3268,6 +3367,9 @@ place_file "$SEED_ROOT/INSTALL_PROMPT.md" "$PROJECT_DIR/EXPERT_SEED_INSTALL_PROM
 # `{name}` is the agent file's stem; `verbatim` is false where the projection is
 # transformed at install time (Copilot's views; opencode's model: line, from the
 # plant's map) and so cannot be compared byte-for-byte: `--check` compares it.
+# Claude Code's stays `true`: a charter that names `always_loads:` is composed
+# (render_claude_agents) and begins with the charter's bytes, every other is
+# the charter; the audits compare that, and `--check` the whole composition.
 agent_projection_for() {
     case "$1" in
         claude-code)    printf '.claude/agents/{name}.md true' ;;

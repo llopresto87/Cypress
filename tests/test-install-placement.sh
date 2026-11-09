@@ -48,6 +48,7 @@ is_generated() {
         .github/agents/*|.github/prompts/*|.github/instructions/*)      return 0 ;;
         .codex/codex-config-snippet.toml)                               return 0 ;;
         .opencode/agents/*)                                             return 0 ;;  # ADR-0022: projected through the model map
+        .claude/agents/*.md) grep -q '^always_loads:' "$ROOT/agents/${1##*/}" 2>/dev/null && return 0 ;;  # composed (ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES)
     esac
     return 1
 }
@@ -898,6 +899,48 @@ PY
     echo "  M21 RETIRED_STAMP_KEYS_NAMED_AND_KEPT: four keys an earlier seed wrote are named and kept, the plant's key carried unnamed — OK"
 }
 
+# M22, SPEC-0001 ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES: on Claude Code,
+# .claude/agents/<role>.md is the charter followed by the body of each node its
+# `always_loads:` names, under "## Always loaded: <id>", frontmatter stripped,
+# each exactly once; a charter that names none is placed byte for byte; a
+# composed file edited by hand is stale to --check.
+case_agents_compose() {
+    local P="$WORK/agents-compose" out rc
+    plant_base claude-code --copy || fail "ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES: the install failed"
+    plant_copy "$P"
+    python3 - "$P" <<'PY' || fail "ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES: composition wrong (above)"
+import re, sys
+from pathlib import Path
+p = Path(sys.argv[1]); g = p / "docs/graph"
+want = ["method.engineering-posture", "method.design-posture", "method.contract-posture",
+        "method.minimum-sufficient-work", "skill.holistic-editing", "method.security-controls"]
+home = {}
+for f in list((g / "method").glob("*.md")) + list((g / "skills").glob("*.md")):
+    m = re.search(r"^id: (\S+)$", f.read_text(), re.M)
+    if m:
+        home[m.group(1)] = f.read_text()
+charter = (g / "agents/02-implementer.md").read_text()
+comp = (p / ".claude/agents/02-implementer.md").read_text()
+if not comp.startswith(charter.rstrip("\n")):
+    sys.exit("  the composed implementer does not begin with its charter")
+for i in want:
+    body = home[i].split("\n---\n", 1)[1].strip("\n")
+    if comp.count(f"## Always loaded: {i}\n") != 1:
+        sys.exit(f"  {i}: heading not present exactly once")
+    if comp.count(body) != 1:
+        sys.exit(f"  {i}: body not present exactly once")
+    if f"\nid: {i}\n" in comp:
+        sys.exit(f"  {i}: its frontmatter reached the agent file")
+if (p / ".claude/agents/11-pentest.md").read_bytes() != (g / "agents/11-pentest.md").read_bytes():
+    sys.exit("  a charter with no always_loads was not placed byte for byte")
+PY
+    printf '\nhand edit\n' >> "$P/.claude/agents/02-implementer.md"
+    rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -ne 0 ]] && grep -q "claude-code agents are STALE: 02-implementer.md" <<<"$out" \
+        || fail "ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES: a hand-edited composed agent is not stale to --check (rc $rc): $out"
+    echo "  M22 ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES: the implementer carries each always-loaded body once, no frontmatter; pentest placed as is; drift is stale to --check — OK"
+}
+
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
 if [ "${1:-}" = "__case" ]; then
     "$2"
@@ -1054,7 +1097,7 @@ export BASE BASECOPILOT ESEED
 SCN="$(mktemp)"
 for c in case_recover case_symchurn case_m2 case_m4 case_m10 case_cond case_hook_check case_retired_flag case_orphan_flag \
          case_expertise_propose case_expertise_place case_expertise_refused case_expertise_silence \
-         case_expertise_plant_edits case_expertise_check case_retired_stamp_keys; do
+         case_expertise_plant_edits case_expertise_check case_retired_stamp_keys case_agents_compose; do
     printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0

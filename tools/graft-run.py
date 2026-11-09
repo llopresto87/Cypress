@@ -874,6 +874,17 @@ def check_stamp(run, ev):
                                          + (f"; {stale}" if stale else "; growth-audit reports no STALE"))
 
 
+def projects_verbatim(projected: bytes, home: bytes) -> bool:
+    """A verbatim projection is its home's bytes, or, for a charter that names
+    `always_loads:`, the Claude Code composition that begins with them
+    (SPEC-0005 ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES); the routes row's
+    `install.sh claude-code --check` compares the whole composition."""
+    if projected == home:
+        return True
+    return (b"\nalways_loads:" in home.split(b"\n---\n", 1)[0]
+            and projected.startswith(home.rstrip(b"\n") + b"\n\n## Always loaded: "))
+
+
 def check_projection(run, ev):
     projections = ev["stamp"].get("agent_projections")
     if not isinstance(projections, list) or not projections:
@@ -887,7 +898,7 @@ def check_projection(run, ev):
         if pr.get("verbatim") is True and "{name}" in path:
             for n in nodes:
                 view = run.copy / path.replace("{name}", n.stem)
-                if not (view.is_file() and view.read_bytes() == n.read_bytes()):
+                if not (view.is_file() and projects_verbatim(view.read_bytes(), n.read_bytes())):
                     drift.append(rel(view, run.copy))
             checked.append(f"{tool} ({len(nodes)} verbatim)")
         else:

@@ -25,6 +25,11 @@ owns:
   - architect.reversibility-tags
   - architect.legal-checkpoint
 requires:
+always_loads:
+  - method.design-posture
+  - method.design-governance
+  - method.engineering-posture
+  - method.decision-economy
 peers:
   - agent.tester
   - agent.implementer

@@ -22,6 +22,10 @@ owns:
   - security.secure-defaults
   - security.gate-bar
 requires:
+always_loads:
+  - method.secrets-posture
+  - method.contract-posture
+  - method.restrictive-policy
 peers:
   - agent.pentest
   - agent.reviewer

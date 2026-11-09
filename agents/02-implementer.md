@@ -22,6 +22,13 @@ owns:
   - implementer.integration-discipline
 requires:
   - skill.holistic-editing
+always_loads:
+  - method.engineering-posture
+  - method.design-posture
+  - method.contract-posture
+  - method.minimum-sufficient-work
+  - skill.holistic-editing
+  - method.security-controls
 peers:
   - agent.tester
   - agent.reviewer
@@ -83,8 +90,8 @@ you're changing plus its `requires:` closure, and declare what you
 loaded and skipped; that set is your orientation. Load the stack
 expertise the brief names
 (`docs/graph/templates/prompts/graph-session-bootstrap.md`, "Stack
-expertise"). Read `docs/graph/skills/holistic-editing.md`: it governs
-how you touch an existing file.
+expertise"). The holistic-editing skill, always loaded below, governs how
+you touch an existing file.
 
 ## Preconditions (verify each before writing a line)
 
@@ -139,7 +146,7 @@ existed:
 ## How you write code
 
 - **Match the file's conventions.** The whole-file discipline is
-  `docs/graph/skills/holistic-editing.md`, already loaded above. The owning
+  `skill.holistic-editing`, always loaded below. The owning
   conventions may live in a `stack.*` node rather than the file; load it.
 - **Honor the contract**. If the spec contract or the architect's
   handoff is wrong or incomplete, name it in the handback and stop, or

@@ -20,6 +20,8 @@ owns:
   - ui-ux-designer.design-spec
   - ui-ux-designer.heuristics
 requires:
+always_loads:
+  - method.design-governance
 peers:
   - agent.product
   - agent.architect
