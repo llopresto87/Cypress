@@ -3205,3 +3205,24 @@ class TrustMarkerTests(_TmpCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class PlanRoleTests(unittest.TestCase):
+    """SPEC-0005 PLAN_ROLE_LEAVES_OUT_THE_ROLES_OWN_PROMPT: `--plan TASK --role
+    R` leaves out of LOAD the role's own charter and the nodes its
+    `always_loads:` names, which its system prompt already carries."""
+
+    def test_x499_role_leaves_out_its_own_prompt(self):
+        graph = installed_graph(self)
+        task = "make the SPEC-0003 increment 15 tests pass (GREEN)"
+        r = subprocess.run([sys.executable, str(graph / "graph-lint.py"), "--plan", task,
+                            "--role", "implementer"],
+                           cwd=str(graph), capture_output=True, text=True, timeout=120)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        load = load_section(r.stdout)
+        for gone in ("agent.implementer", "skill.holistic-editing"):
+            self.assertNotIn(gone, load, f"PLAN_ROLE_LEAVES_OUT_THE_ROLES_OWN_PROMPT: {gone}:\n{r.stdout}")
+        self.assertIn("protocol.verify", load, r.stdout)
+        plain = load_section(plan_output(graph, task).stdout)
+        self.assertIn("agent.implementer", plain)
+        self.assertTrue(r.stdout.startswith(f"LOAD {len(load)} "), r.stdout)

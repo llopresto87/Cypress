@@ -1733,13 +1733,20 @@ def short_title(n) -> str:
     return str(n.meta.get("title", "")).removeprefix(n.id.rsplit(".", 1)[-1] + " — ")
 
 
-def plan(nodes: list, task: str) -> tuple:
+def plan(nodes: list, task: str, role: str = "") -> tuple:
     """The route both views print, in their order: the notices, the plant
     facts (or None), the LOAD token total, LOAD as (node, path, How) by id
     (the seed skills a tier-2 route adds after the rest, by id: SPEC-0002 §6),
     and the skipped nodes as (node, path, Skip) in skip-block order: by
-    group, then by id."""
+    group, then by id. With `role`, LOAD leaves out that agent's charter and
+    the nodes its `always_loads:` names: the worker's system prompt carries
+    them (SPEC-0005 PLAN_ROLE_LEAVES_OUT_THE_ROLES_OWN_PROMPT)."""
     loaded, not_loaded, notices = resolve(nodes, task)
+    agent = next((n for n in nodes if n.meta.get("kind") == "agent"
+                  and n.meta.get("name") == role), None) if role else None
+    if agent is not None:
+        own = {agent.id, *agent.get_list("always_loads")}
+        loaded = [(n, how) for n, how in loaded if n.id not in own]
     total = sum(n.meta.get("est_tokens", 0) for n, _ in loaded)
     path_route = any(how.kind in ("named_path", "inferred") for _, how in loaded)
     load = [(n, where(n.path), how) for n, how in sorted(
@@ -2081,6 +2088,9 @@ def main() -> int:
     ap.add_argument("--plan-json", metavar="TASK",
                     help="the same route as one cypress.plan/1 JSON document; pass "
                          "the task as one --plan-json=TASK element")
+    ap.add_argument("--role", default="", metavar="ROLE",
+                    help="with --plan/--plan-json: leave out of LOAD the role's charter "
+                         "and its always_loads, which its system prompt carries")
     ap.add_argument("--trust-claims", nargs="+", metavar="PATH",
                     help="print {\"claims\": {path: [ids]}} for each PATH a `trust: true` crosscut claims")
     ap.add_argument("--trust-unsettled", action="store_true",
@@ -2109,10 +2119,10 @@ def main() -> int:
     if args.eval:
         return evaluate(nodes, args.eval)
     if args.plan:
-        print_plan(*plan(nodes, args.plan))
+        print_plan(*plan(nodes, args.plan, args.role))
         return 0
     if args.plan_json is not None:
-        print(json.dumps(plan_document(args.plan_json, *plan(nodes, args.plan_json))))
+        print(json.dumps(plan_document(args.plan_json, *plan(nodes, args.plan_json, args.role))))
         return 0
 
     if args.graph:
