@@ -519,8 +519,9 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 - **When:** `brief.py` composes a brief with `--kind` (and `--label` for a
   `by label` row), with `--security-path`, or with neither
 - **Then:** stderr carries `effort: <value> (<reason>)`: a reviewer `recheck`
-  is low, an implementer `increment` labelled hard is medium (the
-  implementer's `at most medium` cap) and medium-low is low, a tester `red`
+  is low, an implementer `increment` is low by default and medium when
+  labelled medium-hard or hard (never above medium), so one labelled medium
+  or medium-low or unlabelled is low, a tester `red`
   labelled hard is high, an implementer `flow` is medium and a `fix` low, an
   architect `ruling` is medium, a `--security-path` brief is high, a
   `first` review of trust-path files is high, and no kind gives the
@@ -628,7 +629,7 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 ### Contract: BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE
 - **Test file:** `tests/test-brief.sh`
 - **Given:** a plant, one task line that routes no `expertise.*` or
-  `subsystem.*` node and one that routes `expertise.kotlin`
+  `subsystem.*` node and one that routes `expertise.<stack>`
 - **When:** `brief.py` composes a brief for each
 - **Then:** the first prints on stderr that the task line routes no
   expertise and names the remedy (the files or stack in `--task`); the second
@@ -2524,7 +2525,7 @@ gives.
 | AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK | M23 case_agents_recompose: a plant appends a line to `method/engineering-posture.md`; `--check` names `02-implementer.md` STALE with `--recompose-agents`; that run leaves every file outside `.claude/agents/` byte-identical, the implementer carries the line, `--check` is up to date; seen red first (the STALE line said re-run the install) | tests/test-install-placement.sh | integration | green |
 | PLAN_ROLE_LEAVES_OUT_THE_ROLES_OWN_PROMPT | X499 PlanRoleTests.test_x499_role_leaves_out_its_own_prompt: the GREEN task line with `--role implementer` drops `agent.implementer` and `skill.holistic-editing`, keeps `protocol.verify`; seen red first | tests/test_graph_lint.py | integration (installed plant) | green |
 | PLAN_ROLE_LEAVES_OUT_THE_ROLES_OWN_PROMPT | X500 the tester brief's step 1 carries `--role tester`; seen red first | tests/test-brief.sh | fixture | green |
-| BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE | X500 a generic GREEN task line warns; a task line routing `expertise.kotlin` does not; seen red first | tests/test-brief.sh | fixture | green |
+| BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE | X500 a generic GREEN task line warns; a task line routing `expertise.<stack>` does not; seen red first | tests/test-brief.sh | fixture | green |
 | REVIEWER_RUNS_NO_BUILD | (none) the `REVIEWER_RUNS_NO_BUILD` row of seed-lint's `TEXT_RULES`; red id: `REVIEWER_RUNS_NO_BUILD: agents/03-reviewer.md does not hold 'the builder runs the builds and test suites'`; seen red first | tests/seed-lint.py | real-tree | green |
 | CHARTER_FLAG_ONLY_FOR_PRIME_AGENT | X501 refused on a Claude Code plant; composed once `.prime/agent/` exists; seen red first | tests/test-brief.sh | fixture | green |
 | ALWAYS_LOADS_COMPOSES_ONLY_WHAT_THE_ROLE_NEEDS | M25 case_agents_sections: `engineering-posture#1,4` composes sections 1 and 4 only, no Neighbours or reference-only section; `#1,99` stops the recompose naming section 99; seen red first | tests/test-install-placement.sh | integration | green |
@@ -2975,3 +2976,9 @@ kept outside the seed.
   rows become: increment by label at most medium, flow and trust medium, fix
   and mechanical low. BRIEF_DERIVES_THE_SPAWN_EFFORT now reads the cap (seen
   red first).
+- 2026-11-09 — effort replays. A delta replay of a whole increment with the
+  implementer at low effort cost $8.17 against $12.68 at medium and graded
+  17/24 against 14/24 by the same blind grader, while a single feature built
+  alone dropped at low (3/5 against 4/5). The implementer `increment` row
+  becomes low by default, medium when the hardest label is medium-hard or
+  hard; BRIEF_DERIVES_THE_SPAWN_EFFORT reads it (seen red first).

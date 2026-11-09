@@ -165,11 +165,11 @@ match, and the caller passes that value on the spawn: (1) `security`,
 `high`; (2) the row below (`by label`: the hardest increment label of
 `delegation.effort-scale`, low or medium-low → low, medium → medium,
 medium-hard or hard → high; a `first` review of trust-claimed files reads
-`first-trust`; `at most` caps it); (3) the definition's default. The implementer caps at medium (owner, 2026-11-09): replays measured new-screen GREEN 3/5 low, 4/5 medium, 5/5 high at +50% cost, and fix sets 4/5 at low and medium, low at half the cost.
+`first-trust`; `at most` caps it); (3) the definition's default. The implementer caps at medium (owner, 2026-11-09): replays measured new-screen GREEN 3/5 low, 4/5 medium, 5/5 high at +50% cost, and fix sets 4/5 at low and medium, low at half the cost. A whole-increment GREEN defaults to low (measured on 2026-11-09): a delta replay of a whole increment cost $8.17 at low against $12.68 at medium and graded 17/24 against 14/24 by the same blind grader, while a single feature built alone dropped at low (3/5 against 4/5); so low by default, medium for a medium-hard or hard increment.
 
 | Role | Kind | Effort |
 |---|---|---|
-| implementer | `increment`: an increment batch | by label, at most medium |
+| implementer | `increment`: an increment batch | low; medium when labelled medium-hard or hard |
 | implementer | `flow`: a new screen, flow or stateful contract, unlabelled | medium |
 | implementer | `trust`: a change on a trust surface | medium |
 | implementer | `fix`: a contained change or a review-fix set | low |

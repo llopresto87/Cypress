@@ -107,6 +107,13 @@ def derive_effort(role: str, kind: str, label: str, security_path: bool, trust: 
             raise SystemExit(f"brief: no effort row for {role} --kind {kind}; its kinds: {kinds} "
                              f"(delegation.effort)")
         value = rows[(role, kind)]
+        when = re.fullmatch(r"(\w+); (\w+) when labelled ([\w-]+(?: or [\w-]+)*)", value)
+        if when:
+            if label and label not in LABELS:
+                raise SystemExit(f"brief: {role} --kind {kind} reads --label, one of {', '.join(LABELS)}")
+            base, up, hard = when.group(1), when.group(2), when.group(3).split(" or ")
+            got = up if label in hard else base
+            return f"{got} ({role} {kind}, label {label})" if label else f"{got} ({role} {kind})"
         by_label = re.fullmatch(r"by label(?:, at most (\w+))?", value)
         if by_label:
             if label not in LABELS:
