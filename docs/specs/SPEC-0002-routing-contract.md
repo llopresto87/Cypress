@@ -406,8 +406,9 @@ loaded node always loads with it. Tiers, phrases and constants are §6's.
 - **When:** the router runs
 - **Then:** the owning node loads with `how.kind` `named_path` (or
   `inferred` for the expertise pattern) and `how.detail` the path as named
-- **And:** a basename two node files share loads neither by this tier, and a
-  `repo:` value that names a repository root claims no path
+- **And:** a basename two node files share loads neither by this tier, a
+  `repo:` value that names the plant root claims no path, and one that names
+  a repository nested in the plant claims the paths under it
 
 ### Contract: PATH_ROUTE_ADDS_SEED_SKILL_PHRASES
 - **Given:** a fixture graph whose node `subsystem.app` claims `src/app.py`

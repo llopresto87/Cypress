@@ -240,6 +240,15 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   table; the graft's Phase 8 entry and grow's delivery name each one left open
   and put it to the owner as a numbered decision. SPEC-0005 adds
   TRUST_MARKER_IS_SETTLED.
+- **A repository nested in the plant claims its directory.** A subsystem
+  whose `repo:` names a git directory inside the plant was never entered by a
+  path: in a live run the app's one subsystem node, which owned its change
+  flow, loaded only by lexical luck. `source_paths.repo_claim` now reads a
+  nested repository as a folder, in the router and in `anchors` alike; the
+  plant root still claims nothing. SPEC-0007's X459 arm and SPEC-0002
+  GRAPH_ROUTE_NAMED_PATH_LOADS_ITS_OWNER follow. The other two routing defects
+  that run found, a long-task notice a composed brief dropped and a library
+  pin read as a path, live in brief machinery this release does not carry.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 

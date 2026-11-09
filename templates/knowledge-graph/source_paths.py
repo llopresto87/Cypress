@@ -273,12 +273,17 @@ def repo_kind(plant, value: str) -> tuple:
 
 def repo_claim(name: str, path: str, kind: str):
     """"exact", "prefix" or None: does a `repo:` value of this kind and name
-    claim `path`? A string function. `root` and `outside` claim nothing; an
-    `unresolved` value is cut of its leading and trailing `/` and claims
-    nothing when no `/` remains (the reading from before option D)."""
+    claim `path`? A string function. A `root` that is a repository nested in
+    the plant claims its directory as a `path` does; the plant root itself
+    (`.`) and `outside` claim nothing; an `unresolved` value is cut of its
+    leading and trailing `/` and claims nothing when no `/` remains (the
+    reading from before option D)."""
     if kind == "unresolved":
         name = name.strip("/")
         if "/" not in name:
+            return None
+    elif kind == "root":
+        if name in (".", ""):
             return None
     elif kind != "path":
         return None

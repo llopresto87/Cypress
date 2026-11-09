@@ -2012,14 +2012,18 @@ def x459(base):
 
     def root_outside_arm():
         d = anchors_doc()
-        check(uncited(d, "vendor/x/y.py"),
-              f"anchors: vendor/x/y.py is not uncited: {repo_facts(d, 'vendor/x/y.py')!r}")
+        # a repository nested in the plant claims its directory; the plant
+        # root itself still claims nothing (the owner's decision of 2026-11-05)
+        got = repo_facts(d, "vendor/x/y.py")
+        check(got == [(page("repo0"), "maybe", "repo-prefix")],
+              f"anchors: vendor/x/y.py repo facts {got!r}, want the nested repository's node, repo-prefix")
         subjects = [s for s, _ in unresolved(d)]
         for n in ("rdot", "oout", "repo0"):
             check(page(n) not in subjects, f"anchors: the {values.get(n, 'vendor/x')!r} node adds an "
                                            f"incomplete record: {d.get('incomplete')!r}")
         got = named(route(p, "edit vendor/x/y.py"))
-        check(got == [], f"router: `edit vendor/x/y.py` loads {got!r} by named_path, want none")
+        check(got == ["subsystem.repo0"], f"router: `edit vendor/x/y.py` loads {got!r} by named_path, "
+                                          f"want ['subsystem.repo0']")
 
     def unresolved_arm():
         d = anchors_doc()
