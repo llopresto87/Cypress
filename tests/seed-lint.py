@@ -1567,6 +1567,11 @@ TEXT_RULES = (
     # a RED test holds its evidence: every path, a failing absent assertion, a rebuilt holder
     ("RED_TEST_HOLDS_ITS_EVIDENCE", "require", lambda: ["skills/test-first/SKILL.md"],
      re.escape("again after rebuilding the component that holds the state"), {"collapse": True}),
+    # the reviewer checks domain and state, and platform correctness, and leaves the security pass to the session
+    ("REVIEWER_CHECKS_STATE_AND_PLATFORM", "require", lambda: ["agents/03-reviewer.md"],
+     r"\*\*Domain & state\*\*.*\*\*Platform correctness\*\*", {"collapse": True}),
+    ("REVIEWER_CHECKS_STATE_AND_PLATFORM", "forbid", lambda: ["agents/03-reviewer.md"],
+     r"spawn `security`", {}),
     # a reviewer finding on a trust path is fixed inside the security pass
     ("TRUST_PATH_TAKES_THE_SECURITY_PASS", "require", lambda: ["protocols/test-first.md"],
      re.escape("the security pass is their one fix round"), {"collapse": True}),

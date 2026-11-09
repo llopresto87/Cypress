@@ -447,6 +447,16 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   test; stateful behaviour is tested again after rebuilding the component
   that holds the state. Owner-approved on 2026-11-09. SPEC-0005 adds
   RED_TEST_HOLDS_ITS_EVIDENCE.
+- **The reviewer checks domain and state, and platform correctness.** Its
+  checklist gains Domain & state (one owner per piece of state, checked
+  against the implementer's design note; every input, rejection and restart
+  of the state holder with a defined result; stale or replayed actions
+  rejected; the same behaviour for a fresh observer) and Platform correctness
+  (lifecycle, concurrency and accessibility as the plant's expertise nodes
+  define them). Its security section points at `method.security-controls` and
+  the security pass that follows the review, and `security` leaves the
+  reviewer's `delegates_to`. Owner-approved on 2026-11-09. SPEC-0005 adds
+  REVIEWER_CHECKS_STATE_AND_PLATFORM.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 

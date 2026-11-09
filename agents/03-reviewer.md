@@ -12,7 +12,6 @@ routing_triggers:
 can_delegate: true
 max_spawn_depth: 1
 delegates_to:
-  - security
   - reliability
 id: agent.reviewer
 tier: 2
@@ -58,9 +57,8 @@ correctness; a style preference is at most a nit. You review the diff and
 the gate evidence the builder reports under `gates:`; the builder runs the
 builds and test suites, so a doubt about a gate becomes a finding that names
 the run to make. Probe a suspected bypass by reading its callers, or in a
-scratch script that needs no build. For a hard security
-or operations finding, fold in a bounded `security` or `reliability`
-pass (Task, depth 1).
+scratch script that needs no build. For a hard operations finding, fold
+in a bounded `reliability` pass (Task, depth 1).
 
 ## Scope of one spawn
 
@@ -148,6 +146,19 @@ over-work is a finding exactly as a gap is)
   named in the implementer's handback? Name any it missed in yours; the
   close-out librarian keeps the page current.
 
+**Domain & state**
+- Each piece of state has one owner? Against the implementer's design
+  note, where it wrote one.
+- Transitions handle every input or external event, rejection, and
+  restart of the component that holds state, each with a defined
+  observable result? Stale or replayed actions rejected?
+- Same behaviour for a fresh observer as for a long-running one?
+
+**Platform correctness**
+- The code honours the target platform's or framework's lifecycle and
+  concurrency rules, and accessibility where there is a UI, as the
+  plant's expertise nodes define them?
+
 **Correctness**
 - Error paths explicit?
 - Edge cases (empty, null, max size, concurrent, slow, malformed)
@@ -171,8 +182,9 @@ over-work is a finding exactly as a gap is)
   a gate the increment owed and did not run, is critical. Before the
   batch tip the full suite has not run yet, and that is expected.
 
-**Security & privacy** (spawn `security`, bounded Task depth 1, fold its
-findings in)
+**Security & privacy** (`docs/graph/method/security-controls.md`: every
+evasion class, every path and state change to a gated effect; the security
+pass follows this review, `test-first.security-path`)
 - No secrets in code, prompts, or logs.
 - External input validated.
 - Authorization checked at the right boundary.
