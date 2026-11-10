@@ -474,6 +474,11 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   the security pass that follows the review, and `security` leaves the
   reviewer's `delegates_to`. Owner-approved on 2026-11-09. SPEC-0005 adds
   REVIEWER_CHECKS_STATE_AND_PLATFORM.
+- **A fix on a trust surface runs at low.** A measured run gave its
+  follow-up and fix-round implementers medium effort because they touched a
+  trust surface. Where several task kinds fit, `fix`, `mechanical` and
+  `amend` now win over `trust` and `red-trust`, and `brief.py --kind
+  trust,fix` reads low; a trust-surface GREEN stays medium (SPEC-0005, X502).
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 

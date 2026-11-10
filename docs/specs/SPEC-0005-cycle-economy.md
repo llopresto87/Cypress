@@ -525,7 +525,9 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   labelled hard is high, an implementer `flow` is medium and a `fix` low, an
   architect `ruling` is medium, a `--security-path` brief is high, a
   `first` review of trust-path files is high, and no kind gives the
-  definition's default; the spawn log records the same value
+  definition's default; of several kinds, `fix`, `mechanical` or `amend`
+  wins, so an implementer `trust,fix` is low while `trust` alone is medium,
+  and a tester `red-trust,amend` is low; the spawn log records the same value
 - **And:** a kind the role has no row for is refused (exit 2) naming the
   role's kinds
 
@@ -2982,3 +2984,8 @@ kept outside the seed.
   alone dropped at low (3/5 against 4/5). The implementer `increment` row
   becomes low by default, medium when the hardest label is medium-hard or
   hard; BRIEF_DERIVES_THE_SPAWN_EFFORT reads it (seen red first).
+- 2026-11-10 — a measured run sent its follow-up and fix-round implementers
+  to medium as `trust` although each was a fix. Of several task kinds, `fix`,
+  `mechanical` or `amend` now wins over `trust` and `red-trust`; a
+  trust-surface GREEN stays medium. BRIEF_DERIVES_THE_SPAWN_EFFORT reads it
+  (seen red first).
