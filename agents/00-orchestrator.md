@@ -43,7 +43,6 @@ owns:
 requires:
   - method.tiers
 always_loads:
-  - skill.test-first#test-first.proportionate-checks
   - method.tiers
   - method.delegation
   - method.delegation-continuation
@@ -242,26 +241,47 @@ scout/author pair).
 - New spec needed → `specify`, in its phase order (`specify.flow`):
   product §3 → architect §4–§8 → product §9 ∥ tester §10; security
   where the surface is sensitive; signed in §0, promoted with its RED.
-- Code to write → `test-first`, one cycle per §9 row in §9 order
-  (`test-first.cycle`): tester RED → implementer GREEN → reviewer →
-  you commit and record §15.
+- Architecture decision → `architect` → ADR + grill.md update.
+- New dependency → `research-scout` → `ingest-library` → wiki page.
 - Failing test / unclear bug → `tester`: reproduce, regress, fix; in an
   operations or verification pass, reproduce and list, and the fix waits
   for the owner's go-ahead (`tester.bug-fix-loop`).
 - Sensitive surface (auth, payments, uploads, AI tool use) →
   `security` → threat model + controls + spec failure modes.
-- Readiness → `reliability`; dataset/pipeline/eval → `data-ml`; unclear
-  outcome → `product`; unclear interface → `ui-ux-designer`; stale docs
-  → `docs-librarian`.
+- Production readiness → `reliability`. Dataset/pipeline/eval → `data-ml`.
+- Unclear *outcome* (who the user is, what job the flow must do) →
+  `product` → flows feed spec §3. Unclear *interface* (screens, states,
+  components, tokens, accessibility) → `ui-ux-designer`.
+  Docs stale → `docs-librarian`.
+- Agentic/multi-agent design or a misbehaving fleet → `multi-agent-architect`.
+- A finished, claim-bearing deliverable about to be relied on (a T3
+  plan's one-way door, a report, a migration plan) → `devils-advocate`
+  for one bounded refutation pass (grill runs it inside `grill.press`).
+- Authorized offensive testing of a running system → `pentest` (scope
+  statement first) → finding driven to verified remediation.
+- Grow / adopt-existing / from-scratch on a repo → `growth-orchestrator`;
+  its read-only per-boundary evidence passes → `growth-scout`.
+- Placing or upgrading CYPRESS in a target project → `seed-installer`.
 - No specialist fits → an `expertise.*` node when the gap is knowledge;
   an agent from `docs/graph/templates/agent.template.md` only when the work
   needs its own tools, model class, stance, or isolation.
 
-If a task spans specialists, the spawn order is read from the plan, not
-improvised (`delegation.sequencing`); a spawn may carry a batch of
-increments sized by effort label (`delegation.effort-scale`), with the
-question file and the RED hash record the cycle rules keep
-(`method.delegation-cycle-economy`).
+If a task spans specialists, the spawn order is read from the plan,
+not improvised: a protocol pass follows its phase table (`grill.flow`),
+implementation follows grill.md §9 in dependency order, and a spawn is
+issued only after the handbacks it needs have returned
+(`delegation.sequencing` in `docs/graph/method/delegation-sequencing.md`).
+Parallel only where the table or the `Depends on:` rows say the units are
+independent. Work runs in cycles, a RED wave then a clean GREEN wave; a
+problem holds only its own increment and what depends on it, and early
+REDs are carried as expected-red at the tip (`delegation.waves`, same file).
+
+A spawn may carry a batch of increments. The cycle rules live in
+`docs/graph/method/delegation-cycle-economy.md`; apply them from there:
+batch size by effort label (`delegation.effort-scale`), the question file
+and the architect's one ruling pass per cycle
+(`delegation.question-file`), and the RED hash record you check before a
+GREEN commit and the tip run (`delegation.green-self-test`).
 
 ## Spec-first enforcement (T2/T3)
 
@@ -271,6 +291,10 @@ turns `active` with its first RED; the T2 covered lane requires
 `active`), else enter `specify`; (2) grill.md §9 references the
 contracts being implemented, else update it; (3) each contract of this
 increment that holds logic has its failing test, else enter `test-first` RED.
+
+A test is owed only where it can catch something; the architect sets each
+contract's kind at specify and slices the plan from it
+(`test-first.proportionate-checks`).
 
 The T2 contained lane is exempt from (1) and (2) only: no spec owns the
 surface, so the RED test is the contract and the why-record is the

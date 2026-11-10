@@ -18,13 +18,15 @@ import os
 import re
 import sys
 
+# The architect slices the plan from the kinds it set at specify, so it is the
+# slicing role; the lead carries a two-line pointer, not the rule.
 # (rule id, a sentence of the rule that must appear in the loaded prompt,
 #  role -> the agent file that carries that role's loaded prompt)
 MUST_REACH = [
     ("test-first.proportionate-checks",
      "Nothing to get wrong, no new test.",
      {"architect": "01-architect.md", "tester": "04-tester.md",
-      "reviewer": "03-reviewer.md", "orchestrator": "00-orchestrator.md"}),
+      "reviewer": "03-reviewer.md"}),
 ]
 
 

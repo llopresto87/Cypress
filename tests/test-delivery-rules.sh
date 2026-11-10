@@ -15,7 +15,7 @@ mkdir "$T/plant"; ( cd "$T/plant" && git init -q && bash "$ROOT/install.sh" clau
 echo "  X524 MUST_REACH_RULE_IS_IN_EACH_NAMED_ROLE_PROMPT: installed roles carry the rule — OK"
 
 # the lint names the role and the rule when one prompt lacks it
-for role in 01-architect 03-reviewer 04-tester 00-orchestrator; do
+for role in 01-architect 03-reviewer 04-tester; do
   cp -R "$T/plant/.claude/agents" "$T/agents-$role"
   "$PY" - "$T/agents-$role/$role.md" <<'PYEOF'
 import sys

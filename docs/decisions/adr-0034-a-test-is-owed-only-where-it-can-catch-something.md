@@ -80,3 +80,19 @@ has landed.
 
 Reversible. Each step is a text or lint change on the seed; a plant's records
 are untouched.
+
+## Amendment, 2026-11-10
+
+The owner decided on 2026-11-10 that the lead carries a two-line pointer to the
+restraint rule and not the rule itself, because the architect slices the plan
+and the kinds are set at specify. The delivery paragraph above is amended so:
+the architect, tester and reviewer carry the rule through `always_loads:`, the
+lead carries the pointer, and the routing examples the first delivery had
+removed from the lead's charter are restored. The owner also decided that, in
+the same spirit, the effort-scale and green-self-test sentences that require a
+separate RED and GREEN spawn are amended for the two lowest labels off trust
+paths when step T9 lands, that a spec without a `Contract form: kinds` line
+accepts a `Check:` label on individual contracts and reads unlabelled ones as
+`test`, that a closed spec's baseline tests are listed for the owner's
+confirmation when the spec is reopened, and that the §10 mapping, not the
+contract name, links a test to its contracts in new-form specs.

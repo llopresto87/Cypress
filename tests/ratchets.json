@@ -6,8 +6,8 @@
     "CONFIDENT_WRONG_BUDGET": 0,
     "EAGER_BUDGET": 41600,
     "EAGER_EXEMPTIONS": {
-      "claude-code": 67006,
-      "opencode": 67006
+      "claude-code": 67071,
+      "opencode": 67071
     },
     "EDITION_DEBT": [
       "acn-det-127434-baseline-2027",

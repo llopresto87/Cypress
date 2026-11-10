@@ -743,8 +743,9 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 - **Test file:** `tests/test-delivery-rules.sh`
 - **Given:** `MUST_REACH` in `tools/delivery_rules.py`, a table of rules, the
   sentence that proves each is present, and the roles that must carry it
-  (the restraint rule `test-first.proportionate-checks`: architect, tester,
-  reviewer, orchestrator, the role that slices the plan)
+  (the restraint rule `test-first.proportionate-checks`: architect, who sets
+  each contract's kind and slices the plan from it, tester, reviewer; the lead
+  carries a two-line pointer)
 - **When:** the projected agent files of an install are read, by the seed's
   lint or by `install.sh <host> --check` in a plant
 - **Then:** a role whose loaded prompt lacks a rule's sentence is named with
@@ -2846,7 +2847,7 @@ gives.
 | ALWAYS_LOADS_COMPOSES_ONLY_WHAT_THE_ROLE_NEEDS | M25 case_agents_sections: `engineering-posture#1,4` composes sections 1 and 4 only, no Neighbours or reference-only section; `#1,99` stops the recompose naming section 99; seen red first | tests/test-install-placement.sh | integration | green |
 | MAIN_SESSION_PLAYS_THE_ORCHESTRATOR | M24 case_orchestrator_style: settings select the style; the style carries the charter body and each always-loaded body once, no charter frontmatter, `keep-coding-instructions: true`; a hand edit is STALE and recomposed; seen red first. A `claude -p` probe in a fresh plant quoted the charter's second sentence and an always-loaded heading, and quoted neither with the setting removed | tests/test-install-placement.sh | integration | green |
 | COMPOSER_SELECTS_A_SECTION_BY_SLUG | X523 a slug picks one section with no preamble; an unknown slug is a named ComposeError | tests/test-delivery-rules.sh | integration | green |
-| MUST_REACH_RULE_IS_IN_EACH_NAMED_ROLE_PROMPT | X524 installed prompts carry the rule; removing it from each of four roles fails naming role and rule; `--check` in a plant reports it; seen red first by that removal | tests/test-delivery-rules.sh | integration | green |
+| MUST_REACH_RULE_IS_IN_EACH_NAMED_ROLE_PROMPT | X524 installed prompts carry the rule; removing it from each of three roles fails naming role and rule; `--check` in a plant reports it; seen red first by that removal | tests/test-delivery-rules.sh | integration | green |
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | M22 case_agents_compose: the implementer's six always-loaded bodies once each with no frontmatter; `11-pentest.md` byte for byte; a hand edit is STALE to `--check` | tests/test-install-placement.sh | integration | green |
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | (none) the `ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES` row of seed-lint's `TEXT_RULES`: the `graft.gate.projection-drift` row holds `install.sh claude-code --check`; red id: `ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES: protocols/graft.md graft.gate.projection-drift does not hold 'install.sh claude-code --check'` | tests/seed-lint.py | real-tree | green |
 | TRUST_MARKER_IS_SETTLED | X496 TrustMarkerTests: `--trust-unsettled` names the unset and the pathless crosscut only; the lint warns on the pathless one and exits 0 | tests/test_graph_lint.py | fixture | green |
@@ -3441,6 +3442,6 @@ kept outside the seed.
 - 2026-11-10 — version 0.21, the restraint rule reaches the roles that decide.
   The owner decided on 2026-11-10 that a test is owed only where it can catch
   something. `test-first.proportionate-checks` is now the first section of
-  its node and the architect, tester, reviewer and orchestrator carry it
-  through `always_loads:`. Added COMPOSER_SELECTS_A_SECTION_BY_SLUG and
+  its node and the architect, tester and reviewer carry it
+  through `always_loads:` and the lead a two-line pointer. Added COMPOSER_SELECTS_A_SECTION_BY_SLUG and
   MUST_REACH_RULE_IS_IN_EACH_NAMED_ROLE_PROMPT (seen red first).

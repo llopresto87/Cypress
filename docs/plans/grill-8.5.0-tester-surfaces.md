@@ -190,8 +190,8 @@ Increments are inline; numbers are dependency order. Increment 1 carries the con
 
 ### Increment 8: T1, T2, T3 the restraint rule reaches the roles that decide
 - Spec contracts: SPEC-0005/COMPOSER_SELECTS_A_SECTION_BY_SLUG, SPEC-0005/MUST_REACH_RULE_IS_IN_EACH_NAMED_ROLE_PROMPT
-- Files touched: `skills/test-first/SKILL.md`, `agents/{00-orchestrator,01-architect,03-reviewer,04-tester}.md`, `core/AGENTS.md`, `tools/agent_compose.py`, `tools/delivery_rules.py`, `install.sh`, `tests/test-delivery-rules.sh`, `tests/test-install-placement.sh`, `tests/seed-lint.py`, `tests/run.sh`, `tools/gate-registry.py`, `docs/specs/SPEC-0005-cycle-economy.md`
-- Tests to write (RED): X523 and X524 in `tests/test-delivery-rules.sh`, seen red by removing the rule from each of four roles
+- Files touched: `skills/test-first/SKILL.md`, `agents/{00-orchestrator,01-architect,03-reviewer,04-tester}.md` (the lead a pointer), `core/AGENTS.md`, `tools/agent_compose.py`, `tools/delivery_rules.py`, `install.sh`, `tests/test-delivery-rules.sh`, `tests/test-install-placement.sh`, `tests/seed-lint.py`, `tests/run.sh`, `tools/gate-registry.py`, `docs/specs/SPEC-0005-cycle-economy.md`
+- Tests to write (RED): X523 and X524 in `tests/test-delivery-rules.sh`, seen red by removing the rule from each of three roles
 - Behavior added: the rule is the first section of its node and rides each deciding role's `always_loads:` by slug; `install.sh --check` names a role whose prompt lacks it
 - Gate: `bash tests/test-delivery-rules.sh`, `bash tests/test-install-placement.sh`, `python3 tests/seed-lint.py`, `python3 tools/ratchet-lint.py`
 - Rollback path: revert the increment's commit
