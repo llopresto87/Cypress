@@ -217,6 +217,32 @@ out="$(tok --tokens o.9.tester.7 --transcript agent-a2.jsonl 2>&1)" || { bad "X5
 [[ "$out" == "tokens: o.9.tester.7 — not recorded — input not recorded, cache write not recorded (5m not recorded, 1h not recorded), cache read not recorded, output not recorded — source: claude-code transcript" ]] \
   || { bad "X506 TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT" "no usage: $out"; x506=1; }
 [[ $x506 == 0 ]] && ok "X506 TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT: one count per message id, 5m and 1h apart, no usage is not recorded"
+# X515 BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS: the Spawns, Serial waits and
+# Tokens lines from a hand spawn log and ledger, byte for byte, and they pass
+# session-metrics.py unchanged beside the lead's own lines
+x515=0; FB="$ROOT/tests/fixtures/brief-log"; E5="$T/docs/graph/plans/e5"
+mkdir -p "$E5"; cp "$FB/spawns.jsonl" "$FB/tokens.jsonl" "$E5/"
+rc=0; got="$(cd "$T" && "$PY" docs/graph/brief.py --log --plan "$E5/grill.md" 2>&1)" || rc=$?
+[[ $rc -eq 0 && "$got" == "$(cat "$FB/log.out")" ]] || { bad "X515 BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS" "rc $rc: $got"; x515=1; }
+{ printf '# Changelog\n\n## T2 delivery — e5 — 2026-11-10\n\n### Session metrics\n'
+  printf -- '- Tier: T2 covered (reclassified: none)\n- Route bands: GREEN×1 HIGH×1 — overrides: none\n'
+  printf -- '- Retries: none\n- Gates: 3 run, 0 failed\n- Full-suite runs: 1 (0 red)\n- Overflow notes: none\n'
+  printf -- '- Quality: review Critical 0, Major 0; no mutation pass\n'
+  grep -E '^- (Spawns|Serial waits|Tokens):' <<<"$got"; } > "$T/e5-changelog.md"
+m="$(cd "$T" && "$PY" docs/graph/session-metrics.py --since 2026-11-10 --changelog e5-changelog.md 2>&1)" \
+  && grep -q '^session metrics: PASS' <<<"$m" || { bad "X515 BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS" "reader: $m"; x515=1; }
+rm "$E5/tokens.jsonl"
+got="$(cd "$T" && "$PY" docs/graph/brief.py --log --plan "$E5/grill.md" 2>/dev/null | tail -1)"
+[[ "$got" == "- Tokens: not recorded: no spawn has a record in the token ledger tokens.jsonl" ]] \
+  || { bad "X515 BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS" "no ledger: $got"; x515=1; }
+printf '{"spawn_id": "orchestrator.1"\n' > "$E5/tokens.jsonl"
+got="$(cd "$T" && "$PY" docs/graph/brief.py --log --plan "$E5/grill.md" 2>/dev/null | tail -1)"
+[[ "$got" == "- Tokens: not recorded: tokens.jsonl line 1 is not a JSON record" ]] \
+  || { bad "X515 BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS" "bad ledger: $got"; x515=1; }
+rc=0; got="$(cd "$T" && "$PY" docs/graph/brief.py --log --plan "$T/docs/graph/plans/e5none/grill.md" 2>&1)" || rc=$?
+[[ $rc -eq 1 && "$got" == "brief: no spawns logged at $T/docs/graph/plans/e5none/spawns.jsonl" ]] \
+  || { bad "X515 BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS" "empty log: rc $rc: $got"; x515=1; }
+[[ $x515 == 0 ]] && ok "X515 BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS: Spawns, Serial waits and Tokens print from the log and ledger and pass the reader unchanged"
 rc=0; (cd "$T" && "$PY" docs/graph/brief.py --role nobody --spawn-id s --task t --route r --part part.txt) >/dev/null 2>&1 || rc=$?
 [[ $rc -ne 0 ]] && ok "unknown role refused" || bad "unknown role" "exit 0"
 [[ "$fail" == 0 ]] && echo "test-brief: PASS" || { echo "test-brief: FAIL"; exit 1; }

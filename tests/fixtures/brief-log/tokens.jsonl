@@ -1,0 +1,2 @@
+{"spawn_id": "orchestrator.1", "model": "m-1", "input": 12, "cache_write": 300, "cache_write_5m": 200, "cache_write_1h": 100, "cache_read": 9000, "output": 40, "source": "usage file"}
+{"spawn_id": "orchestrator.3", "model": "m-1", "input": 5, "cache_write": "not recorded", "cache_write_5m": "not recorded", "cache_write_1h": "not recorded", "cache_read": 1000, "output": 2, "source": "usage file"}
