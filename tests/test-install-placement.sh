@@ -1240,7 +1240,8 @@ done
 # Adapter machinery of every host.
 for rel in .claude/route-hook.py .claude/status-hook.py .claude/bound-hook.py .claude/resume-hook.py \
            .claude/agent-lint.py .claude/settings.json \
-           opencode.json \
+           opencode.json .opencode/plugins/cypress.ts .opencode/hooks/route-hook.py \
+           .opencode/hooks/status-hook.py .opencode/hooks/bound-hook.py \
            .github/copilot-instructions.md \
            .prime/agent/settings.json .prime/agent/APPEND_SYSTEM.md \
            .prime/agent/extensions/route-extension.ts \

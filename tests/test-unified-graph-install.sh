@@ -67,7 +67,7 @@ case_required() {
   echo "  .unfilled.md marker suppresses scaffold re-creation — OK"
   for projected in \
     .claude/agents/90-plant-authored.md \
-    .opencode/agents/90-plant-authored.md \
+    .opencode/agents/plant-authored.md \
     .codex/agents/90-plant-authored.md \
     .prime/agent/agents/90-plant-authored.md \
     .github/agents/plant-authored.agent.md \

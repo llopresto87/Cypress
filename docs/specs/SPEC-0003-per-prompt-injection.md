@@ -657,6 +657,51 @@ host facts); a probe is evidence, not a gate row.
 - **Note:** a child gets no status because the core emits nothing for
   `--depth` above 0 (`CHILD_SESSION_GETS_NO_INJECTION`)
 
+### Contract: OPENCODE_PLUGIN_IS_A_THIN_ENVELOPE
+- **Given:** the `integrations/opencode/cypress-plugin.ts` source
+- **When:** it is read
+- **Then:** it imports only the host's bundled `@opencode/plugin` and `node:`
+  built-ins, so it loads with no install step and no network
+- **And:** it spawns the interpreter once, with an argument vector and no
+  shell, runs only a core found in `../hooks` beside it or in the project's
+  `.opencode/hooks/` (no upward walk), and kills a core still running at its
+  timeout, which is above the core's own waits
+- **And:** it writes no file, prints nothing, reads no environment and calls no
+  router: it composes no text and decides nothing (ADR-0024)
+- **And:** each hook registration sits in its own `try`, so a hook the running
+  host does not offer cannot break the others, and a line `const PYTHON =
+  "python3";` carries the interpreter the installer rewrites
+
+### Contract: OPENCODE_PLUGIN_INJECTS_THE_CORES_TEXT_ONCE
+- **Given:** a stub host context and a plant holding the real cores
+- **When:** a root session's first prompt, then a second, are handed to the
+  plugin's prompt hook, and then a child session's prompt (a session carrying
+  a `parentID`)
+- **Then:** the host receives the status text and the route text through
+  `session.synthetic` with `resume: false` (so the injection starts no model
+  call of its own), each byte-identical to the core's `additionalContext` for
+  the same input, the later prompt's text being the core's reminder; the
+  user's prompt is not edited
+- **And:** the child receives nothing: the plugin passes the depth it counted
+  by following `parentID`, and the core emits nothing above depth 0
+  (CHILD_SESSION_GETS_NO_INJECTION)
+- **And:** when the host cannot say what the session is, `--depth` is left out
+  and the core injects in full (fail toward inclusion)
+- **And:** the argv the plugin sends gives the same output as the stdin
+  envelope (HOOK_ARGV_ENVELOPE_EQUALS_STDIN_ENVELOPE, case OC1)
+
+### Contract: OPENCODE_SHELL_GUARD_REFUSES_WITH_THE_CORES_REASON
+- **Given:** a stub host context and `bound-hook.py`
+- **When:** the plugin's permission hook sees a shell action whose command the
+  core refuses, one it allows, and an action that is not a shell command
+- **Then:** the refused command is set to `deny` with the core's stderr as the
+  message, byte for byte, so the reason reaches the model and it can re-issue
+  the command in bounded form; the others keep the effect the host decided
+- **And:** with the core missing, slower than its timeout, or the hook
+  registration throwing, the command is allowed and nothing is injected: a
+  missing guard never blocks every command, and `--check` reports it
+  (OPENCODE_CHECK_NAMES_THE_EARLIER_SHAPE)
+
 ### Contract: EVERY_RESOLVER_PATH_IS_INSTALLED
 - **Given:** a plant installed by `install.sh`, the candidate lists of
   `route-hook.py` (`CANDIDATES`) and `status-hook.py` (`CANDIDATES`,
@@ -1954,6 +1999,9 @@ Techniques the cases rely on:
 | NON_HUMAN_TURN_NOT_ROUTED | X171; each `NON_HUMAN_MARKERS` entry through stdin and argv, `--origin=agent`, then `human`, absent and off-pattern | tests/test-prompt-hooks.sh | integration; red on arrival (a marker prompt is routed and counted); the `[bash-done ` (`[bash-done pid:1 exit:0]`) and `[harness-digest]` rows red at 7.37.0 increment 1 review (F1: both routed with a reminder and counted); green at its GREEN (both markers in `NON_HUMAN_MARKERS`) | green |
 | SESSION_INJECTION_WITHIN_BUDGET | X172; tests/fixtures/session-injection/scripted-session.json over the PLAN_* fixture plant; the ceiling is read from tests/ratchets.json | tests/test-prompt-hooks.sh | integration; red on arrival (no argv envelope, so no full injection; and `SESSION_INJECTION_MAX_BYTES` is not registered until GREEN measures it) | green |
 | PRIME_SESSION_ID_PASSED | X173 | tests/test-prompt-hooks.sh | unit; structural; red on arrival (no `getSessionId(`, `rlmDepth`, argv options) | green |
+| OPENCODE_PLUGIN_IS_A_THIN_ENVELOPE | X520 P1-P8 of tests/test-opencode-plugin.sh: imports, one no-shell spawn, timeout and kill, a `try` around each registration, the PYTHON line, no write, console, env or router, the core lookup; each seen red against a deliberately broken copy | tests/test-opencode-plugin.sh | unit; structural | green |
+| OPENCODE_PLUGIN_INJECTS_THE_CORES_TEXT_ONCE | X521 F1, F2 and F4 of tests/test-opencode-plugin.sh under bun (SKIPPED with a printed reason without it): the injected texts equal the cores' `additionalContext` byte for byte with `resume: false`, a child gets none, a failing `session.get` leaves `--depth` out; test-prompt-hooks.sh case OC1 holds the argv/stdin equality for an OpenCode session id | tests/test-opencode-plugin.sh | fixture | green |
+| OPENCODE_SHELL_GUARD_REFUSES_WITH_THE_CORES_REASON | X522 F3, F5, F6 and F7 of tests/test-opencode-plugin.sh under bun: a refused command is denied with the core's stderr byte for byte, an allowed one and a non-shell action are left alone, a missing or slow core and a throwing registration change nothing; test-bound-hook.sh holds five `opencode:` cases for the core's exit and stderr | tests/test-opencode-plugin.sh | fixture | green |
 | PRIME_RESET_ON_EVENTS | X174 | tests/test-prompt-hooks.sh | unit; structural; red on arrival (status-extension.ts subscribes `before_agent_start` alone) | green |
 | STATUS_ONCE_PER_SESSION | X175 | tests/test-prompt-hooks.sh | unit; structural; red on arrival (`let shown`) | green |
 | PRIME_SESSION_UNKNOWN | X170 and X173, the cases of the contracts named in §7 (an unreadable depth is routed; no session id is full mode) | tests/test-prompt-hooks.sh | integration; each names this failure slug after its contract slug | green |
@@ -2483,3 +2531,13 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
   blocks compactly; the owner decided on 2026-11-03 to rewrite them and to drop
   the echo fields (`brief.py` logs the spawn instead). The contract's text is
   otherwise unchanged; X396 now drifts the new `COMPANION` opening.
+- 2026-11-10 — opencode became a first-class host (ADR-0033). Its envelope is
+  one OpenCode 2 plugin over the same three cores. Added
+  OPENCODE_PLUGIN_IS_A_THIN_ENVELOPE, OPENCODE_PLUGIN_INJECTS_THE_CORES_TEXT_ONCE
+  and OPENCODE_SHELL_GUARD_REFUSES_WITH_THE_CORES_REASON, each seen red against
+  a broken copy first. The injection surface is a synthetic message with
+  `resume: false`: the host starts a model call for a synthetic message unless
+  told not to, observed live. Editing the prompt text has no effect on the
+  host, a keyed instruction entry sits in the system section where a changed
+  value would break the provider's cached prefix, and a synthetic message is
+  appended history.

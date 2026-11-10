@@ -142,6 +142,7 @@ def unbind_a_row():
     raise AssertionError("plant did not apply: no green row binds a Python test")
 
 
+# E21 OPENCODE_CONFIG_IS_OPENCODE_2 and E22 OPENCODE_VERSION_HAS_ONE_HOME: the rows below.
 def oc(cfg):
     put("integrations/opencode/opencode.json", json.dumps(cfg))
 
@@ -165,7 +166,7 @@ PLACE_ANCHOR = '    place_file "$SEED_ROOT/tools/code-anchor.py" "$g/code-anchor
 
 # label, check, plant, needle, absent. Labels bound by a spec §10 row keep
 # their X/E id (R1); a row folded into another keeps its label beside it.
-OC = {"$schema": "https://opencode.ai/config.json", "subagent_depth": 3}
+OC = {"$schema": "https://opencode.ai/config.json", "experimental": {"subagent_depth": 3}}
 AGN = "leaked host 198.18.7.42 and advisory CVE-2031-99999"
 HOME = "Ran it from /home/exampleuser/work."
 NESTED_FIX = "tests/fixtures/nested-skill-corpus/maven/example-stack-procedure.md"
@@ -202,7 +203,7 @@ ROWS = [
     ("agn-documentation", "check", lambda: append("DOCUMENTATION.md", HOME), "DOCUMENTATION.md"),
     ("agn-tools-sh", "check", lambda: put("tools/zz-agn.sh", "OUT=/home/exampleuser/out\n"), "tools/zz-agn.sh"),
     # SPEC-0001 HOST_TIERS_AGREE
-    ("E4 HOST_TIERS_AGREE all-vs-arrays", "check_host_tiers", lambda: sub("install.sh", "SUPPORTED_TOOLS=(opencode)", "SUPPORTED_TOOLS=()"), "`all` expands to"),
+    ("E4 HOST_TIERS_AGREE all-vs-arrays", "check_host_tiers", lambda: sub("install.sh", "FIRST_CLASS_TOOLS=(claude-code opencode prime-agent)", "FIRST_CLASS_TOOLS=(claude-code prime-agent)"), "`all` expands to"),
     ("E4 HOST_TIERS_AGREE untiered", "check_host_tiers", lambda: sub("install.sh", "FROZEN_TOOLS=(codex github-copilot)", "FROZEN_TOOLS=(github-copilot)"), "untiered ['codex']"),
     ("single-writer-bypass", "check_install_write_sites", lambda: sub("install.sh", "place_tree() {", 'sneak() {\n    cp "$SEED_ROOT/README.md" "$PROJECT_DIR/SNEAK.md"\n}\nplace_tree() {'), "named placement operations"),
     # SPEC-0001 SEED_ONLY_FILES_NEVER_PLACED (adr-0021). exercises: check_seed_only_stays_home
@@ -259,9 +260,11 @@ ROWS = [
     # budgets, config, workflows, readers, run.sh
     ("eager-budget", "check_eager_surface", lambda: sub("agents/01-architect.md", r"^(description:[^\n]*)$", r"\1" + " padding" * 6000, True), "eager surface ["),
     ("opencode-stale-schema", "check_opencode_config", lambda: oc({**OC, "$schema": "https://opencode.ai/config-schema.json"}), "schema must be"),
-    ("opencode-invalid-key", "check_opencode_config", lambda: oc({**OC, "agents": {}}), "additionalProperties:false"),
+    ("opencode-invalid-key", "check_opencode_config", lambda: oc({**OC, "agent": {}}), "not a key the seed places on OpenCode 2"),
+    ("opencode-version-uncited", "check_opencode_version", lambda: put("integrations/opencode/verified-version", "9.9.9\n"), "does not cite the verified OpenCode 2 version"),
+    ("opencode-legacy-depth-key", "check_opencode_config", lambda: oc({**OC, "subagent_depth": 3}), "unsupported legacy setting"),
     ("opencode-double-load", "check_opencode_config", lambda: oc({**OC, "instructions": ["AGENTS.md"]}), "kernel would load twice"),
-    ("opencode-depth-cap", "check_opencode_config", lambda: oc({**OC, "subagent_depth": 1}), "delegation topology would be capped"),
+    ("opencode-depth-cap", "check_opencode_config", lambda: oc({**OC, "experimental": {"subagent_depth": 1}}), "delegation topology would be capped"),
     ("ci-workflow", "check_workflows", lambda: drop(".github/workflows/gate.yml"), "gate.yml is missing"),
     ("release-workflow", "check_workflows", lambda: sub(".github/workflows/release.yml", "gh release create", "gh release view"), "does not hold `gh release create`"),
     # RED: gate.yml's checkout has no fetch-depth, so CI clones shallow with no tags

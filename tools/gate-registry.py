@@ -136,6 +136,11 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         FIXTURES, "representation",
         "the shipped hooks run in a synthetic temp plant on synthetic prompt "
         "envelopes, not a real host session"),
+    "test-opencode-plugin.sh": (
+        "the OpenCode 2 plugin runs the three hook cores with no shell and under a timeout, "
+        "hands back their text and refusal byte for byte, and fails open", FIXTURES, "representation",
+        "a stub host context in a temp plant, not a live OpenCode 2 session; without bun on PATH "
+        "only the structural half runs and the fixture half prints SKIPPED"),
     "test-code-anchor.sh": (
         "SPEC-0003 code anchor: code-anchor.py records and compares branch, "
         "commit and uncommitted work", FIXTURES, "representation",

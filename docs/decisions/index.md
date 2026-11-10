@@ -40,6 +40,7 @@ which is the installed *application* knowledge graph. ADR bodies use
 | [0030](adr-0030-a-seed-tool-is-surfaced-by-a-seed-skill.md) | A placed seed tool is surfaced by a seed skill node; a plant's `docs/graph/tools/` stays the plant's catalog | accepted | 2026-10-07 | grill-8.1.2-tool-surfacing.md | 8.1.2 |
 | [0031](adr-0031-donor-tokens-recast-generically.md) | A donor-identifying token is recast as a generic reference that keeps every fact, in every record, an ADR body included (amends ADR-0011 limit (a) and its ADR-body bar) | accepted | 2026-10-14 | the owner's decision of 2026-10-14 | unreleased |
 | [0032](adr-0032-one-home-per-close-out-fact.md) | Each close-out fact has one home: the delivery in the plant changelog, progress in grill §15/§14, and the session record keeps only what no other file holds (amends ADR-0013's resume state) | accepted | 2026-11-03 | the owner's decision of 2026-11-03 | unreleased |
+| [0033](adr-0033-opencode-first-class-on-opencode-2.md) | opencode is a first-class host and the seed targets OpenCode 2 only; supersedes ADR-0009's opencode row | accepted | 2026-11-10 | grill-8.4.0-opencode-2 | all |
 
 ADRs **0001–0003** were decided inline in the plan-of-record
 [`../plans/agent-routing-and-delegation.md`](../plans/agent-routing-and-delegation.md)

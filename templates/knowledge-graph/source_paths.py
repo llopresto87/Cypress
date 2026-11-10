@@ -76,8 +76,9 @@ _SKILLS = ("adopt-existing", "adr-writer", "brainstorm-internal", "brainstorm-so
 _COMMANDS = ("brainstorm", "canonize", "deliver", "from-scratch", "grill", "ingest-library",
              "initialize", "recover", "specify", "test-first", "verify")
 SEED_PLACED = frozenset(
-    [f"{d}/{a}.md" for d in (".claude/agents", ".codex/agents", ".opencode/agents", ".prime/agent/agents")
+    [f"{d}/{a}.md" for d in (".claude/agents", ".codex/agents", ".prime/agent/agents")
      for a in _AGENTS]
+    + [f".opencode/agents/{a.split('-', 1)[1] if a[:2].isdigit() else a}.md" for a in _AGENTS]
     + [f"{d}/_routes.golden.tsv" for d in (".claude/agents", ".codex/agents", ".opencode/agents", ".prime/agent/agents")]
     + [f".github/agents/{a.split('-', 1)[1] if a[:2].isdigit() else a}.agent.md" for a in _AGENTS]
     + [f"{d}/{s}/SKILL.md" for d in (".claude/skills", ".codex/skills", ".opencode/skills", ".prime/agent/skills")
@@ -92,6 +93,8 @@ SEED_PLACED = frozenset(
        ".prime/agent/APPEND_SYSTEM.md", ".prime/agent/settings.json",
        ".prime/agent/extensions/route-extension.ts", ".prime/agent/extensions/status-extension.ts",
        ".prime/agent/hooks/route-hook.py", ".prime/agent/hooks/status-hook.py",
+       ".opencode/hooks/route-hook.py", ".opencode/hooks/status-hook.py", ".opencode/hooks/bound-hook.py",
+       ".opencode/plugins/cypress.ts",
        "AGENTS.md", "CLAUDE.md", "opencode.json", "EXPERT_SEED_INSTALL_PROMPT.md"])
 NOISE_DIR = "__pycache__"                       # build and backup files: never code
 NOISE_NAME = re.compile(r"\.(pyc|bak)$|\.bak-\d")   # *.bak-<digit>*: the installer's stamp

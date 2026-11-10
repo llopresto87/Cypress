@@ -138,7 +138,9 @@ case_plant_facts_flags() {
 case_opencode() {
   local T; T="$(mktemp -d)"
   fresh_copy "$T" opencode --copy
-  need "$T/.opencode/agents/00-orchestrator.md" opencode
+  need "$T/.opencode/agents/orchestrator.md" opencode
+  need "$T/.opencode/plugins/cypress.ts" opencode
+  need "$T/.opencode/hooks/route-hook.py" opencode
   [[ ! -e "$T/opencode.jsonc" ]] || die "two opencode configs installed; precedence is unspecified"
   python3 - "$T/opencode.json" <<'EOF'
 import json, sys
@@ -146,10 +148,10 @@ cfg = json.load(open(sys.argv[1]))
 # opencode auto-loads AGENTS.md; the live schema sets additionalProperties:false.
 assert "AGENTS.md" not in cfg.get("instructions", []), f"opencode double-load: {cfg.get('instructions')}"
 assert cfg["$schema"] == "https://opencode.ai/config.json", f"stale $schema: {cfg['$schema']}"
-for dead in ("agents", "commands"):
-    assert dead not in cfg, f"{dead!r} is not an opencode config key"
-assert cfg.get("skills", {}).keys() <= {"paths", "urls"}, f"bad skills shape: {cfg.get('skills')}"
-assert cfg["subagent_depth"] == 3, f"delegation depth capped: {cfg.get('subagent_depth')}"
+for dead in ("agent", "agents", "commands", "tools", "permission"):
+    assert dead not in cfg, f"{dead!r} is not placed: a deprecated version 1 field or one the projections own"
+assert "subagent_depth" not in cfg, "the top-level subagent_depth is an unsupported legacy setting on OpenCode 2"
+assert cfg["experimental"]["subagent_depth"] == 3, f"delegation depth capped: {cfg.get('experimental')}"
 EOF
   assert_cmd_roster "$T/.opencode/commands" .md "opencode commands"
   rm -rf "$T"
@@ -487,27 +489,39 @@ open(path, "w", encoding="utf-8").write("\n".join(lines))
 PY
 }
 
-# expect_projection <graph home> <projection> <model|->: the projection equals
-# its graph home with the frontmatter `model:` line set to `model: <model>`,
-# or removed for `-`, and no other byte changed.
+# expect_projection <graph home> <projection> <model|->: the projection is the
+# native OpenCode 2 file of its graph home (OPENCODE_AGENT_IS_NATIVE): native
+# frontmatter (`description:`, `mode:`, `permissions:`, no `tools:` list and no
+# seed-only field), a `model: <model>` line or none for `-`, then the charter's
+# body unchanged.
 expect_projection() {
   python3 - "$@" <<'PY'
 import re, sys
 home, proj, want = sys.argv[1:4]
 raw = open(home, encoding="utf-8").read()
-fm = re.match(r"\A---\n.*?\n---\n", raw, re.S)
-if not fm or not re.search(r"^model:[^\n]*\n", fm.group(0), re.M):
+hfm = re.match(r"\A---\n.*?\n---\n", raw, re.S)
+if not hfm or not re.search(r"^model:[^\n]*\n", hfm.group(0), re.M):
     sys.exit(f"{home}: no frontmatter model: line to project")
-head = re.sub(r"^model:[^\n]*\n", "" if want == "-" else f"model: {want}\n",
-              fm.group(0), count=1, flags=re.M)
-expected = head + raw[fm.end():]
 try:
     got = open(proj, encoding="utf-8").read()
 except OSError as e:
     sys.exit(f"{proj}: {e}")
-if got != expected:
-    line = lambda t: next((l for l in t.split("\n") if l.startswith("model:")), "(no model: line)")
-    sys.exit(f"{proj} != {home} with model line {want!r} (projection's: {line(got)!r})")
+pfm = re.match(r"\A---\n(.*?)\n---\n", got, re.S)
+if not pfm:
+    sys.exit(f"{proj}: no frontmatter")
+fm = pfm.group(1)
+model = next((l for l in fm.split("\n") if l.startswith("model:")), None)
+if (want == "-") != (model is None) or (model is not None and model != f"model: {want}"):
+    sys.exit(f"{proj} != {home} with model {want!r} (projection's: {model!r})")
+for need in ("description:", "mode:", "permissions:"):
+    if not re.search(rf"^{need}", fm, re.M):
+        sys.exit(f"{proj}: native frontmatter has no {need}")
+for gone in ("tools:", "effort:", "can_delegate:", "routing_triggers:", "tier:", "owns:"):
+    if re.search(rf"^{gone}", fm, re.M):
+        sys.exit(f"{proj}: carries the seed-only field {gone}")
+body = raw[hfm.end():].strip("\n")
+if body not in got[pfm.end():]:
+    sys.exit(f"{proj}: does not carry the charter body of {home}")
 PY
 }
 
@@ -547,8 +561,8 @@ case_opencode_model_from_map() {
   plant_agent "$G/agents/zz-cheap.md" zz-cheap haiku high      # S3: haiku reads investigation-low
   "$ROOT/install.sh" opencode --project-dir "$T" --copy >/dev/null 2>&1 || die "E8: install.sh opencode over the filled map failed"
   local A="$T/.opencode/agents" why
-  why="$(expect_projection "$G/agents/01-architect.md" "$A/01-architect.md" provider-a/model-x 2>&1)" || arm_fail "opus/high: $why"
-  why="$(expect_projection "$G/agents/10-research-scout.md" "$A/10-research-scout.md" provider-b/model-y 2>&1)" || arm_fail "sonnet/medium: $why"
+  why="$(expect_projection "$G/agents/01-architect.md" "$A/architect.md" provider-a/model-x 2>&1)" || arm_fail "opus/high: $why"
+  why="$(expect_projection "$G/agents/10-research-scout.md" "$A/research-scout.md" provider-b/model-y 2>&1)" || arm_fail "sonnet/medium: $why"
   why="$(expect_projection "$G/agents/zz-cheap.md" "$A/zz-cheap.md" provider-c/model-z 2>&1)" || arm_fail "plant haiku/high: $why"
   python3 - "$T/.cypress/seed.json" <<'PY' || arm_fail "stamp: opencode's agent_projections entry is not verbatim false"
 import json, sys
@@ -556,8 +570,8 @@ e = [p for p in json.load(open(sys.argv[1])).get("agent_projections", []) if p.g
 sys.exit(0 if len(e) == 1 and e[0].get("verbatim") is False else 1)
 PY
   "$ROOT/install.sh" opencode --project-dir "$S" --symlink >/dev/null 2>&1 || die "E8: install.sh opencode --symlink failed"
-  [[ -f "$S/.opencode/agents/01-architect.md" && ! -L "$S/.opencode/agents/01-architect.md" ]] \
-    || arm_fail "--symlink: .opencode/agents/01-architect.md is a link, not a generated file"
+  [[ -f "$S/.opencode/agents/architect.md" && ! -L "$S/.opencode/agents/architect.md" ]] \
+    || arm_fail "--symlink: .opencode/agents/architect.md is a link, not a generated file"
   arms_done "E8 OPENCODE_MODEL_FROM_MAP"
   rm -rf "$T" "$S"
 }
@@ -573,7 +587,7 @@ case_opencode_no_map_row() {
     name="$(basename "$f")"
     case "$name" in _*|index.md|README.md) continue ;; esac
     n=$((n + 1))
-    why="$(expect_projection "$f" "$A/$name" - 2>&1)" || { bad=$((bad + 1)); [[ $bad -gt 1 ]] || arm_fail "unfilled template: $why"; }
+    why="$(expect_projection "$f" "$A/${name#[0-9][0-9]-}" - 2>&1)" || { bad=$((bad + 1)); [[ $bad -gt 1 ]] || arm_fail "unfilled template: $why"; }
   done
   [[ $bad -le 1 ]] || arm_fail "unfilled template: $bad of $n projections carry a model: line"
   [[ "$(grep -F 'docs/graph/models.md' "$OUT" | grep -cw -- "$n")" -eq 1 ]] \
@@ -584,10 +598,10 @@ case_opencode_no_map_row() {
   plant_agent "$G/agents/zz-own.md" zz-own inherit high          # S3: inherit has no row
   plant_agent "$G/agents/zz-copy.md" zz-copy provider-q/model-q high   # §6: any other value is copied as is
   "$ROOT/install.sh" opencode --project-dir "$D" --copy >"$OUT" 2>/dev/null || die "E9: install.sh opencode over a partly filled map failed"
-  why="$(expect_projection "$G/agents/02-implementer.md" "$A/02-implementer.md" - 2>&1)" || arm_fail "'-' cell: $why"
-  why="$(expect_projection "$G/agents/10-research-scout.md" "$A/10-research-scout.md" - 2>&1)" || arm_fail "missing row: $why"
+  why="$(expect_projection "$G/agents/02-implementer.md" "$A/implementer.md" - 2>&1)" || arm_fail "'-' cell: $why"
+  why="$(expect_projection "$G/agents/10-research-scout.md" "$A/research-scout.md" - 2>&1)" || arm_fail "missing row: $why"
   why="$(expect_projection "$G/agents/zz-own.md" "$A/zz-own.md" - 2>&1)" || arm_fail "plant inherit: $why"
-  why="$(expect_projection "$G/agents/01-architect.md" "$A/01-architect.md" provider-a/model-x 2>&1)" || arm_fail "filled cell: $why"
+  why="$(expect_projection "$G/agents/01-architect.md" "$A/architect.md" provider-a/model-x 2>&1)" || arm_fail "filled cell: $why"
   why="$(expect_projection "$G/agents/zz-copy.md" "$A/zz-copy.md" provider-q/model-q 2>&1)" || arm_fail "copy-through: $why"
   # The count, where it differs from the total: opus/high agents take the one
   # filled cell, zz-copy carries its own value, every other agent inherits.
@@ -626,10 +640,10 @@ case_opencode_check_drift() {
   check_run opencode "(a) in sync"
   [[ $rc -eq 0 ]] || arm_fail "(a) in sync: --check exited $rc"
   { grep -q 'opencode' <<<"$out" && grep -q 'up to date' <<<"$out"; } || arm_fail "(a) in sync: output does not say the opencode projections are up to date: ${out:0:200}"
-  printf '\nA hand edit.\n' >> "$P/.opencode/agents/01-architect.md"
+  printf '\nA hand edit.\n' >> "$P/.opencode/agents/architect.md"
   check_run opencode "(b) hand edit"
   [[ $rc -ne 0 ]] || arm_fail "(b) hand edit: --check exited 0"
-  grep -q '01-architect.md' <<<"$out" || arm_fail "(b) hand edit: --check does not name 01-architect.md"
+  grep -q 'architect.md' <<<"$out" || arm_fail "(b) hand edit: --check does not name architect.md"
   "$ROOT/install.sh" opencode --project-dir "$P" --copy >/dev/null 2>&1 || die "E11: the restoring re-install failed"
   [[ -n "$(find "$P/.opencode/agents" -name '*.bak-*')" ]] || arm_fail "(c) setup: the restoring re-install left no backup, so the arm asserts nothing"
   check_run opencode "(c) backups excluded"
@@ -637,8 +651,8 @@ case_opencode_check_drift() {
   map_edit "$P/docs/graph/models.md" cell authoring high '`provider-a/model-w`'
   check_run opencode "(d) cell edit"
   [[ $rc -ne 0 ]] || arm_fail "(d) cell edit: --check exited 0"
-  grep -q '01-architect.md' <<<"$out" || arm_fail "(d) cell edit: --check does not name 01-architect.md"
-  ! grep -q '10-research-scout.md' <<<"$out" || arm_fail "(d) cell edit: --check names 10-research-scout.md, which the edit does not change"
+  grep -q 'architect.md' <<<"$out" || arm_fail "(d) cell edit: --check does not name architect.md"
+  ! grep -q 'research-scout.md' <<<"$out" || arm_fail "(d) cell edit: --check names research-scout.md, which the edit does not change"
   check_run all "(e) all --check"
   [[ $rc -ne 0 ]] || arm_fail "(e) all --check: exited 0 on stale opencode projections"
   map_edit "$P/docs/graph/models.md" class investigation low premium
@@ -646,9 +660,9 @@ case_opencode_check_drift() {
   [[ $rc -ne 0 ]] || arm_fail "(f) unreadable map: --check exited 0"
   grep -qF 'docs/graph/models.md' "$ERR" || arm_fail "(f) unreadable map: stderr does not name docs/graph/models.md"
   # E10: the projections still hold the filled cell (projected at (c)), so a run
-  # that projects before it refuses rewrites 01-architect.md and leaves a backup.
-  grep -qx 'model: provider-a/model-x' "$P/.opencode/agents/01-architect.md" \
-    || die "E10: harness: 01-architect.md does not carry the projected filled cell"
+  # that projects before it refuses rewrites architect.md and leaves a backup.
+  grep -qx 'model: provider-a/model-x' "$P/.opencode/agents/architect.md" \
+    || die "E10: harness: architect.md does not carry the projected filled cell"
   cp -a "$P/.opencode/agents/." "$SNAP/"
   "$ROOT/install.sh" opencode --project-dir "$P" --copy >/dev/null 2>"$ERR" && rc=0 || rc=$?
   [[ $rc -ne 0 ]] || arm_fail "E10: install.sh opencode exited 0 over a map row whose class is premium"
@@ -883,6 +897,160 @@ case_backups_listed() {
   rm -rf "$D"
 }
 
+# E19 OPENCODE_AGENT_IS_NATIVE, OPENCODE_TOOL_BOUND_IS_HOST_PERMISSIONS,
+# OPENCODE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES and
+# OPENCODE_HOOK_CORE_AND_PLUGIN_ARE_PLACED: every graph agent is a native
+# OpenCode 2 file named by its callable name, its tool bound and delegation list
+# are host permission rules (last matching rule wins), its body carries the
+# same always-loaded sections Claude Code's does, and the plugin and the three
+# cores are placed.
+case_opencode_native_agent() {
+  local T E; T="$(mktemp -d)"; E="$(mktemp)"
+  fresh_copy "$T" claude-code opencode --copy
+  need "$T/.opencode/plugins/cypress.ts" opencode
+  for c in route-hook.py status-hook.py bound-hook.py; do
+    cmp -s "$ROOT/integrations/claude-code/$c" "$T/.opencode/hooks/$c" \
+      || arm_fail "$c: the placed core is not byte-identical to the seed's"
+  done
+  python3 - "$T" "$ROOT" <<'PY' || arm_fail "native agents, tool bounds or composition"
+import fnmatch, json, os, re, sys
+sys.path.insert(0, os.path.join(sys.argv[2], "templates", "knowledge-graph"))
+from frontmatter import parse
+plant, seed = sys.argv[1:3]
+table = json.load(open(os.path.join(seed, "integrations/opencode/tool-permissions.json")))
+home = os.path.join(plant, "docs/graph/agents")
+out = os.path.join(plant, ".opencode/agents")
+bad = []
+def rules_of(fm):
+    return [(m.group(1), m.group(2), m.group(3)) for m in re.finditer(
+        r'^  - \{action: "([^"]+)", resource: "([^"]+)", effect: (\w+)\}$', fm, re.M)]
+def decide(rules, action, resource):
+    verdict = "deny"
+    for a, r, e in rules:
+        if fnmatch.fnmatchcase(action, a) and fnmatch.fnmatchcase(resource, r):
+            verdict = e
+    return verdict
+names = []
+callable_names = [re.sub(r"^\d+-", "", x[:-3]) for x in sorted(os.listdir(home))
+                  if x.endswith(".md") and not x.startswith("_") and x not in ("index.md", "README.md")]
+for f in sorted(os.listdir(home)):
+    if not f.endswith(".md") or f.startswith("_") or f in ("index.md", "README.md"):
+        continue
+    meta, body = parse(open(os.path.join(home, f), encoding="utf-8").read(), f)
+    name = re.sub(r"^\d+-", "", f[:-3]); names.append(name + ".md")
+    path = os.path.join(out, name + ".md")
+    if not os.path.isfile(path):
+        bad.append(f"{name}.md missing"); continue
+    text = open(path, encoding="utf-8").read()
+    m = re.match(r"\A---\n(.*?)\n---\n", text, re.S)
+    if not m: bad.append(f"{name}: no frontmatter"); continue
+    fm = m.group(1)
+    keys = set(re.findall(r"^([a-z_]+):", fm, re.M))
+    if not keys <= {"description", "mode", "model", "permissions"}:
+        bad.append(f"{name}: non-native keys {sorted(keys - {'description','mode','model','permissions'})}")
+    mode = re.search(r"^mode: (\w+)$", fm, re.M)
+    want_mode = "primary" if meta.get("name") == "orchestrator" else "subagent"
+    if not mode or mode.group(1) != want_mode: bad.append(f"{name}: mode {mode and mode.group(1)} != {want_mode}")
+    rules = rules_of(fm)
+    tools = set(meta.get("tools") or [])
+    for tool, actions in table["tools"].items():
+        for action in actions:
+            if action == "subagent": continue
+            got = decide(rules, action, "src/x")
+            if tool in tools and got != "allow": bad.append(f"{name}: {tool} not allowed")
+    for action, held in (("edit", {"Write", "Edit"}), ("shell", {"Bash"}), ("websearch", {"WebSearch"}),
+                         ("webfetch", {"WebFetch"}), ("read", {"Read"}), ("glob", {"Glob"}), ("grep", {"Grep"})):
+        got = decide(rules, action, "src/x")
+        if (got == "allow") != bool(tools & held):
+            bad.append(f"{name}: {action} is {got} with tools {sorted(tools)}")
+    delegates = set(meta.get("delegates_to") or []) if "Task" in tools else set()
+    for other in callable_names:
+        got = decide(rules, "subagent", other)
+        if (got == "allow") != (other in delegates):
+            bad.append(f"{name}: subagent {other} is {got}, delegates_to says {sorted(delegates)}")
+    if decide(rules, "browser", "x") != "deny" or decide(rules, "read", ".env") != "ask":
+        bad.append(f"{name}: default deny or the secret guard is gone")
+    for sec in (meta.get("always_loads") or []):
+        i = str(sec).partition("#")[0]
+        if f"## Always loaded: {i}" not in text: bad.append(f"{name}: no section for {i}")
+    # one composer: the sections equal Claude Code's
+    cpath = os.path.join(plant, ".claude/agents", f)
+    ctext = open(cpath, encoding="utf-8").read()
+    cbody = re.sub(r"\A---\n.*?\n---\n", "", ctext, count=1, flags=re.S).strip("\n")
+    obody = text[m.end():].strip("\n")
+    if cbody != obody: bad.append(f"{name}: body differs from the Claude Code composition")
+have = sorted(x for x in os.listdir(out) if x.endswith(".md"))
+if have != sorted(names): bad.append(f"agent set {have} != {sorted(names)}")
+if bad: sys.exit("; ".join(bad[:6]))
+PY
+  # an unknown tool name stops the render, naming it, with every projection as it was
+  printf -- '---\nname: zz-odd\ndescription: odd\norigin: project\ntools: [Read, Teleport]\nmodel: sonnet\neffort: low\nrouting_triggers:\n  - "x"\ncan_delegate: false\n---\n\nbody\n' > "$T/docs/graph/agents/zz-odd.md"
+  local before; before="$(tree_digest "$T/.opencode/agents")"
+  if "$ROOT/install.sh" opencode --project-dir "$T" --copy >/dev/null 2>"$E"; then
+    arm_fail "an unknown tool name exited 0"
+  else
+    grep -q 'Teleport' "$E" || arm_fail "the refusal does not name the tool: $(head -c 200 "$E")"
+    [[ "$(tree_digest "$T/.opencode/agents")" == "$before" ]] || arm_fail "a refused render changed .opencode/agents/"
+  fi
+  arms_done "E19 OPENCODE_AGENT_IS_NATIVE, OPENCODE_TOOL_BOUND_IS_HOST_PERMISSIONS, OPENCODE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES, OPENCODE_HOOK_CORE_AND_PLUGIN_ARE_PLACED"
+  rm -rf "$T" "$E"
+}
+
+# E20 OPENCODE_REINSTALL_RETIRES_OLD_SHAPE, OPENCODE_CHECK_NAMES_THE_EARLIER_SHAPE
+# and OPENCODE_RECOMPOSE_REWRITES_ONLY_PROJECTIONS: an opencode plant in the
+# shape an earlier seed placed is named by --check, a re-install backs the old
+# files up (a plant's edit among them) and leaves a plant --check passes, a
+# missing plugin or core is named, and --recompose-agents repairs a stale
+# composition without touching a node.
+case_opencode_reinstall_old_shape() {
+  local P ERR out rc; P="$(mktemp -d)"; ERR="$(mktemp)"
+  fresh_copy "$P" opencode --copy
+  # the earlier shape: numbered raw copies with a tools: list, the top-level depth key, no plugin
+  local f n
+  for f in "$P"/docs/graph/agents/[0-9][0-9]-*.md; do
+    n="$(basename "$f")"; cp "$f" "$P/.opencode/agents/$n"
+  done
+  printf '\nA plant edit.\n' >> "$P/.opencode/agents/02-implementer.md"
+  rm -rf "$P/.opencode/plugins" "$P/.opencode/hooks"
+  printf '{\n  "$schema": "https://opencode.ai/config.json",\n  "subagent_depth": 3\n}\n' > "$P/opencode.json"
+  out="$("$ROOT/install.sh" opencode --check --project-dir "$P" 2>"$ERR")" && rc=0 || rc=$?
+  out="$out $(cat "$ERR")"
+  [[ $rc -ne 0 ]] || arm_fail "(a) --check exited 0 over the earlier shape"
+  grep -q '02-implementer.md' <<<"$out" || arm_fail "(a) --check does not name the old-shape agent file"
+  grep -q 'earlier shape' <<<"$out" || arm_fail "(a) --check does not say opencode.json is in the earlier shape"
+  grep -q 'cypress.ts' <<<"$out" || arm_fail "(a) --check does not name the missing plugin"
+  "$ROOT/install.sh" opencode --project-dir "$P" --copy >/dev/null 2>"$ERR" || arm_fail "(b) the re-install exited non-zero: $(head -c 200 "$ERR")"
+  [[ ! -e "$P/.opencode/agents/02-implementer.md" ]] || arm_fail "(b) the old-shape file is still in .opencode/agents/"
+  grep -q 'A plant edit.' "$P"/.opencode/agents/02-implementer.md.bak-* 2>/dev/null || arm_fail "(b) the plant's edit is in no backup"
+  python3 -c 'import json,sys; c=json.load(open(sys.argv[1])); sys.exit(0 if "subagent_depth" not in c and c["experimental"]["subagent_depth"]==3 else 1)' "$P/opencode.json" \
+    || arm_fail "(b) opencode.json is not in the OpenCode 2 shape"
+  ls "$P"/opencode.json.bak-* >/dev/null 2>&1 || arm_fail "(b) the replaced opencode.json has no backup"
+  out="$("$ROOT/install.sh" opencode --check --project-dir "$P" 2>"$ERR")" && rc=0 || rc=$?
+  [[ $rc -eq 0 ]] || arm_fail "(c) --check exited $rc after the re-install: $(head -c 300 "$ERR")"
+  # a missing core and a missing plugin are each named
+  rm "$P/.opencode/hooks/route-hook.py"
+  "$ROOT/install.sh" opencode --check --project-dir "$P" >/dev/null 2>"$ERR" && rc=0 || rc=$?
+  { [[ $rc -ne 0 ]] && grep -q 'route-hook.py' "$ERR"; } || arm_fail "(d) a missing core is not named with a non-zero exit"
+  "$ROOT/install.sh" opencode --project-dir "$P" --copy >/dev/null 2>&1
+  rm "$P/.opencode/plugins/cypress.ts"
+  "$ROOT/install.sh" opencode --check --project-dir "$P" >/dev/null 2>"$ERR" && rc=0 || rc=$?
+  { [[ $rc -ne 0 ]] && grep -q 'cypress.ts' "$ERR"; } || arm_fail "(e) a missing plugin is not named with a non-zero exit"
+  "$ROOT/install.sh" opencode --project-dir "$P" --copy >/dev/null 2>&1
+  # an edited always-loaded node makes the composed agent stale; recompose fixes it and keeps the edit
+  printf '\nA node edit.\n' >> "$P/docs/graph/method/minimum-sufficient-work.md"
+  "$ROOT/install.sh" opencode --check --project-dir "$P" >/dev/null 2>"$ERR" && rc=0 || rc=$?
+  { [[ $rc -ne 0 ]] && grep -q 'implementer.md' "$ERR" && grep -q 'recompose-agents' "$ERR"; } || arm_fail "(f) a stale composed agent is not named with the recompose remedy"
+  local keep; keep="$(tree_digest "$P/docs")"
+  "$ROOT/install.sh" opencode --recompose-agents --project-dir "$P" >/dev/null 2>"$ERR" || arm_fail "(g) --recompose-agents exited non-zero: $(head -c 200 "$ERR")"
+  "$ROOT/install.sh" opencode --check --project-dir "$P" >/dev/null 2>"$ERR" && rc=0 || rc=$?
+  [[ $rc -eq 0 ]] || arm_fail "(g) --check is still red after the recompose: $(head -c 200 "$ERR")"
+  grep -q 'A node edit.' "$P/docs/graph/method/minimum-sufficient-work.md" || arm_fail "(g) the recompose lost the node edit"
+  [[ "$(tree_digest "$P/docs")" == "$keep" ]] || arm_fail "(g) the recompose wrote under docs/"
+  grep -q 'A node edit.' "$P/.opencode/agents/implementer.md" || arm_fail "(g) the recomposed agent lacks the node edit"
+  arms_done "E20 OPENCODE_REINSTALL_RETIRES_OLD_SHAPE, OPENCODE_CHECK_NAMES_THE_EARLIER_SHAPE"
+  rm -rf "$P" "$ERR"
+}
+
 SELF="$ROOT/tests/test-full-install.sh"
 
 # Re-invoke self to run ONE scenario (a child bash spawned by gate_pool).
@@ -910,7 +1078,7 @@ main() {
     case_model_map_placed case_opencode_model_from_map case_opencode_no_map_row \
     case_opencode_check_drift case_prime_hook_scripts_placed \
     case_reinstall_engine_serves_hooks case_interpreter_floor case_stamp_tracking_lines \
-    case_backups_listed; do
+    case_backups_listed case_opencode_native_agent case_opencode_reinstall_old_shape; do
     printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
   done
   python3 "$ROOT/tests/gate_pool.py" run "$SCN" || rc=$?

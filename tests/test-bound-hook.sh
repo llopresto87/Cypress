@@ -214,4 +214,41 @@ grep -q '\$!' <<<"$ERR" || fail "the detached form must record a pid: $ERR"
 grep -q '\.pid' <<<"$ERR" || fail "the detached form must name a pid file: $ERR"
 echo "  a block names both accepted forms for the offending command — OK"
 
+# --- opencode: the envelope cypress-plugin.ts sends ---------------------------
+# The OpenCode 2 plugin runs `python3 -S <core>` with the permission request's
+# command in the PreToolUse shape, serialised by JSON.stringify (no spaces).
+# It refuses the call only on exit 2 with a reason on stderr, and hands that
+# stderr to the host as the refusal message, byte for byte. So an allowed
+# command must exit 0 with stderr empty, and a refused one exit 2 with the
+# whole reason on stderr and nothing on stdout.
+OC_OUT=""
+oc_run() {  # $1 = command -> sets RC, ERR (stderr) and OC_OUT (stdout)
+  local payload
+  payload="$(python3 -c 'import json,sys; print(json.dumps({"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": sys.argv[1]}}, separators=(",", ":")), end="")' "$1")"
+  local f
+  f="$(mktemp)"
+  set +e
+  OC_OUT="$(printf '%s' "$payload" | python3 -S "$HOOK" 2>"$f")"
+  RC=$?
+  set -e
+  ERR="$(cat "$f")"; rm -f "$f"
+}
+oc_expect() {  # $1 = command  $2 = expected exit  $3 = label
+  oc_run "$1"
+  [[ "$RC" == "$2" ]] || fail "opencode: $3: expected exit $2, got $RC — command: $1 — stderr: $ERR"
+  [[ -z "$OC_OUT" ]] || fail "opencode: $3: the core wrote to stdout, which the plugin ignores: $OC_OUT"
+  if [[ "$2" == 0 ]]; then
+    [[ -z "$ERR" ]] || fail "opencode: $3: an allowed command left stderr: $ERR"
+  else
+    [[ "$ERR" == "[bound-hook] BLOCKED: "* ]] || fail "opencode: $3: the refusal reason is not on stderr: $ERR"
+    grep -q 'timeout ' <<<"$ERR" || fail "opencode: $3: the refusal does not carry the bounded form: $ERR"
+  fi
+  echo "  opencode: $3 — OK"
+}
+oc_expect 'npm install'                      2 "python3 -S, compact JSON: a bare package install is refused with its reason on stderr"
+oc_expect 'pkill -f worker'                  2 "python3 -S, compact JSON: a pattern kill is refused with its reason on stderr"
+oc_expect 'timeout 60 npm install'           0 "python3 -S, compact JSON: a bound install passes with stderr empty"
+oc_expect 'ls -la'                           0 "python3 -S, compact JSON: an ordinary command passes with stderr empty"
+oc_expect "$(printf 'echo "a\\nb" && make test')" 2 "python3 -S, compact JSON: a command holding a quote and a backslash still reaches the core whole"
+
 echo "test-bound-hook: PASS"

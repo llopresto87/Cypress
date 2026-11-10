@@ -8,7 +8,8 @@ HANDBACK block of templates/prompts/handback-payload.md are copied byte for
 byte, with their slots filled, so a brief carries them verbatim by
 construction and neither the caller nor the worker reads the templates.
 `--charter` prepends the role's charter body (frontmatter dropped) for a host
-whose spawn has no agent type to carry it (Prime Agent). Step 1 routes with
+whose spawn has no agent type to carry it (Prime Agent); Claude Code and
+opencode agent types carry it, and the flag is refused there. Step 1 routes with
 `--role`, so the worker's route leaves out what its system prompt carries, and
 a task line whose route loads no expertise.* or subsystem.* node is named on
 stderr. A `security` brief, and
@@ -492,7 +493,7 @@ def main() -> int:
     ap.add_argument("--kind", default="", help="the task kind of the role's effort row (delegation.effort)")
     ap.add_argument("--label", default="", help="the hardest increment effort label, for a `by label` row")
     ap.add_argument("--charter", action="store_true",
-                    help="prepend the role's charter body; Prime Agent only, whose spawn has no agent type")
+                    help="prepend the role's charter body; Prime Agent only, whose spawn has no agent type (Claude Code and opencode agent types carry it)")
     ap.add_argument("--part", required=True, help="file holding the task part, or - for stdin")
     ap.add_argument("--out", default="", help="write the brief here and print only a pointer prompt")
     ap.add_argument("--plan", default=str(GRAPH / "plans" / "grill.md"))
@@ -522,9 +523,9 @@ def main() -> int:
         return 2
     plant = GRAPH.parent.parent
     if a.charter and not (plant / ".prime" / "agent").is_dir() \
-            and any((plant / ".claude" / "agents").glob("*.md")):
+            and any(any((plant / d / "agents").glob("*.md")) for d in (".claude", ".opencode")):
         print("brief: --charter is for Prime Agent, whose spawn has no agent type; on Claude Code "
-              "the agent type carries the charter in its system prompt", file=sys.stderr)
+              "and opencode the agent type carries the charter in its system prompt", file=sys.stderr)
         return 2
     if "{{" in graph + comp:
         print("brief: a bootstrap slot this tool does not fill is left in the template", file=sys.stderr)

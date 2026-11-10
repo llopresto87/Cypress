@@ -337,6 +337,10 @@ ADAPTER_MACHINERY = {
     ".prime/agent/extensions/status-extension.ts":
         "integrations/prime-agent/status-extension.ts",
     "opencode.json": "integrations/opencode/opencode.json",
+    ".opencode/hooks/route-hook.py": "integrations/claude-code/route-hook.py",
+    ".opencode/hooks/status-hook.py": "integrations/claude-code/status-hook.py",
+    ".opencode/hooks/bound-hook.py": "integrations/claude-code/bound-hook.py",
+    ".opencode/plugins/cypress.ts": "integrations/opencode/cypress-plugin.ts",
     "EXPERT_SEED_INSTALL_PROMPT.md": "INSTALL_PROMPT.md",
 }
 
@@ -348,6 +352,7 @@ ADAPTER_MACHINERY = {
 GENERATED_VIEWS = (
     ".claude/commands/", ".opencode/commands/", ".prime/agent/prompts/",
     ".github/agents/", ".github/prompts/", ".github/instructions/",
+    ".opencode/agents/",     # the native OpenCode 2 file, named by its callable name
 )
 GENERATED_FILES = (".codex/codex-config-snippet.toml",
                    ".claude/output-styles/orchestrator.md")   # MAIN_SESSION_PLAYS_THE_ORCHESTRATOR
@@ -379,8 +384,8 @@ def generator_for(rel: str, seed: Path):
         return seed / "agents/00-orchestrator.md"
     if rel in GENERATED_FILES:
         return seed / "integrations/codex/config.toml.example"
-    if not rel.startswith(GENERATED_VIEWS):
-        return None
+    if not rel.startswith(GENERATED_VIEWS) or rel.endswith(".tsv"):
+        return None     # the routing corpus rides verbatim beside the agents
     stem = Path(rel).name
     for suffix in (".agent.md", ".prompt.md", ".instructions.md", ".md"):
         if stem.endswith(suffix):
@@ -390,7 +395,7 @@ def generator_for(rel: str, seed: Path):
         stem = stem[:-len("-skill")] if stem.endswith("-skill") else stem
         cand = seed / "skills" / stem / "SKILL.md"
         return cand if cand.exists() else None
-    if rel.startswith((".github/agents/",)):
+    if rel.startswith((".github/agents/", ".opencode/agents/")):
         for c in sorted((seed / "agents").glob("*.md")):
             if re.sub(r"^\d+-", "", c.stem) == stem:
                 return c
@@ -496,6 +501,8 @@ def plant_owned_node(rel: str, plant: Path):
     parts = Path(sub).parts if sub else ()
     if parts[:1] == ("agents",):
         node = plant / GRAPH_HOME / sub
+        if not node.is_file() and rel.startswith(OPENCODE_AGENTS):
+            node = graph_home(rel, "agents", Path(sub).stem, plant)
     elif len(parts) == 3 and parts[0] == "skills" and parts[2] == "SKILL.md":
         node = plant / GRAPH_HOME / "skills" / f"{parts[1]}.md"
     elif rel.startswith(".github/agents/") and rel.endswith(".agent.md") \
@@ -540,6 +547,7 @@ def corpus_placed(bak: Path, rel: str, plant: Path) -> bool:
 # long after the seed folded it away. Both are flagged, never deleted: the
 # deletion is the owner's act (the owner's decision).
 COPILOT_AGENTS = ".github/agents/"
+OPENCODE_AGENTS = ".opencode/agents/"
 NOT_AN_ENTRY = re.compile(r"^(_|index$|README$)")
 NUMBER_PREFIX = re.compile(r"^\d+-")
 
@@ -561,9 +569,10 @@ def harness_entries(plant: Path):
 
 def graph_home(rel: str, kind: str, name: str, plant: Path) -> Path:
     """The graph node a harness entry is the projection of. A Copilot agent view
-    drops the node's `<digits>-` prefix, so its home is found by that name."""
+    drops the node's `<digits>-` prefix, so its home is found by that name; so
+    does an opencode agent, whose file name is the id the host calls it by."""
     home = plant / GRAPH_HOME / kind / f"{name}.md"
-    if rel.startswith(COPILOT_AGENTS) and not home.is_file():
+    if rel.startswith((COPILOT_AGENTS, OPENCODE_AGENTS)) and not home.is_file():
         for n in sorted((plant / GRAPH_HOME / "agents").glob("*.md")):
             if NUMBER_PREFIX.sub("", n.stem) == name:
                 return n

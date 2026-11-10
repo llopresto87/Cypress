@@ -798,11 +798,13 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 ### Contract: CHARTER_FLAG_ONLY_FOR_PRIME_AGENT
 - **Test file:** `tests/test-brief.sh`
 - **Given:** a Claude Code plant, whose `.claude/agents/` carries each role,
-  and the same plant with `.prime/agent/`
+  an opencode plant, whose `.opencode/agents/` does, and the Claude Code plant
+  with `.prime/agent/`
 - **When:** `brief.py --charter` composes a brief in each
-- **Then:** the Claude Code plant refuses it with exit 2 and a line naming
-  Prime Agent, logging no spawn; the plant with `.prime/agent/` composes the
-  brief with the charter body
+- **Then:** the Claude Code plant and the opencode plant refuse it with exit 2
+  and a line naming Prime Agent, logging no spawn, because their agent type
+  carries the charter in its system prompt; the plant with `.prime/agent/`
+  composes the brief with the charter body
 
 ### Contract: ALWAYS_LOADS_COMPOSES_ONLY_WHAT_THE_ROLE_NEEDS
 - **Test file:** `tests/test-install-placement.sh`
@@ -2818,7 +2820,7 @@ gives.
 | REVIEWER_RUNS_NO_BUILD | (none) the `REVIEWER_RUNS_NO_BUILD` row of seed-lint's `TEXT_RULES`; red id: `REVIEWER_RUNS_NO_BUILD: agents/03-reviewer.md does not hold 'the builder runs the builds and test suites'`; seen red first | tests/seed-lint.py | real-tree | green |
 | SLOW_COMMAND_LEAVES_THE_WORKER_TURN | (none) two require rows and a forbid row of seed-lint's `TEXT_RULES`; red id: `SLOW_COMMAND_LEAVES_THE_WORKER_TURN: core/method/bounded-execution.md does not hold "outlast the worker's cache lifetime"`; seen red first | tests/seed-lint.py | real-tree | green |
 | GATE_OUTPUT_KEEPS_STATUS_AND_LOG | (none) a require row and a forbid row of seed-lint's `TEXT_RULES`; red id: `GATE_OUTPUT_KEEPS_STATUS_AND_LOG: protocols/verify.md does not hold "keeps the command's exit status"`; seen red first | tests/seed-lint.py | real-tree | green |
-| CHARTER_FLAG_ONLY_FOR_PRIME_AGENT | X501 refused on a Claude Code plant; composed once `.prime/agent/` exists; seen red first | tests/test-brief.sh | fixture | green |
+| CHARTER_FLAG_ONLY_FOR_PRIME_AGENT | X501 refused on a Claude Code plant; X502 refused on an opencode plant (seen red on the 8.3.2 tree); composed once `.prime/agent/` exists | tests/test-brief.sh | fixture | green |
 | ALWAYS_LOADS_COMPOSES_ONLY_WHAT_THE_ROLE_NEEDS | M25 case_agents_sections: `engineering-posture#1,4` composes sections 1 and 4 only, no Neighbours or reference-only section; `#1,99` stops the recompose naming section 99; seen red first | tests/test-install-placement.sh | integration | green |
 | MAIN_SESSION_PLAYS_THE_ORCHESTRATOR | M24 case_orchestrator_style: settings select the style; the style carries the charter body and each always-loaded body once, no charter frontmatter, `keep-coding-instructions: true`; a hand edit is STALE and recomposed; seen red first. A `claude -p` probe in a fresh plant quoted the charter's second sentence and an always-loaded heading, and quoted neither with the setting removed | tests/test-install-placement.sh | integration | green |
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | M22 case_agents_compose: the implementer's six always-loaded bodies once each with no frontmatter; `11-pentest.md` byte for byte; a hand edit is STALE to `--check` | tests/test-install-placement.sh | integration | green |
@@ -3408,3 +3410,7 @@ kept outside the seed.
   last 1 MiB, dropping a possibly cut first line, and any read trouble gives
   300 seconds; RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME says so (X507,
   a write before the tail seen counted first, then not).
+- 2026-11-10 — opencode became a first-class host (ADR-0033). Its agent type,
+  like Claude Code's, carries the charter, so CHARTER_FLAG_ONLY_FOR_PRIME_AGENT
+  now refuses `brief.py --charter` on an opencode plant too (X502, seen red
+  first).

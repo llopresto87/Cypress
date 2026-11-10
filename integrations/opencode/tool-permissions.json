@@ -1,0 +1,26 @@
+{
+  "_comment": "The one home of the map from a charter's tools: names to OpenCode 2 permission actions. A tool name this table does not carry stops the render (SPEC-0001 OPENCODE_TOOL_BOUND_IS_HOST_PERMISSIONS).",
+  "tools": {
+    "Read": ["read"],
+    "Glob": ["glob"],
+    "Grep": ["grep"],
+    "Write": ["edit"],
+    "Edit": ["edit"],
+    "Bash": ["shell"],
+    "WebSearch": ["websearch"],
+    "WebFetch": ["webfetch"],
+    "Task": ["subagent"]
+  },
+  "start": [
+    {"action": "*", "resource": "*", "effect": "deny"}
+  ],
+  "after_read": [
+    {"action": "read", "resource": "*.env", "effect": "ask"},
+    {"action": "read", "resource": "*.env.*", "effect": "ask"},
+    {"action": "read", "resource": "*.env.example", "effect": "allow"}
+  ],
+  "with_any_tool": [
+    {"action": "external_directory", "resource": "*", "effect": "allow"}
+  ],
+  "launch_none": {"action": "subagent", "resource": "*", "effect": "deny"}
+}

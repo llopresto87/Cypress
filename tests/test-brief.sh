@@ -43,6 +43,13 @@ rc=0; msg="$(cd "$T" && "$PY" docs/graph/brief.py --role tester --spawn-id s.0 -
 [[ $rc -eq 2 ]] && grep -q "Prime Agent" <<<"$msg" \
   && ok "X501 CHARTER_FLAG_ONLY_FOR_PRIME_AGENT: --charter is refused where .claude/agents/ carries the role" \
   || bad "X501 CHARTER_FLAG_ONLY_FOR_PRIME_AGENT" "rc $rc: $msg"
+# an opencode plant is refused the same way: its agent type carries the charter
+O="$(mktemp -d)"; bash "$ROOT/install.sh" opencode --project-dir "$O" >/dev/null 2>&1
+rc=0; msg="$(cd "$O" && "$PY" docs/graph/brief.py --role tester --spawn-id s.0 --task t --route r --charter --part "$T/part.txt" 2>&1 >/dev/null)" || rc=$?
+[[ $rc -eq 2 ]] && grep -q "opencode" <<<"$msg" \
+  && ok "X502 CHARTER_FLAG_ONLY_FOR_PRIME_AGENT: --charter is refused where .opencode/agents/ carries the role" \
+  || bad "X502 CHARTER_FLAG_ONLY_FOR_PRIME_AGENT" "rc $rc: $msg"
+rm -rf "$O"
 mkdir -p "$T/.prime/agent"
 out2="$(cd "$T" && "$PY" docs/graph/brief.py --role tester --spawn-id s.1 --task t --route r --charter --part part.txt)"
 grep -q 'You are the test engineer' <<<"$out2" && ! grep -q '^routing_triggers:' <<<"$out2" \
