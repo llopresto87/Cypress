@@ -571,6 +571,31 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   and `source: claude-code transcript`; a `<synthetic>` record counts for
   nothing; the second records `not recorded` for every count and the model
 
+### Contract: BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS
+- **Test file:** `tests/test-brief.sh`
+- **Given:** a plant whose spawn log holds five spawns over three issue
+  groups (compositions more than 60 seconds apart), one with no effort, and
+  whose token ledger holds a full record and a partial one
+- **When:** `brief.py --log` runs
+- **Then:** stdout carries the attribution lines, then `- Spawns: <N>
+  (<role>×<count> <class>/<effort>, ...)`, sorted, the class read from the
+  role's `model:` and a missing effort as `effort not recorded`; `- Serial
+  waits: <groups - 1> (issue groups, a gap over 60 s between compositions:
+  <ids> → <ids> ...)`; and `- Tokens: input N, cache write N (5m N, 1h N),
+  cache read N, output N — K of M spawns recorded`, each N the sum over the
+  recorded spawns or `not recorded` when any of them lacks it; exit 0; the
+  output matches `tests/fixtures/brief-log/log.out` byte for byte
+- **And:** those three lines, set beside the lead's own lines in a delivery
+  entry, pass `session-metrics.py` unchanged
+- **And:** with no ledger the Tokens line is `- Tokens: not recorded: no spawn
+  has a record in the token ledger tokens.jsonl`, with a ledger line that is
+  not JSON `- Tokens: not recorded: tokens.jsonl line <N> is not a JSON
+  record`, and a spawn log line with no composition time makes the Serial
+  waits line `not recorded: <reason>`; no count is estimated
+- **And:** an empty spawn log prints one stderr line and exits 1, and a
+  trust-path review with no later security spawn still prints its BLOCK line
+  and exits 1; the key decisions, limitations and quality stay the lead's
+
 ### Contract: RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME
 - **Test file:** `tests/test-resume-hook.sh`
 - **Given:** Claude Code workers that handed back and have been idle 4, 30
@@ -2700,6 +2725,7 @@ gives.
 | BRIEF_DERIVES_THE_SPAWN_EFFORT | X502 six role, kind and label fixtures print their effort; the log records it; an unknown kind is refused; X503 a first review of trust paths reads `first-trust`; seen red first | tests/test-brief.sh | fixture | green |
 | TOKEN_LEDGER_RECORDS_HOST_USAGE | X505 a full, a partial and an empty usage are stored as given or `not recorded`; an unknown spawn, a second record, a fractional count and an unknown key are refused; seen red first | tests/test-brief.sh | fixture | green |
 | TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT | X506 a hand transcript with a repeated message id, a 1h write and a `<synthetic>` record sums once per message; an empty transcript records `not recorded`; seen red first | tests/test-brief.sh | fixture | green |
+| BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS | X515 a hand spawn log and ledger print `tests/fixtures/brief-log/log.out`; the three lines pass `session-metrics.py` in a delivery entry; no ledger, a broken ledger line and an empty log give their lines; seen red first | tests/test-brief.sh | fixture | green |
 | RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME | X507 workers idle 4, 30 and 90 minutes against `5m`, `1h`, an invalid value and unset through the variable, the project setting and the agent frontmatter, plus each precedence step; a configured `1h` with a 5m-only last write, a one-hour last write and no write; seen red first | tests/test-resume-hook.sh | fixture | green |
 | CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE | X508 a fresh plan prints the ready RED and prose batches in order; an unrelated commit lands nothing, commits naming every contract slug land their increments, and with no git every increment is `landed: unknown`, exit 0; seen red first | tests/test-cycle.sh | integration (installed plant) | green |
 | CYCLE_DRIVER_NAMES_THE_HOLD_CONDITION | X509 a hand fixture holds one increment under each of the three conditions and two by dependency; the report matches `tests/fixtures/cycle/held.out` byte for byte; seen red first | tests/test-cycle.sh | integration (installed plant) | green |
@@ -3248,3 +3274,11 @@ kept outside the seed.
   unchanged. `grill-lint.py` gains `plan_graph` and `pack`, the reading of §9
   and the batch packing it already did, so the driver loads them instead of
   keeping a second copy; its reports are byte-identical.
+- 2026-11-10 — the owner's brief of 2026-11-10 asks that the delivery's
+  countable lines come from the log. `brief.py --log` now also prints the
+  Spawns, Serial waits and Tokens lines of the Session metrics block from the
+  spawn log and the token ledger, in the form `session-metrics.py` reads
+  (BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS, X515, seen red first). The spawn
+  log records composition time, not handback time, so a serial wait is read
+  as a gap of more than 60 seconds between two compositions; the lines that
+  need judgment stay the lead's.

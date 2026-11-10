@@ -157,9 +157,9 @@ identifier (a branch by its branch name, never by the environment it
 deploys to), because an approval given against an ambiguous name can land
 on the wrong target. Default on; the owner may waive it.
 
-The metrics block is telemetry, and the orchestrator fills every line
-from its own trace (spawn ids, handbacks, gate runs), with no transcript
-access. It is a required part of the full form, not an optional extra: a
+The metrics block is telemetry: `brief.py --log` prints the Spawns,
+Serial waits and Tokens lines from the spawn log, copied unchanged, and
+the orchestrator fills the rest from its trace (handbacks, gate runs). It is a required part of the full form, not an optional extra: a
 line the trace cannot fill says `not recorded: <reason>`, and a full-form
 entry without the block is incomplete the way one without its gates is.
 It is what lets the system improve on evidence instead of anecdote:
@@ -176,10 +176,9 @@ In a long session, take the block after each landed increment as well
 as at the end, and append it to the grill.md §15 entry that increment's
 revision pass writes. The cost curve is then visible while it can still
 change, and a retrospective after the money is spent is too late to act
-on it. The Tokens line is the one optional line: it sums
-`docs/graph/plans/tokens.jsonl`, where `brief.py --tokens <spawn_id>` records
-each spawn's host-reported counts from its usage or transcript, and a count
-the host did not report stays `not recorded`, never estimated.
+on it. The Tokens line is the one optional line, summed from
+`docs/graph/plans/tokens.jsonl`, which `brief.py --tokens <spawn_id>` fills
+from a spawn's usage or transcript; a count unreported stays `not recorded`.
 
 ## Quality bar
 

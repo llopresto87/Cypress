@@ -42,7 +42,12 @@ Every composed brief appends one JSON line to `spawns.jsonl` beside the plan
 the spawn's attribution record, so the worker echoes none of it and the
 deliver-time attribution assertion reads the log. A spawn_id already logged
 for another role is refused (mint once, `delegation.tracing`).
-`--log` prints the log as the delivery's attribution lines and exits; it exits
+`--log` prints the log as the delivery's attribution lines, then the Session
+metrics lines the log and the token ledger decide, in the form
+session-metrics.py reads: `- Spawns:` (role×count class/effort), `- Serial
+waits:` (issue groups: compositions more than ISSUE_GAP seconds apart are two
+issues) and `- Tokens:` (the ledger's sums, a count any record lacks `not
+recorded`, or `not recorded: <reason>`). It exits 1 with no spawn logged, and
 1 with a BLOCK line for each logged review of trust-path files that no later
 `security` spawn follows (`test-first.security-path`).
 
@@ -309,6 +314,68 @@ def record_tokens(argv: list) -> int:
     return 0
 
 
+CLASSES = {"opus": "authoring", "sonnet": "investigation", "haiku": "investigation", "inherit": "inherit"}
+ISSUE_GAP = 60  # seconds between two compositions that make them two issues, not one
+
+
+def metrics_lines(plan: Path, rows: list[dict]) -> list[str]:
+    """The Session metrics lines the spawn log and the token ledger decide
+    (protocols/deliver.md): Spawns, Serial waits and Tokens, in the form
+    session-metrics.py reads. The lines that need judgment stay the lead's."""
+    last = {r["spawn_id"]: r for r in rows if r.get("spawn_id")}
+    groups: dict[tuple, int] = {}
+    for r in last.values():
+        try:
+            m = re.search(r"^model:\s*(\S+)", charter_head(r["role"]), re.M)
+            cls = CLASSES.get(m.group(1), m.group(1)) if m else "class not recorded"
+        except SystemExit:
+            cls = "class not recorded"
+        eff = (r.get("effort") or "").split(" ")[0] or "effort not recorded"
+        groups[(r["role"], cls, eff)] = groups.get((r["role"], cls, eff), 0) + 1
+    out = [f"- Spawns: {len(last)} (" + ", ".join(f"{role}×{n} {cls}/{eff}"
+                                                  for (role, cls, eff), n in sorted(groups.items())) + ")"]
+    issues: list[list[str]] = []
+    prev = None
+    for r in last.values():
+        try:
+            at = datetime.datetime.fromisoformat(r["at"])
+        except (KeyError, TypeError, ValueError):
+            issues = []
+            break
+        if prev is None or (at - prev).total_seconds() > ISSUE_GAP:
+            issues.append([])
+        issues[-1].append(r["spawn_id"])
+        prev = at
+    out.append(f"- Serial waits: {len(issues) - 1} (issue groups, a gap over {ISSUE_GAP} s between "
+               f"compositions: " + " → ".join(" ".join(g) for g in issues) + ")" if issues else
+               "- Serial waits: not recorded: a spawn log line carries no composition time")
+    ledger = token_ledger(plan)
+    held, bad = {}, 0
+    for i, line in enumerate(ledger.read_text(encoding="utf-8").splitlines() if ledger.is_file() else [], 1):
+        try:
+            rec = json.loads(line) if line.strip() else {}
+        except ValueError:
+            rec = None
+        if not isinstance(rec, dict):
+            bad = bad or i
+        elif rec.get("spawn_id") in last:
+            held[rec["spawn_id"]] = rec
+    if bad:
+        out.append(f"- Tokens: not recorded: {ledger.name} line {bad} is not a JSON record")
+    elif not held:
+        out.append(f"- Tokens: not recorded: no spawn has a record in the token ledger {ledger.name}")
+    else:
+        def total(k):
+            vals = [r.get(k) for r in held.values()]
+            ok = all(isinstance(v, int) and not isinstance(v, bool) for v in vals)
+            return str(sum(vals)) if ok else NR
+        out.append(f"- Tokens: input {total('input')}, cache write {total('cache_write')} "
+                   f"(5m {total('cache_write_5m')}, 1h {total('cache_write_1h')}), cache read "
+                   f"{total('cache_read')}, output {total('output')} — {len(held)} of {len(last)} "
+                   f"spawn{'s' if len(last) != 1 else ''} recorded")
+    return out
+
+
 def main() -> int:
     if "--tokens" in sys.argv[1:]:
         return record_tokens(sys.argv[1:])
@@ -325,6 +392,7 @@ def main() -> int:
         if not last:
             print(f"brief: no spawns logged at {spawn_log(Path(lp.parse_args().plan))}", file=sys.stderr)
             return 1
+        print("\n".join(metrics_lines(Path(lp.parse_args().plan), rows)))
         owed = [r for i, r in enumerate(rows) if r.get("role") == "reviewer" and r.get("trust")
                 and not any(x.get("role") == "security" for x in rows[i + 1:])]
         for r in owed:
