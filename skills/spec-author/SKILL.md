@@ -8,6 +8,7 @@ origin: seed
 title: spec-author — write executable specs whose contracts a tester can encode and an implementer can satisfy
 owns:
   - spec-author.method
+  - spec-author.contract-kind
   - spec-author.sign-off
 requires:
   - protocol.specify
@@ -32,8 +33,9 @@ This skill is the discipline of writing a spec that another agent can
 turn into failing tests and another into passing code. It is invoked
 from `docs/graph/protocols/specify.md`.
 
-A spec is **executable** when every functional contract maps to at least
-one test in the suite and the test name names the contract. Specs that
+A spec is **executable** when every functional contract names what
+proves it: its `Check` kind (the template's §4) and that kind's
+evidence. Specs that
 read like marketing or like implementations are not specs;
 implementation detail belongs in grill.md §8.
 
@@ -72,8 +74,8 @@ experience.
 The heart of the spec. Each contract is one Given/When/Then, single-
 outcome, observable from outside.
 
-**Naming.** Use `UPPER_SNAKE_CASE` slugs that read as sentences. Tester
-turns these into test names.
+**Naming.** Use `UPPER_SNAKE_CASE` slugs that read as sentences. §10
+cites them in its Covers cell.
 
 ```
 ### Contract: SUBMIT_VALID_FORM_RETURNS_2XX
@@ -93,6 +95,16 @@ single-outcome contracts compose into the behavior.
 **Observable from outside.** If the test has to inspect a private field,
 the contract is wrong. Move the observation to a public surface (a
 returned value, a queried record, an emitted event).
+
+**The kind (`spec-author.contract-kind`).** Write each contract's `Check`
+line as you write the contract. Name who is hurt if it is wrong, then
+ask whether it holds logic that can be wrong while the code is present:
+the template's §4 defines `test`, `run`, `review` and `covered`, and
+when you cannot tell, the kind is `test`. A declared value with nothing
+to get wrong (a label, a route, a flag, a key) is a row of the Declared
+values table, not a contract. The tester's challenge and your answer go
+on the contract's `Challenge` line; a kind you keep against it
+(`Kept: yes`) goes to the owner as a numbered decision before sign-off.
 
 ### §5 Non-functional requirements
 
@@ -137,18 +149,17 @@ contracts into concrete tests, so make them real values, not
 ### §9 Acceptance criteria (product)
 
 Measurable conditions for "done". Each criterion maps to one or more
-contracts in §4 and to one or more tests in §10.
+contracts in §4, or to a declared value as `DV:<value>`.
 
 Acceptance criteria include the non-functional ones (latency,
 accessibility). Write them now, beside the functional ones, so the
 tester can encode them.
 
-### §10 Test mapping (tester)
+### §10 Test design (tester)
 
-A table mapping each contract and each acceptance criterion to the tests
-that cover them. Update as tests are written. Status values: `pending`
-(no test yet), `red` (test exists, fails), `green` (test exists,
-passes), `skipped` (with reason).
+One row per risk, designed once before any increment (`specify.flow`);
+its Covers cell names the `test` contracts each test covers. The
+template's §10 holds the columns and values.
 
 ### §11 Open questions
 
@@ -161,8 +172,10 @@ A spec is signed when every sign-off below that applies is recorded;
 until then it is unsigned and nobody plans against it:
 - **product ✓** confirms §3 and §9 reflect the user outcome.
 - **architect ✓** confirms §4, §6, §7 are coherent.
-- **tester ✓** confirms every contract in §4 is testable (the
-  testability review).
+- **tester ✓** reviews every contract's kind and may challenge one
+  (`spec-author.contract-kind`), and confirms each `test` contract is
+  observable and §10 covers it. A spec with no `test` or `covered`
+  contract and no trust path takes no tester sign-off (`specify.flow`).
 - **security ✓** if the spec touches auth, secrets, payments, uploads,
   external integrations, or AI behaviors that act on data.
 
@@ -179,7 +192,7 @@ A spec that grows by slice (`specify.flow`) is signed the same way, one
 slice at a time. The slice's contracts, their §10 rows (status
 `pending`) and a §12 changelog row naming its signers are written before the tester writes the slice's RED, and
 they land in the same commit as that RED, so a live spec never holds a
-contract with no test.
+`test` contract with no test.
 
 A spec's readers are the agents that implement, test and review it, so it
 is graph text: compact instruction language (`method.engineering-posture`
@@ -190,9 +203,9 @@ the owner reads to decide is put to them separately, through
 The sign-offs are judgment; the shape and the coverage are mechanical.
 `python3 docs/graph/spec-lint.py` (the kernel §3.1 gate in the gate
 table of `docs/graph/protocols/verify.md`) checks every spec's shape
-(unique slugs, a §10 row per contract, §9 criteria that map to real
-slugs, sign-offs present on anything past `draft`) and, for live specs,
-that every slug appears in at least one test. A draft is shape-checked
+(unique slugs, a `Check` line per contract in a kinds-form spec, §9
+criteria that map to real slugs, sign-offs present on anything past
+`draft`) and, for live specs, each contract's evidence by its kind. A draft is shape-checked
 and not counted for coverage, so a spec in authoring never reports
 uncovered.
 

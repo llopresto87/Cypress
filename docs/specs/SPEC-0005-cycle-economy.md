@@ -752,6 +752,64 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 - **And:** a plant that edits or recomposes an agent is held to the same
   table, because the check reads the plant's projected files
 
+### Contract: SPEC_TEMPLATE_TEACHES_CONTRACT_KINDS
+- **Test file:** `tests/seed-lint.py`
+- **Given:** `templates/spec.template.md`
+- **When:** seed-lint reads it
+- **Then:** §0 carries `- **Contract form:** kinds`; §4 defines the kinds
+  `test`, `run`, `review`, `covered` beside the `Check` line, with `test`
+  when the architect cannot tell, and a Declared values table; §10 carries
+  the risk header and names the legacy header for a spec without the line
+
+### Contract: ARCHITECT_SETS_EACH_CONTRACT_KIND
+- **Test file:** `tests/seed-lint.py`
+- **Given:** `agents/01-architect.md` and `skills/spec-author/SKILL.md`
+- **When:** seed-lint reads them
+- **Then:** the architect charter says the architect sets each contract's
+  kind, and spec-author says a kind kept against the tester's challenge goes
+  to the owner as a numbered decision
+
+### Contract: TESTER_MAY_CHALLENGE_A_KIND
+- **Test file:** `tests/seed-lint.py`
+- **Given:** `agents/04-tester.md` and `skills/spec-author/SKILL.md`
+- **When:** seed-lint reads them
+- **Then:** both say the tester reviews every contract's kind at sign-off
+  and may challenge one
+
+### Contract: RED_WRITER_MAY_DROP_OR_MERGE_A_DESIGNED_CASE
+- **Test file:** `tests/seed-lint.py`
+- **Given:** `agents/04-tester.md`, `skills/test-first/SKILL.md`,
+  `protocols/grill.md`
+- **When:** seed-lint reads them
+- **Then:** the tester charter and test-first say a RED writer may drop or
+  merge a designed case, with one line of reason in its §10 row
+- **And:** none of the three says a RED writer or planner adds, merges or
+  drops no case
+
+### Contract: SPECIFY_DESIGNS_TESTS_ONLY_WHERE_ONE_IS_OWED
+- **Test file:** `tests/seed-lint.py`
+- **Given:** `protocols/specify.md`
+- **When:** seed-lint reads it
+- **Then:** it says a contract an existing test already asserts is
+  `covered`, and that a spec with no `test` or `covered` contract and no
+  trust path gets no test-design spawn and no tester sign-off
+
+### Contract: REVIEWER_REOPENS_A_KIND_THAT_HIDES_LOGIC
+- **Test file:** `tests/seed-lint.py`
+- **Given:** `agents/03-reviewer.md`
+- **When:** seed-lint reads it
+- **Then:** its checklist says code under a `run` or `review` contract holds
+  no logic at first review, and that logic found re-opens the contract's kind
+
+### Contract: NO_SURFACE_OWES_EVERY_CONTRACT_A_TEST
+- **Test file:** `tests/seed-lint.py`
+- **Given:** README, DOCUMENTATION, INSTALL, INSTALL_PROMPT, every file under
+  `documentation/`, `protocols/specify.md`, `skills/spec-author/SKILL.md`
+  and `agents/04-tester.md`
+- **When:** seed-lint reads them, whitespace collapsed and lowercased
+- **Then:** none says every functional contract maps to at least one test,
+  or that every increment begins with the tester writing a failing test
+
 ### Contract: AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK
 - **Test file:** `tests/test-install-placement.sh`
 - **Given:** a plant whose node named in a charter's `always_loads:` was
@@ -2847,6 +2905,13 @@ gives.
 | MAIN_SESSION_PLAYS_THE_ORCHESTRATOR | M24 case_orchestrator_style: settings select the style; the style carries the charter body and each always-loaded body once, no charter frontmatter, `keep-coding-instructions: true`; a hand edit is STALE and recomposed; seen red first. A `claude -p` probe in a fresh plant quoted the charter's second sentence and an always-loaded heading, and quoted neither with the setting removed | tests/test-install-placement.sh | integration | green |
 | COMPOSER_SELECTS_A_SECTION_BY_SLUG | X523 a slug picks one section with no preamble; an unknown slug is a named ComposeError | tests/test-delivery-rules.sh | integration | green |
 | MUST_REACH_RULE_IS_IN_EACH_NAMED_ROLE_PROMPT | X524 installed prompts carry the rule; removing it from each of four roles fails naming role and rule; `--check` in a plant reports it; seen red first by that removal | tests/test-delivery-rules.sh | integration | green |
+| SPEC_TEMPLATE_TEACHES_CONTRACT_KINDS | (none) the `SPEC_TEMPLATE_TEACHES_CONTRACT_KINDS` rows of seed-lint's `TEXT_RULES`; red id: `SPEC_TEMPLATE_TEACHES_CONTRACT_KINDS: templates/spec.template.md does not hold '- **Contract form:** kinds'`; seen red first | tests/seed-lint.py | real-tree | green |
+| ARCHITECT_SETS_EACH_CONTRACT_KIND | (none) the `ARCHITECT_SETS_EACH_CONTRACT_KIND` rows of seed-lint's `TEXT_RULES`; red id: `ARCHITECT_SETS_EACH_CONTRACT_KIND: agents/01-architect.md does not hold "You set each contract's kind"`; seen red first | tests/seed-lint.py | real-tree | green |
+| TESTER_MAY_CHALLENGE_A_KIND | (none) the `TESTER_MAY_CHALLENGE_A_KIND` rows of seed-lint's `TEXT_RULES`; red id: `TESTER_MAY_CHALLENGE_A_KIND: agents/04-tester.md does not hold "review every contract's kind and may challenge one"`; seen red first | tests/seed-lint.py | real-tree | green |
+| RED_WRITER_MAY_DROP_OR_MERGE_A_DESIGNED_CASE | (none) the `RED_WRITER_MAY_DROP_OR_MERGE_A_DESIGNED_CASE` rows of seed-lint's `TEXT_RULES`; red id: `RED_WRITER_MAY_DROP_OR_MERGE_A_DESIGNED_CASE: agents/04-tester.md:95: 'merge or drop no'`; seen red first | tests/seed-lint.py | real-tree | green |
+| SPECIFY_DESIGNS_TESTS_ONLY_WHERE_ONE_IS_OWED | (none) the `SPECIFY_DESIGNS_TESTS_ONLY_WHERE_ONE_IS_OWED` rows of seed-lint's `TEXT_RULES`; red id: `SPECIFY_DESIGNS_TESTS_ONLY_WHERE_ONE_IS_OWED: protocols/specify.md does not hold 'no test-design spawn and no tester sign-off'`; seen red first | tests/seed-lint.py | real-tree | green |
+| REVIEWER_REOPENS_A_KIND_THAT_HIDES_LOGIC | (none) the `REVIEWER_REOPENS_A_KIND_THAT_HIDES_LOGIC` rows of seed-lint's `TEXT_RULES`; red id: `REVIEWER_REOPENS_A_KIND_THAT_HIDES_LOGIC: agents/03-reviewer.md does not hold "re-opens the contract's kind"`; seen red first | tests/seed-lint.py | real-tree | green |
+| NO_SURFACE_OWES_EVERY_CONTRACT_A_TEST | (none) the `NO_SURFACE_OWES_EVERY_CONTRACT_A_TEST` rows of seed-lint's `TEXT_RULES`; red id: `NO_SURFACE_OWES_EVERY_CONTRACT_A_TEST: protocols/specify.md:1: 'every functional contract maps to at least one test'`; seen red first | tests/seed-lint.py | real-tree | green |
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | M22 case_agents_compose: the implementer's six always-loaded bodies once each with no frontmatter; `11-pentest.md` byte for byte; a hand edit is STALE to `--check` | tests/test-install-placement.sh | integration | green |
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | (none) the `ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES` row of seed-lint's `TEXT_RULES`: the `graft.gate.projection-drift` row holds `install.sh claude-code --check`; red id: `ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES: protocols/graft.md graft.gate.projection-drift does not hold 'install.sh claude-code --check'` | tests/seed-lint.py | real-tree | green |
 | TRUST_MARKER_IS_SETTLED | X496 TrustMarkerTests: `--trust-unsettled` names the unset and the pathless crosscut only; the lint warns on the pathless one and exits 0 | tests/test_graph_lint.py | fixture | green |
@@ -3444,3 +3509,13 @@ kept outside the seed.
   its node and the architect, tester, reviewer and orchestrator carry it
   through `always_loads:`. Added COMPOSER_SELECTS_A_SECTION_BY_SLUG and
   MUST_REACH_RULE_IS_IN_EACH_NAMED_ROLE_PROMPT (seen red first).
+- 2026-11-10 — the authoring surfaces teach the contract
+  kinds. The owner decided on 2026-11-10 that the architect sets how each
+  contract is checked and the tester can challenge it, and that a RED writer
+  may drop or merge a designed case. Added SPEC_TEMPLATE_TEACHES_CONTRACT_KINDS,
+  ARCHITECT_SETS_EACH_CONTRACT_KIND, TESTER_MAY_CHALLENGE_A_KIND,
+  RED_WRITER_MAY_DROP_OR_MERGE_A_DESIGNED_CASE,
+  SPECIFY_DESIGNS_TESTS_ONLY_WHERE_ONE_IS_OWED,
+  REVIEWER_REOPENS_A_KIND_THAT_HIDES_LOGIC and
+  NO_SURFACE_OWES_EVERY_CONTRACT_A_TEST, each a seed-lint text rule seen red
+  first.

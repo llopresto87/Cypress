@@ -1620,6 +1620,42 @@ TEXT_RULES = (
     ("ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES", "require", lambda: ["protocols/graft.md"],
      re.escape("install.sh claude-code --check"),
      {"section": r"(?m)^\| `graft\.gate\.projection-drift` .*$", "where": " graft.gate.projection-drift"}),
+    # the spec template teaches the contract kinds, declared values and the risk-based §10
+    *[("SPEC_TEMPLATE_TEACHES_CONTRACT_KINDS", "require", lambda: ["templates/spec.template.md"],
+       re.escape(s), {"collapse": True}) for s in (
+        "- **Contract form:** kinds", "When the architect cannot tell, the kind is `test`",
+        "### Declared values", "A legacy spec (no `Contract form` line)",
+        "| Risk (what breaks, for whom) | Test (file::name, lowest level) | Covers | Origin | Status |")],
+    # the architect sets each kind; a kind kept against the tester's challenge goes to the owner
+    ("ARCHITECT_SETS_EACH_CONTRACT_KIND", "require", lambda: ["agents/01-architect.md"],
+     re.escape("You set each contract's kind"), {"collapse": True}),
+    ("ARCHITECT_SETS_EACH_CONTRACT_KIND", "require", lambda: ["skills/spec-author/SKILL.md"],
+     re.escape("goes to the owner as a numbered decision"), {"collapse": True}),
+    ("TESTER_MAY_CHALLENGE_A_KIND", "require", lambda: ["agents/04-tester.md"],
+     re.escape("review every contract's kind and may challenge one"), {"collapse": True}),
+    ("TESTER_MAY_CHALLENGE_A_KIND", "require", lambda: ["skills/spec-author/SKILL.md"],
+     re.escape("reviews every contract's kind and may challenge one"), {"collapse": True}),
+    # a RED writer may drop or merge a designed case with one line of reason; adding stays the design's
+    *[("RED_WRITER_MAY_DROP_OR_MERGE_A_DESIGNED_CASE", "require", lambda f=f: [f],
+       re.escape("may drop or merge a designed case"), {"collapse": True})
+      for f in ("agents/04-tester.md", "skills/test-first/SKILL.md")],
+    ("RED_WRITER_MAY_DROP_OR_MERGE_A_DESIGNED_CASE", "forbid",
+     lambda: ["agents/04-tester.md", "skills/test-first/SKILL.md", "protocols/grill.md"],
+     r"merges? or drops? no\b|added, merged or dropped", {}),
+    # §10 is designed only where a test is owed, after a survey of the suite
+    *[("SPECIFY_DESIGNS_TESTS_ONLY_WHERE_ONE_IS_OWED", "require", lambda: ["protocols/specify.md"],
+       re.escape(s), {"collapse": True}) for s in (
+        "no test-design spawn and no tester sign-off", "already asserts is `covered`")],
+    # code under a run or review contract holds no logic; logic found re-opens the kind
+    ("REVIEWER_REOPENS_A_KIND_THAT_HIDES_LOGIC", "require", lambda: ["agents/03-reviewer.md"],
+     re.escape("re-opens the contract's kind"), {"collapse": True}),
+    # no surface says every contract maps to a test: a contract is proved by its kind
+    ("NO_SURFACE_OWES_EVERY_CONTRACT_A_TEST", "forbid",
+     lambda: _files(("documentation",), ("README.md", "DOCUMENTATION.md", "INSTALL_PROMPT.md",
+                                         "INSTALL.md", "protocols/specify.md",
+                                         "skills/spec-author/SKILL.md", "agents/04-tester.md"), optional=True),
+     r"every functional contract maps to at least one test"
+     r"|every increment begins with the tester writing a failing test", {"flat": True}),
 ) + tuple(
     # each surface a steward or grower acts from points at the Claude Code
     # machinery it acts on: the composed agents, the spawn log, the resume hook

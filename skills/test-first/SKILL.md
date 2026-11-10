@@ -145,18 +145,20 @@ node; this section is how the set is designed once it does.
   share. Then design each case for one mechanism that can fail
   differently, with its blast radius named, give one case every
   contract it can assert, extend the class that owns a behaviour
-  instead of starting one, and merge every overlap on paper. The design
-  is the only place a case is added, merged or dropped. Increments are
-  cut from it: an increment cites, by name, the §10 tests it turns red,
-  so a test may serve several increments and an increment several
-  contracts. A RED writer writes the tests its increment cites, exactly
-  as designed; a case that looks missing, redundant or untestable is a
-  question back to the design (`delegation.question-file`), never a new
-  or dropped test on the spot. A test written to be merged or deleted
-  later is a design failure, and no plan schedules a pass to shrink the
-  tests the design produced: the owner decided on 2026-11-02 that tests
-  are planned with intelligence before they are written, not deduped
-  after. Planned whole, the set is written whole:
+  instead of starting one, and merge every overlap on paper. Only the
+  design adds a case. Increments are cut from it: an increment cites, by
+  name, the §10 tests it turns red, so a test may serve several
+  increments and an increment several contracts. A RED writer writes the
+  tests its increment cites as designed, and may drop or merge a designed
+  case that, on contact with the code, only reads back a value or
+  duplicates another, recording one line of reason in its §10 row; a
+  case that looks missing or untestable is a question back to the design
+  (`delegation.question-file`), never a new test on the spot. A test
+  written to be merged or deleted later is a design failure, and no plan
+  schedules a pass to shrink the tests the design produced: the owner
+  decided on 2026-11-02 that tests are planned with intelligence before
+  they are written, not deduped after, and on 2026-11-10 that the RED
+  writer may drop or merge, never add. Planned whole, the set is written whole:
   the owner decided on 2026-10-14 that a spec's failing tests are
   written in one RED wave and its mutation pass runs once, batched at
   the end. The plan gives a spec's RED increments no `Depends on:` among

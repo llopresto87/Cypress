@@ -93,7 +93,7 @@ provided.
 
 ## Review pass: checklist
 
-Answer every check that applies; skip only the clearly inapplicable.
+Answer every check that applies.
 
 **Plan adherence**
 - Diff implements the increment described in grill.md?
@@ -112,7 +112,7 @@ Answer every check that applies; skip only the clearly inapplicable.
 - New surface with no referrer? A function, module, script, or config
   nothing calls is unreachable code shipped as a feature; trace its
   call site.
-- (Exempt: append-only artifacts, such as grill.md history, ADRs and
+- (Exempt: append-only artifacts, grill.md history, ADRs and
   changelogs, where superseding, not deleting, is correct.)
 
 **Architecture & responsibilities** (design posture:
@@ -169,15 +169,15 @@ over-work is a finding exactly as a gap is)
 **Tests**
 - A test that fails before this diff and passes after?
 - Test verifies behavior, not implementation?
-- Does the new test actually assert something? A test that asserts
-  nothing, or a gate that ran an empty suite, is a green lie, worse
-  than no test, because it is trusted. On existing code, confirm the RED
-  came from a characterization test, not an empty harness.
+- Does the new test assert something? A test that asserts nothing, or
+  a gate that ran an empty suite, is a trusted green lie. On existing
+  code, confirm the RED came from a characterization test, not an empty harness.
+- First review: code under a `run` or `review` contract holds no logic
+  (the rule loaded above)? Logic is a finding; it re-opens the contract's kind.
 - Regression cases added for any bug the diff fixes?
 - Which test methods and how much runtime did the increment add (the
-  delta its handback reports under `gates:`)? Question a suite cost out
-  of line with the contracts the increment covers; it is a finding only
-  when no contract justifies it.
+  delta its handback reports under `gates:`)? A suite cost no contract
+  of the increment justifies is a finding.
 - Did the increment run the gates `delegation.tip-cadence` asks of it
   (`docs/graph/method/delegation-cycle-economy.md`)? A gate failure, or
   a gate the increment owed and did not run, is critical. Before the

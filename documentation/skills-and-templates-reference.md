@@ -63,7 +63,7 @@ skill frontmatter carries:
 | library-wiki | `skill.library-wiki` | `library-wiki.method`, `library-wiki.version-pinning` | (none) | `skill.research-and-ingest`, `protocol.ingest-library` | 1310 |
 | research-and-ingest | `skill.research-and-ingest` | `research-and-ingest.method`, `research-and-ingest.source-ranking` | (none) | `skill.library-wiki`, `agent.research-scout` | 1540 |
 | source-index | `skill.source-index` | `source-index.usage`, `source-index.limit`, `source-index.report` | (none) | `protocol.verify`, `protocol.canonize`, `protocol.grow`, `protocol.graft`, `skill.adopt-existing` | 1900 |
-| spec-author | `skill.spec-author` | `spec-author.method`, `spec-author.sign-off` | `protocol.specify` | `skill.test-first`, `protocol.grill` | 1640 |
+| spec-author | `skill.spec-author` | `spec-author.method`, `spec-author.contract-kind`, `spec-author.sign-off` | `protocol.specify` | `skill.test-first`, `protocol.grill` | 1640 |
 | test-first | `skill.test-first` | `test-first.shaping`, `test-first.level-selection`, `test-first.proportionate-checks`, `test-first.no-lint-only-tests` | (none) | `protocol.test-first`, `skill.spec-author` | 1719 |
 | toolcraft | `skill.toolcraft` | `rule.toolcraft`, `toolcraft.durability-criteria` | (none) | `agent.tool-smith`, `protocol.canonize`, `protocol.grill`, `protocol.harvest`, `method.bounded-execution` | 1490 |
 | validate-knowledge | `skill.validate-knowledge` | `validate-knowledge.method`, `validate-knowledge.adversarial-questions` | (none) | `skill.knowledge-graph`, `skill.context-router` | 1290 |
@@ -783,31 +783,35 @@ Guide: [source-index.md](source-index.md).
 Source: `skills/spec-author/SKILL.md`
 
 **id:** `skill.spec-author` · **owns:** `spec-author.method`,
-`spec-author.sign-off` · **requires:** `protocol.specify` · **peers:**
+`spec-author.contract-kind`, `spec-author.sign-off` · **requires:** `protocol.specify` · **peers:**
 `skill.test-first`, `protocol.grill`
 
 **load_when:** write a spec · define functional contracts · given when then
 contract slugs · spec sign-off before code · code and spec disagree.
 
 **What it does.** Writes an executable specification under
-`docs/graph/specs/` that turns a clear goal into testable contracts. A spec is
-executable when every functional contract maps to at least one test and
-the test name names the contract.
+`docs/graph/specs/` that turns a clear goal into contracts. A spec is
+executable when every functional contract names what proves it: its kind
+(`test`, `run`, `review` or `covered`, set by the architect, open to the
+tester's challenge) and that kind's evidence.
 
 **How to write each section.** A spec is behavior, stated as contracts;
 implementation detail belongs in grill.md §8. §1 Summary (one paragraph); §2
 Scope (in/out, out-of-scope equally important); §3 user-facing behavior
 (product, user's vocabulary); §4 functional contracts (architect: one
 Given/When/Then per contract, `UPPER_SNAKE_CASE` slugs, one outcome each,
-observable from outside); §5 non-functional (only binding constraints); §6
+observable from outside, each with a `Check` kind, plus a declared-values
+table); §5 non-functional (only binding constraints); §6
 data shapes; §7 failure modes (architect + security adversarial cases); §8
 examples (happy, edge, failure, with real values); §9 acceptance criteria
-(product, measurable, mapped to contracts); §10 test mapping (tester;
-statuses `pending`/`red`/`green`/`skipped`); §11 open questions (a spec with
+(product, measurable, mapped to contracts); §10 test design (tester; one
+row per risk, its Covers cell naming the `test` contracts; statuses
+`pending`/`red`/`green`/`skipped`); §11 open questions (a spec with
 open questions stays `draft`).
 
 **The sign-off rule.** A spec promotes from `draft` to `active` only with
-product ✓, architect ✓, tester ✓ (testability review), and security ✓ (when
+product ✓, architect ✓, tester ✓ (the review of every contract's kind; none
+when no contract is `test` or `covered` and no trust path), and security ✓ (when
 it touches auth, secrets, payments, uploads, external integrations, or AI
 behaviors). Sign-off goes in §0. Once active, §4 slugs are enforced by
 `python3 docs/graph/spec-lint.py`, the §3.1 gate; a new spec's contracts
@@ -1201,7 +1205,8 @@ shapes (language-agnostic YAML, cross-link native schemas); §7 Failure modes
 (architect + security adversarial); §8 Examples (happy, edge, failure, with
 real values); §9 Acceptance criteria (product, measurable, mapped to
 contracts);
-§10 Test mapping (tester; contract → test name → file → level → status); §11
+§10 Test design (tester; risk → test `file::name` → Covers → origin → status;
+a legacy spec keeps contract → test name → file → level → status); §11
 Open questions (a spec with open questions is still `draft`); §12 Changelog.
 The contract slugs in §4 are exactly what `spec-lint.py` scans for in tests.
 
