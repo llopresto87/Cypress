@@ -62,6 +62,8 @@ no prose of its own, because CI has no access to the judgment
   class, three attempts, escalate).
 - Seed release and the seed docs' one-home rule → `docs/skills/seed-release.md`
   (`seed-release.flow`, `seed-release.dedupe-rule`).
+- A measured comparison of two settings of one lever before a default moves →
+  `docs/skills/lever-trial.md` (seed-only, like the release).
 - The seed's own specs → `docs/specs/`, one file per specced surface, each
   titled by its surface. Kernel §3.1 says code without a spec is in remediation
   mode, and a seed surface where the seed writes into somebody else's repository
