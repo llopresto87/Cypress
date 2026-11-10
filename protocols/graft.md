@@ -1230,7 +1230,7 @@ On Claude Code a role's agent file is composed from its charter and the nodes
 its `always_loads:` names; when `install.sh claude-code --check` names one
 STALE because a node was kept, merged or restored, run
 `install.sh claude-code --recompose-agents`, which writes `.claude/agents/`
-only. The install also wires `.claude/resume-hook.py` on `SendMessage`: a
+and `.claude/skills/` only. The install also wires `.claude/resume-hook.py` on `SendMessage`: a
 message to a worker idle past its prompt cache is refused unless it starts
 `continuation: <reason>` (`delegation.continuation`), and `--check` does not
 run it. The plant's spawn log, `docs/graph/plans/spawns.jsonl`, is the plant's

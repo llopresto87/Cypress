@@ -123,8 +123,10 @@ This creates (copies by default; pass `--symlink` for live seed links):
 - `.claude/agents/*.md` → copies of `agents/*.md`; a charter that names
   `always_loads:` is composed with those nodes' bodies, and `--check` names
   one that drifted. `install.sh claude-code --recompose-agents` rewrites
-  `.claude/agents/` alone from the nodes on disk (SPEC-0005
-  ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES)
+  `.claude/agents/` and `.claude/skills/` from the nodes on disk and writes no
+  node (SPEC-0005 ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES; `--check` also
+  names a skill projection that differs from its node,
+  SPEC-0001 CHECK_FLAGS_A_DRIFTED_SKILL_PROJECTION)
 - `.claude/output-styles/orchestrator.md` → the orchestrator's composition,
   selected by `"outputStyle": "orchestrator"` in `settings.json`: the main
   session is no subagent, and an output style with `keep-coding-instructions:
