@@ -79,6 +79,14 @@ case_block_deep() {
 
 case_block_readonly() {  # D1: a read-only target, or a read-only directory deeper than adapter_dirs() reaches
   tmpw
+  # chmod 555 denies a write to every user but uid 0, so the condition cannot be made there.
+  mkdir "$W/ro-probe"; chmod 555 "$W/ro-probe"
+  if ( : > "$W/ro-probe/x" ) 2>/dev/null; then
+      chmod 755 "$W/ro-probe"
+      echo "case_block_readonly: SKIPPED — a mode 555 directory is still writable under uid $(id -u); the read-only refusal cannot be produced by permissions here"
+      return 0
+  fi
+  chmod 755 "$W/ro-probe"
   for deep in . .claude/skills/library-wiki docs/graph/protocols; do
       P="$W/ro-$(basename "$deep")"; mkdir -p "$P/$deep"
       chmod 555 "$P/$deep"
