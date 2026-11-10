@@ -50,8 +50,8 @@ BLOCKING_PRONE = [
      True),
     ("service", r"service\s", r"service\s+\S+\s+status\b", True),
     # log followers: by construction they never return
-    ("journalctl -f", r"journalctl\b[^;|&]*-f\b", None, True),
-    ("tail -f", r"tail\b[^;|&]*-f\b", None, True),
+    ("journalctl -f", r"journalctl\b[^;|&]*(?:-f\b|--follow\b)", None, True),
+    ("tail -f", r"tail\b[^;|&]*(?:-[fF]\b|--follow\b)", None, True),
     # pattern killers: the pattern can match the shell issuing the kill
     ("pkill", r"pkill\b", None, False),
     ("killall", r"killall\b", None, False),
@@ -65,20 +65,23 @@ BLOCKING_PRONE = [
     ("apt", r"apt(?:-get)?(?![\w-])", None, True),   # not apt-cache / apt-mark / apt-key
     ("pacman", r"pacman\b", None, True),
     ("yay", r"yay\b", None, True),
-    ("pip install", r"pip3?\s+install\b", None, True),
-    ("npm install", r"npm\s+install\b", None, True),
-    ("npm ci", r"npm\s+ci\b", None, True),
+    # an abbreviated subcommand, a module invocation or a drop-in for the same
+    # tool is the same operation: npm i, python -m pip, uv pip, pnpm, yarn, bun
+    ("pip install", r"(?:pip3?|(?:python[\d.]*|py)\s+-m\s+pip3?|uv\s+pip)\s+install\b", None, True),
+    ("npm install", r"(?:(?:npm|pnpm|bun)\s+(?:install\b|i(?![\w-])|add(?![\w-]))|yarn\s+(?:install|add)\b)", None, True),
+    ("npm ci", r"npm\s+(?:ci|ic|clean-install)\b", None, True),
     # containers: an attached run or an interactive exec holds the terminal
-    ("docker run", r"docker\s+run\b",
-     r"docker\s+run\b[^;|&]*\s(?:-d\b|--detach\b)", True),
-    ("docker exec -it", r"docker\s+exec\b[^;|&]*-it\b", None, True),
+    ("docker run", r"(?:docker|podman|nerdctl)\s+(?:container\s+)?run\b",
+     r"(?:docker|podman|nerdctl)\s+(?:container\s+)?run\b[^;|&]*\s(?:-d\b|--detach\b)", True),
+    ("docker exec -it", r"(?:docker|podman|nerdctl)\s+(?:container\s+)?exec\b"
+     r"(?:[^;|&]*-(?:it|ti)\b|(?=[^;|&]*\s(?:-i|--interactive)\b)(?=[^;|&]*\s(?:-t|--tty)\b))", None, True),
     # remote shells: without BatchMode they can sit on a prompt
     ("ssh", r"ssh\s", r"ssh\b[^;|&]*-o\s*BatchMode=yes", True),
     # installers and builds: unbounded by nature, and the ones most often left
     # to hang because "it usually finishes"
     ("install.sh", r"install\.sh\b", None, True),
-    ("make", r"make\b", r"make\b[^;|&]*\s(?:-n|--dry-run|--just-print|-q|--question)\b", True),
-    ("cargo build", r"cargo\s+build\b", None, True),
+    ("make", r"g?make\b", r"g?make\b[^;|&]*\s(?:-n|--dry-run|--just-print|-q|--question)\b", True),
+    ("cargo build", r"cargo\s+(?:build|b)\b", None, True),
     ("cmake --build", r"cmake\s+--build\b", None, True),
     # a pipe into a shell runs whatever arrived: the installer case in disguise
     ("pipe to shell", r"(?:bash|sh|zsh|dash)(?:\s+-\S+)*\s*$", None, True),
