@@ -1022,6 +1022,9 @@ case_opencode_reinstall_old_shape() {
   [[ $rc -ne 0 ]] || arm_fail "(a) --check exited 0 over the earlier shape"
   grep -q '02-implementer.md' <<<"$out" || arm_fail "(a) --check does not name the old-shape agent file"
   grep -q 'earlier shape' <<<"$out" || arm_fail "(a) --check does not say opencode.json is in the earlier shape"
+  # X660 OPENCODE_CHECK_NAMES_BOTH_REMEDIES_FOR_THE_EARLIER_CONFIG: a graft keeps the plant's file, so a re-install is the wrong remedy there
+  grep -q 'opencode.json is in the earlier shape.*outside a graft, re-run install.sh opencode.*inside a graft.*Phase 3 (Reconcile the machinery).*graft.gate.kept-deltas' <<<"$out" \
+    || arm_fail "(a) X660 OPENCODE_CHECK_NAMES_BOTH_REMEDIES_FOR_THE_EARLIER_CONFIG: the remedy does not name both the plain re-install and graft's Phase 3 merge"
   grep -q 'cypress.ts' <<<"$out" || arm_fail "(a) --check does not name the missing plugin"
   "$ROOT/install.sh" opencode --project-dir "$P" --copy >/dev/null 2>"$ERR" || arm_fail "(b) the re-install exited non-zero: $(head -c 200 "$ERR")"
   [[ ! -e "$P/.opencode/agents/02-implementer.md" ]] || arm_fail "(b) the old-shape file is still in .opencode/agents/"

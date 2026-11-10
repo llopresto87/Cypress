@@ -162,5 +162,33 @@ rc=0; out="$(C "$P" --unit u 2>&1)" || rc=$?
   && ok "X514 CYCLE_DRIVER_RUNS_IN_A_FRESH_PLANT: the placed tool reads the spawn log brief.py wrote" \
   || bad "X514 CYCLE_DRIVER_RUNS_IN_A_FRESH_PLANT" "rc $rc; $(diff <(echo "$out") "$FX/fresh.out" | head -20)"
 
+# X663 CYCLE_DRIVER_NAMES_A_PLAN_WITHOUT_INCREMENTS: a plant's untouched plan
+# (the template's one comment line) has no §9 increments; the driver says so
+# and prints no empty cycle that reads as "nothing to do".
+P="$T/p13"; cp -R "$T/base" "$P"
+rc=0; out="$(C "$P" --unit u 2>"$T/err")" || rc=$?
+[[ $rc -eq 2 && -z "$out" && $(wc -l <"$T/err") -eq 1 ]] \
+  && grep -qx "cycle: docs/graph/plans/grill.md: §9 holds no increments, so there is no cycle to drive; write the plan's §9 (protocol.grill), or name the plan that has one with --plan" "$T/err" \
+  && ok "X663 CYCLE_DRIVER_NAMES_A_PLAN_WITHOUT_INCREMENTS: a plan with no §9 increments is named, exit 2, no report" \
+  || bad "X663 CYCLE_DRIVER_NAMES_A_PLAN_WITHOUT_INCREMENTS" "rc $rc; out: $out; err: $(cat "$T/err")"
+
+# X664 CYCLE_DRIVER_FALLS_BACK_TO_THE_TEMPLATE_ENGINE: a plant whose own
+# grill-lint.py predates cycle.py (an add-only engine an install never replaces)
+# is driven by the seed's template copy placed beside it, and the report names
+# that engine; with no usable engine at all the refusal says what to do.
+P="$T/p14"; setup "$P"
+printf '"""an engine older than cycle.py"""\n\ndef increments(body, errs=None, plan=None):\n    return []\n' > "$P/docs/graph/grill-lint.py"
+rc=0; out="$(C "$P" --unit u 2>&1)" || rc=$?
+[[ $rc -eq 0 ]] && [[ "$(sed -n 2p <<<"$out")" == "engine: docs/graph/templates/knowledge-graph/grill-lint.py, because docs/graph/grill-lint.py predates cycle.py (no plan_graph or pack); graft the plant to reconcile its engine" ]] \
+  && [[ "$(sed -n 3p <<<"$out")" == "ready RED tester: increments 1, 2, 8 (hardest low, size 7)" ]] \
+  && ok "X664 CYCLE_DRIVER_FALLS_BACK_TO_THE_TEMPLATE_ENGINE: an older plant engine is passed over for the template copy, named" \
+  || bad "X664 CYCLE_DRIVER_FALLS_BACK_TO_THE_TEMPLATE_ENGINE" "rc $rc: $out"
+cp "$P/docs/graph/grill-lint.py" "$P/docs/graph/templates/knowledge-graph/grill-lint.py"
+rc=0; out="$(C "$P" --unit u 2>"$T/err")" || rc=$?
+[[ $rc -eq 2 && -z "$out" ]] \
+  && grep -qx "cycle: docs/graph/grill-lint.py: predates cycle.py (no plan_graph or pack), and so does every engine beside it; graft the plant" "$T/err" \
+  && ok "X664 CYCLE_DRIVER_FALLS_BACK_TO_THE_TEMPLATE_ENGINE: with no usable engine the refusal says so, exit 2" \
+  || bad "X664 CYCLE_DRIVER_FALLS_BACK_TO_THE_TEMPLATE_ENGINE (none)" "rc $rc; out: $out; err: $(cat "$T/err")"
+
 if [[ $fail -ne 0 ]]; then echo "cycle driver: FAIL"; exit 1; fi
 echo "cycle driver: PASS"

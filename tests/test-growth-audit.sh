@@ -1214,6 +1214,147 @@ PY
 echo "  the build report follows the verdicts as advice; a failed build is one line — OK"
 }
 
+# --- X665-X670: the plant needs of the landed capabilities (SPEC-0011) ---
+# A capability the seed landed reads a fact only the plant can supply. On the
+# green all-ABSENT plant each need is owed by --plan, named by the lint as not
+# configured without failing it, carried when the owner declines it, and closed
+# once the fixture supplies the answer.
+plant_needs() { check_record "$1" 'print(" ".join(sorted(n["name"] for n in r.get("needs", []) if not n.get("configured"))))'; }
+# replan <plant>: --plan into $po, then the base's honest ABSENT domain row back
+# (a re-plan unions the obligations a domain row owes, which is case 61's matter)
+replan() {
+  po="$(python3 "$AUDIT" "$1" "$ROOT" --plan 2>&1 || true)"
+  patch_record "$1" 'it = r["inventory"][0]; it["expect"] = []; it["grounding"] = {"required": False, "sources": []}; it.pop("expert", None)'
+}
+scn_x665() {
+local p="$TMP/needs" po
+fixture renamed "$p"
+ga "$p"; rc_is 0 "setup: the renamed all-ABSENT plant no longer passes"
+replan "$p"
+for n in gate-output model-map cache-lifetime trust-paths test-layout; do
+  grep -q "PLANT NEED   $n — not configured for this plant" <<<"$po" \
+    || { printf '%s\n' "$po" >&2; fail "X665 PLAN_OWES_A_ROW_PER_PLANT_NEED: --plan did not owe $n"; }
+done
+! grep -q "PLANT NEED   \(cycle-driver\|token-ledger\)" <<<"$po" \
+  || { printf '%s\n' "$po" >&2; fail "X665 PLAN_OWES_A_ROW_PER_PLANT_NEED: --plan owed a need this plant already meets or does not have"; }
+[ "$(plant_needs "$p")" = "cache-lifetime gate-output model-map test-layout trust-paths" ] \
+  || fail "X665 PLAN_OWES_A_ROW_PER_PLANT_NEED: the record's open needs are '$(plant_needs "$p")'"
+check_record "$p" 'names = sorted(n["name"] for n in r["needs"])
+assert names == ["cache-lifetime", "cycle-driver", "gate-output", "model-map", "test-layout", "trust-paths"], names' \
+  || fail "X665 PLAN_OWES_A_ROW_PER_PLANT_NEED: the record does not carry one row per need of a claude-code plant"
+echo "  X665 PLAN_OWES_A_ROW_PER_PLANT_NEED — OK"
+
+ga "$p"; rc_is 0 "X666 UNCONFIGURED_NEED_IS_NAMED_AND_NEVER_BLOCKS: an unconfigured need failed the gate"
+has "note: plant need gate-output is not configured for this plant — docs/graph/runbooks/verification.md does not exist" "X666 UNCONFIGURED_NEED_IS_NAMED_AND_NEVER_BLOCKS: the ungrown runbook was not named"
+has "note: plant need test-layout is not configured for this plant — TEST_GLOBS in docs/graph/spec-lint.py is still the seed's default" "X666 UNCONFIGURED_NEED_IS_NAMED_AND_NEVER_BLOCKS: the default test layout was not named"
+has "note: plant need trust-paths is not configured for this plant — no crosscut node" "X666 UNCONFIGURED_NEED_IS_NAMED_AND_NEVER_BLOCKS: the unmarked trust paths were not named"
+[[ "$(tail -1 <<<"$out")" == "  coverage complete; 5 plant need(s) not configured for this plant: gate-output, model-map, cache-lifetime, trust-paths, test-layout" ]] \
+  || { printf '%s\n' "$out" >&2; fail "X666 UNCONFIGURED_NEED_IS_NAMED_AND_NEVER_BLOCKS: the summary reads clean"; }
+# the placeholder rows of the template runbook are the ungrown state
+rm -f "$p/docs/graph/runbooks/verification.unfilled.md"
+cp "$ROOT/templates/docs/runbooks/verification.md" "$p/docs/graph/runbooks/verification.md"
+ga "$p"; has "note: plant need gate-output is not configured for this plant — docs/graph/runbooks/verification.md still holds the template's placeholder gate row" "X666 UNCONFIGURED_NEED_IS_NAMED_AND_NEVER_BLOCKS: the template runbook was not named"
+rm "$p/docs/graph/runbooks/verification.md"   # a scaffold in an ABSENT collection is case 41's matter
+echo "  X666 UNCONFIGURED_NEED_IS_NAMED_AND_NEVER_BLOCKS — OK"
+
+# X668 the owner's word that the plant goes without is carried, never clean
+patch_record "$p" 'next(n for n in r["needs"] if n["name"] == "trust-paths").update(
+    status="ABSENT", reason="the owner decided on 2026-11-10 that this plant has no trust path")'
+ga "$p"; rc_is 0 "X668 OWNER_DECLINED_NEED_IS_CARRIED_AS_NOT_CONFIGURED: a declined need failed the gate"
+has "note: plant need trust-paths is not configured for this plant, by the owner's decision: the owner decided on 2026-11-10" "X668 OWNER_DECLINED_NEED_IS_CARRIED_AS_NOT_CONFIGURED: the declined need was not carried with its reason"
+grep -q "plant need(s) not configured for this plant: .*trust-paths (declined)" <<<"$(tail -1 <<<"$out")" \
+  || { printf '%s\n' "$out" >&2; fail "X668 OWNER_DECLINED_NEED_IS_CARRIED_AS_NOT_CONFIGURED: the summary dropped the declined need"; }
+replan "$p"
+check_record "$p" 'n = next(n for n in r["needs"] if n["name"] == "trust-paths")
+assert n["status"] == "ABSENT" and n["reason"].startswith("the owner decided"), n' \
+  || fail "X668 OWNER_DECLINED_NEED_IS_CARRIED_AS_NOT_CONFIGURED: --plan dropped the owner's answer"
+echo "  X668 OWNER_DECLINED_NEED_IS_CARRIED_AS_NOT_CONFIGURED — OK"
+
+# X669 an untouched OLDER model map is as unfilled as the current template
+python3 - "$ROOT/templates/docs/models.md" "$p/docs/graph/models.md" <<'PY'
+import sys
+t = open(sys.argv[1]).read()
+new = ("`provider/model` string, optionally ending in `#<variant>` to name the\n"
+       "model's variant for that row's effort, on a model that has one. A `-` cell")
+assert new in t, "the template moved; update the older-template fixture"
+t = t.replace(new, "`provider/model` string. A `-` cell")
+t = t.split("\n## Billing and cache lifetime", 1)[0] + "\n" if "\n## Billing and cache lifetime" in t else t
+open(sys.argv[2], "w").write(t)
+PY
+rm -f "$p/docs/graph/models.unfilled.md"
+ga "$p"; has "note: plant need model-map is not configured for this plant — docs/graph/models.md is unfilled, so every agent runs on its caller's model" "X669 MODEL_MAP_NEED_READS_THE_CELLS_NOT_THE_BYTES: an untouched older model map was not disclosed"
+has "note: plant need cache-lifetime is not configured for this plant — docs/graph/models.md records no billing mode" "X669 MODEL_MAP_NEED_READS_THE_CELLS_NOT_THE_BYTES: an older map's missing billing section was not named"
+echo "  X669 MODEL_MAP_NEED_READS_THE_CELLS_NOT_THE_BYTES — OK"
+
+# X667 each need closes once the plant supplies its answer
+patch_record "$p" <<'PY'
+BODY = ("A project-specific fact about this plant's gates, with its source path. " * 8)
+write("runbooks/verification.md", "# Verification\n\n" + BODY + "\n\n## Gates\n\n"
+      "| Gate | Command | Expected outcome | Trusted since |\n|---|---|---|---|\n"
+      "| `unit` | `make check 2>&1 | tee .cypress/unit.log` | exit 0; a failure prints the failing ids and one summary line, the log stays in .cypress/unit.log | 2026-11-10 |\n")
+cover("runbooks/verification.md", "docs/graph/runbooks/verification.md")
+t = (seed/"templates/docs/models.md").read_text()
+t = t.replace("`<provider/model-id>`", "`anthropic/claude-sonnet`")
+t = t.replace("- Billing: `<subscription | usage credits | API key | cloud provider>`", "- Billing: `API key`")
+t = t.replace("- Lead cache lifetime: `<default | 1h>`", "- Lead cache lifetime: `1h`")
+t = t.replace("- Worker cache lifetime: `<5m | 1h>`", "- Worker cache lifetime: `5m`")
+write("models.md", t)
+write("nodes/crosscut.payments.md", "---\nid: crosscut.payments\nkind: crosscut\ntrust: true\n---\n\n# payments\n")
+sl = (g/"spec-lint.py").read_text()
+start = sl.index("TEST_GLOBS = ["); end = sl.index("]", start) + 1
+(g/"spec-lint.py").write_text(sl[:start] + 'TEST_GLOBS = ["checks/**/*.sh"]' + sl[end:])
+next(n for n in r["needs"] if n["name"] == "trust-paths").update(status="", reason="")
+PY
+replan "$p"
+! grep -q "PLANT NEED" <<<"$po" || { printf '%s\n' "$po" >&2; fail "X667 NEED_CLOSES_WHEN_THE_PLANT_SUPPLIES_IT: a supplied need is still owed"; }
+[ -z "$(plant_needs "$p")" ] || fail "X667 NEED_CLOSES_WHEN_THE_PLANT_SUPPLIES_IT: the record still holds open needs: $(plant_needs "$p")"
+ga "$p"; rc_is 0 "X667 NEED_CLOSES_WHEN_THE_PLANT_SUPPLIES_IT: the supplied plant failed the gate"
+lacks "note: plant need" "X667 NEED_CLOSES_WHEN_THE_PLANT_SUPPLIES_IT: a supplied need is still named"
+[[ "$(tail -1 <<<"$out")" == "  coverage complete" ]] || { printf '%s\n' "$out" >&2; fail "X667 NEED_CLOSES_WHEN_THE_PLANT_SUPPLIES_IT: the summary is not plain"; }
+echo "  X667 NEED_CLOSES_WHEN_THE_PLANT_SUPPLIES_IT — OK"
+
+# X670 the needs follow the hosts the stamp records and the engine on disk
+python3 - "$p/.cypress/seed.json" <<'PY'
+import json, sys
+s = json.load(open(sys.argv[1])); s["tools"] = "claude-code opencode"; json.dump(s, open(sys.argv[1], "w"))
+PY
+printf '"""an engine older than cycle.py"""\n' > "$p/docs/graph/grill-lint.py"
+python3 - "$p/docs/graph/models.md" <<'PY'
+import sys
+p = sys.argv[1]; lines = open(p).read().split("\n")
+for i, l in enumerate(lines):
+    if l.startswith("| authoring | high |"):
+        lines[i] = "| authoring | high | `anthropic/claude-sonnet` | `<provider/model-id>` |"
+open(p, "w").write("\n".join(lines))
+PY
+replan "$p"
+grep -q "PLANT NEED   token-ledger — not configured for this plant: docs/graph/models.md records no \`Token usage:\` reader for opencode" <<<"$po" \
+  || { printf '%s\n' "$po" >&2; fail "X670 HOST_NEEDS_FOLLOW_THE_STAMPED_HOSTS: an opencode plant was not owed its token usage reader"; }
+grep -q "PLANT NEED   model-map — .*opencode column holds the placeholder in 1 of 5 rows" <<<"$po" \
+  || { printf '%s\n' "$po" >&2; fail "X670 HOST_NEEDS_FOLLOW_THE_STAMPED_HOSTS: an unfilled opencode row was not owed"; }
+grep -q "PLANT NEED   cycle-driver — .*docs/graph/grill-lint.py predates docs/graph/cycle.py" <<<"$po" \
+  || { printf '%s\n' "$po" >&2; fail "X670 HOST_NEEDS_FOLLOW_THE_STAMPED_HOSTS: an engine older than the cycle driver was not owed"; }
+echo "  X670 HOST_NEEDS_FOLLOW_THE_STAMPED_HOSTS — OK"
+}
+
+# --- X671: a language's expertise node owns its testing idiom (SPEC-0011) ---
+scn_x671() {
+local p="$TMP/x671"
+expertise_plant "$p" core language
+ga "$p" --plan; has "NEEDS TESTING IDIOM language dotnet" "X671 LANGUAGE_EXPERTISE_OWNS_ITS_TESTING_IDIOM: --plan did not owe the testing idiom"
+patch_record "$p" "write('nodes/expertise.dotnet.md', $EXPERTISE_NODE)" $'libraries:\n  - dotnet\n'
+ga "$p"; has "HOLLOW *language dotnet" "X671 LANGUAGE_EXPERTISE_OWNS_ITS_TESTING_IDIOM: a language node without its testing idiom was not HOLLOW"
+has "nodes/expertise.dotnet.md owns no .dotnet.testing-idiom." "X671 LANGUAGE_EXPERTISE_OWNS_ITS_TESTING_IDIOM: the missing testing idiom was not named"
+patch_record "$p" "write('nodes/expertise.dotnet.md', ($EXPERTISE_NODE).replace('  - dotnet.composition\n', '  - dotnet.composition\n  - dotnet.testing-idiom\n'))" $'libraries:\n  - dotnet\n'
+ga "$p"; lacks "testing-idiom" "X671 LANGUAGE_EXPERTISE_OWNS_ITS_TESTING_IDIOM: a node owning its testing idiom was still reported"
+ga "$p" --plan; lacks "NEEDS TESTING IDIOM" "X671 LANGUAGE_EXPERTISE_OWNS_ITS_TESTING_IDIOM: --plan still owes a supplied testing idiom"
+# a runtime's node owes none
+expertise_plant "$p.rt" core runtime
+patch_record "$p.rt" "write('nodes/expertise.dotnet.md', $EXPERTISE_NODE)" $'libraries:\n  - dotnet\n'
+ga "$p.rt"; lacks "testing-idiom" "X671 LANGUAGE_EXPERTISE_OWNS_ITS_TESTING_IDIOM: a runtime node was held to a language's testing idiom"
+echo "  X671 LANGUAGE_EXPERTISE_OWNS_ITS_TESTING_IDIOM — OK"
+}
+
 # --- dispatch: `__case scn_<name>` runs ONE scenario; bases come from the parent ---
 if [ -z "${GA_BASES:-}" ]; then
   export GA_BASES="$TMP/bases"
@@ -1230,7 +1371,7 @@ for s in scn_shared scn_s9 scn_absent scn_staff scn_nostaff scn_dflt scn_rows \
          scn_copy scn_x28 scn_x31 scn_x32 scn_x33 scn_x34 scn_x35 scn_x38 \
          scn_x39 scn_x40 scn_x41 scn_x42 scn_x43 scn_x44 scn_x45 scn_rawbase \
          scn_x58 scn_x61 scn_x62x63 scn_x64 scn_x65 scn_x68 scn_x382 scn_walk \
-         scn_model_map_disclosed scn_x69 scn_x70 scn_x468; do
+         scn_model_map_disclosed scn_x69 scn_x70 scn_x468 scn_x665 scn_x671; do
   printf '%s\t%s\n' "$s" "bash \"$SELF\" __case $s" >> "$SCN"
 done
 rc=0

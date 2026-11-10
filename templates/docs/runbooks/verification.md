@@ -8,6 +8,16 @@ command and an expected outcome.
 List only the gates the project's blast radius calls for
 (`test-first.proportionate-checks`); a row is added by owner decision.
 
+Write each command so a failure prints the failing ids and a one-line
+summary, leaves the full log on disk, and keeps its exit status through any
+filter over its output (`verify.null-result`); the expected outcome names the
+log's path. A command expected to run longer than a worker's prompt-cache
+lifetime says `slow` in its expected outcome, so it runs detached and is
+polled, or the lead runs it before the spawn (`toolcraft.bounded-execution`).
+Until the `<gate>` row below is replaced by this plant's own gates, the
+growth audit reports the gate output as not configured for this plant
+(`grow.plant-needs`).
+
 | Gate | Command | Expected outcome | Trusted since |
 |---|---|---|---|
 | `<gate>` | `<cmd>` | `<exit status and what it asserts>` | `<date>` |

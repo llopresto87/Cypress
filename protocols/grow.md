@@ -17,6 +17,7 @@ owns:
   - grow.node-authoring
   - grow.librarian-pass
   - grow.plant-facts
+  - grow.plant-needs
   - grow.legal-corpus
 requires:
   - method.delegation
@@ -325,6 +326,40 @@ evidence gap the scouts cannot close blocks a specific collection, that
 collection is delivered as an honest `unknown` with the blocker named, the one
 legitimate way a collection stays uncovered, and it is reported, never silent.
 
+## The plant needs of the landed capabilities (`grow.plant-needs`)
+
+Installing a capability carries it; it is grown when the plant supplies the
+fact it reads. `tools/growth-audit.py` holds the list (`NEEDS`) and probes each
+need from the plant's files on every run: `--plan` writes one `needs` row per
+need into `.cypress/coverage.json` and prints `PLANT NEED` for each open one;
+the lint prints `note: plant need <id> is not configured for this plant` and
+lists them on its summary line. A need is named and leaves the exit code to
+the verdicts, because each capability has a safe default; the summary names it
+until the plant supplies it. Growth supplies:
+
+- `gate-output`: Phase 4 replaces the `<gate>` row of `runbooks/verification.md`
+  with the plant's gates, each in the form the runbook's preamble states:
+  failing ids and a one-line summary, the log kept, the exit status kept
+  through a filter, and `slow` marked where it outlasts a worker's cache.
+- `cycle-driver`: nothing at growth. A plant engine older than `cycle.py` is
+  reconciled by graft Phase 3; until then the driver reads the template engine
+  and names it.
+- `model-map`, `cache-lifetime`, `token-ledger`: the owner's answers from the
+  plant-facts ask, in `docs/graph/models.md`: its Map rows, opencode's
+  `provider/model#variant` included, and its `## Billing and cache lifetime`
+  lines.
+- `trust-paths`: `trust: true` on each crosscut that is security,
+  data-integrity or money (`grow.gate.disclosure` asks for each unsettled one).
+- `test-layout`: Phase 6 sets `TEST_GLOBS` to the confirmed layout
+  (`grow.gate.spec-wired`).
+- The testing idiom is a lint verdict, not a need: each `language` row's
+  `expertise.<slug>` node owns `<slug>.testing-idiom`, `HOLLOW` until it does.
+
+When the owner decides the plant goes without one, its `needs` row gets
+`status: ABSENT` and the owner's words as `reason`, carried as not configured
+by the owner's decision. Each open or declined need is named in the delivery
+and the plant's `changelog.md` entry.
+
 ## The gate table (`grow.gate-table`)
 
 **This is the single home for every gate growth must pass.** A phase says what
@@ -352,8 +387,8 @@ from the plant root.
 | `grow.gate.write-scope` | growth wrote only under `docs/graph/`, `.cypress/coverage.json` and the gitignored `.cypress/growth/`, plus the installer's stamp and the harness projection of each corpus skill page the Phase 1 placement run placed, which that run's log names; no application code, manifest, CI, infrastructure or test file changed; the branch is still the one Phase 1 recorded, and every commit since the baseline is a growth checkpoint | per phase, before its checkpoint: `git -C <plant> status --porcelain --ignored -uall` and `git -C <plant> rev-parse --abbrev-ref HEAD HEAD`, diffed against the listing and HEAD recorded at the commit that opened that phase, so the diff is exactly that phase's writes, never the run's accumulated ones. At close, `git -C <plant> log --name-status <baseline>..HEAD` lists every path the checkpoints committed, each of which is in scope. Both flags are load-bearing and `-uall` is the one that makes this a file-level diff. Plain `--porcelain` is silent about every ignored path, the half of the tree a stray write is most likely to land in; `--ignored` on its own then names the shallowest ignored parent and nothing inside it (`!! .cypress/`), which is not an operand a stray file can be found in. With `-uall` the same command prints `!! .cypress/growth/boundaries.md`, and it un-collapses new untracked directories too, which the default reports as a bare `src/` | revert the stray write; knowledge found outside the graph is re-homed into it, never deleted and never left | detective |
 | `grow.gate.graph-integrity` | every node carries its required keys, `owns` is unique, `requires` resolves and stays acyclic, every `artifacts:`/`libraries:` edge resolves, `est_tokens` is honest, and a grown plant declares its `plant:` block | `python3 docs/graph/graph-lint.py` | route to the node's owning author; never weaken the linter to make a defective graph pass | soft |
 | `grow.gate.routing` | a representative task loads a small, relevant closure, and descent is as narrow as the graph claims: a task specific to one library loads the parent expertise node and that library's child and none of its siblings, and the run accounts for every child left out | `python3 docs/graph/graph-lint.py --plan "<representative task>"` prints the closure and the reason each node was left out, then a Phase 6 validator reads the two lists. `--plan` runs no check and exits 0 whatever it printed, so the command supplies the evidence and never the verdict. Judge: a Phase 6 validator, reading the closure the command prints | sharpen the child's own triggers, or lift the family word to the parent; Phase 5 owns the move | judgment |
-| `grow.gate.roster-routable` | every agent this growth authored is reachable and consistent: `routing_triggers` present, delegation matching its actual tool grant | `python3 docs/graph/agent-lint.py --lint` | give the expert its own triggers, or delete it; an unroutable agent is a file, not a specialist | soft |
-| `grow.gate.staffing` | every collection a roster agent declares in `plant_knowledge:` holds at least one filled leaf — all of them, not one of them — and every project-specific expert is a real node, marked the plant's own, citing what motivated it, and projected into every harness the stamp records | `python3 <seed>/tools/growth-audit.py <plant> <seed> --agents` | fill the collection that agent reads, or project the expert and re-run the installer for that adapter | soft |
+| `grow.gate.roster-routable` | every agent this growth authored is reachable and consistent: `routing_triggers` present, delegation matching its actual tool grant. It reads the graph homes, so it holds every host's projection of them, opencode's included | `python3 docs/graph/agent-lint.py --lint` | give the expert its own triggers, or delete it; an unroutable agent is a file, not a specialist | soft |
+| `grow.gate.staffing` | every collection a roster agent declares in `plant_knowledge:` holds at least one filled leaf — all of them, not one of them — and every project-specific expert is a real node, marked the plant's own, citing what motivated it, and projected into every harness the stamp records, on opencode as `.opencode/agents/<callable name>.md` | `python3 <seed>/tools/growth-audit.py <plant> <seed> --agents` | fill the collection that agent reads, or project the expert and re-run the installer for that adapter | soft |
 | `grow.gate.status` | every status-bearing artifact carries its lifecycle status in frontmatter, in the schema's one vocabulary, rather than as body prose | `python3 docs/graph/status-register.py --root docs/graph --strict-unknown`. What the flag adds is one extra finding, not a wider scan: `missing-status`, raised when a file of kind `adr`, `spec`, `deviation` or `risk` carries frontmatter with no `status:` key. It does not make the body-restatement check read that file — a status-less file is skipped before that check with the flag exactly as without it | move the status into frontmatter and leave a pointer in the body; `<seed>/tools/status-migrate.py` does it in bulk (Phase 1) | soft |
 | `grow.gate.no-scaffold` | no leaf under `docs/graph/` is still byte-identical to the seed template it was placed from | `python3 <seed>/tools/graft-audit.py <plant> <seed> --unfilled` | author the leaf, or record the honest blank — the remedy, the `runbooks/verification.md` exemption and the standing ban on `--prune` are in *No unfilled scaffold survives growth* above | soft |
 | `grow.gate.coverage` | every required row of `.cypress/coverage.json` is answered and every planned artifact exists and is substantive | `python3 <seed>/tools/growth-audit.py <plant> <seed>` — exit 0 | every verdict names a row still owed: route it to a bounded author, then re-run the gate. There is no budget at which a red gate becomes acceptable | soft |
@@ -371,7 +406,8 @@ from the plant root.
 | `grow.gate.not-rationale` | observed implementation has not been mislabeled as a spec or as ADR rationale | none — an authoring-class reviewer reads each record against the evidence it cites. Judge: an authoring-class reviewer | move it to an architecture leaf or node; a record is formalized from evidence, never from a gap | judgment |
 | `grow.gate.normative-practices` | every `best-practices/` leaf states the external standard AND where this project stands against it | none — an authoring-class reviewer reads each leaf against the source it cites. Judge: an authoring-class reviewer | author the stance, or move the description to `architecture/` where a description belongs | judgment |
 | `grow.gate.executed` | every command the graph records says where it was found, whether it was executed, and whether its target still exists, in the vocabulary of `verify.gate-states` | none — a Phase 6 validator reads the commands the graph now carries. Judge: a Phase 6 validator | label it in `verify.gate-states`' vocabulary (`target absent` and `declared, non-functional` included, each with the evidence that state asks for); growth executes no application command, so the discovered state with its `path:line` is the honest default | judgment |
-| `grow.gate.harness-homes` | every agent and skill a harness directory carries has a home in the graph: no `RETIRED` entry (an `origin: seed` node, or a projection of one, the running seed does not ship) and no `ORPHAN` entry (one the plant authored straight into a harness directory, which the router and every other harness cannot see) | `<seed>/install.sh <host> --check --project-dir <plant>` once for each host in the stamp's `tools`, which writes nothing and prints one `RETIRED` or `ORPHAN` line per entry (SPEC-0001 CHECK_FLAGS_RETIRED_HARNESS_ENTRY, CHECK_FLAGS_ORPHAN_HARNESS_ENTRY), or says every harness entry has a graph home | name each entry in the delivery and the plant's `changelog.md`. An `ORPHAN` is relocated into `docs/graph/{agents,skills}/` as a node the plant owns, inside growth's write scope, and its harness copy is left for the owner; a `RETIRED` entry is put to the owner as a numbered decision. Growth deletes neither: the deletion is the owner's act | detective |
+| `grow.gate.harness-homes` | every agent and skill a harness directory carries has a home in the graph: no `RETIRED` entry (an `origin: seed` node, or a projection of one, the running seed does not ship) and no `ORPHAN` entry (one the plant authored straight into a harness directory, which the router and every other harness cannot see) | `<seed>/install.sh <host> --check --project-dir <plant>` once for each host in the stamp's `tools`, which writes nothing and prints one `RETIRED` or `ORPHAN` line per entry (SPEC-0001 CHECK_FLAGS_RETIRED_HARNESS_ENTRY, CHECK_FLAGS_ORPHAN_HARNESS_ENTRY), or says every harness entry has a graph home. On opencode the same run compares each composed agent with its composition, reads the must-reach rules in it, and names a missing plugin envelope `.opencode/plugins/cypress.ts` or hook core under `.opencode/hooks/` | name each entry in the delivery and the plant's `changelog.md`. An `ORPHAN` is relocated into `docs/graph/{agents,skills}/` as a node the plant owns, inside growth's write scope, and its harness copy is left for the owner; a `RETIRED` entry is put to the owner as a numbered decision. Growth deletes neither: the deletion is the owner's act | detective |
+| `grow.gate.plant-needs` | each fact a landed capability reads from the plant is supplied, or the owner decided the plant goes without it (`grow.plant-needs`) | `python3 <seed>/tools/growth-audit.py <plant> <seed>`: its `note: plant need` lines and the needs listed on its summary line | supply the fact; or put it to the owner as a numbered decision and record the answer in the need's row; name each one still open in the delivery and the changelog | detective |
 | `grow.gate.view-drift` | generated tool views still match what generates them | the read-only regenerate-and-diff command the plant's own `docs/graph/tools/` page records for that view | regenerate, or record the drift as a finding. Where the plant generates no view the row reads `none available`, never blank | soft |
 
 ### What the coverage gate reports
@@ -544,6 +580,14 @@ default that counts non-tests is false coverage on every other plant. An
 unanswered layout stays a `status: open` item, owner named, in the coverage
 record and the delivery, and Phase 6 leaves the default in place and says so,
 so `grow.gate.spec-wired` reports it open, not wired.
+
+**The same ask carries the facts the seed's tools read (`grow.plant-needs`).**
+On Claude Code: the billing mode and the cache lifetime the owner wants for
+the lead and for the workers. On opencode: the `provider/model` for each map
+row, with the `#<variant>` its effort calls for where the model has one. On
+any host other than Claude Code: where the host reports a spawn's token usage.
+On every plant: whether it marks trust paths (yes names the crosscuts; no is
+recorded, and every increment is then read as on a trust path).
 
 **Ask the owner about the legal corpus, once, before authoring
 (`grow.legal-corpus`).** `agent.legal` runs without web access: the corpus the
@@ -965,7 +1009,8 @@ Through bounded authoring-class authors, populate every collection supported by 
   gates, and failure modes;
 - `runbooks/verification.md`: exact commands and prerequisites, each
   labelled as `grow.gate.executed` states (where it was found, not executed,
-  and whether its target exists);
+  and whether its target exists), in the output form its preamble states
+  (`grow.plant-needs`);
 - `runbooks/release.md` and `runbooks/rollback.md`: filled from the deploy
   or release procedure the source already carries (a deploy script, a
   pipeline's release stage, a project skill), each command cited and

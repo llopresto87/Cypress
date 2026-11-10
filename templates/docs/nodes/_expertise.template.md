@@ -7,6 +7,7 @@ title: {{slug}} — when this expertise is in play, and what it composes
 owns:
   - {{slug}}.applicability
   - {{slug}}.composition
+  - {{slug}}.testing-idiom         # a language node only; other kinds delete this line
 requires:
   - {{the parent expertise, if this is a sub-expertise; else leave the key empty}}
 composes:
@@ -64,6 +65,13 @@ prose (`skill.context-router` §3), so this node's family words compose nothing.
 {{A node that composes nothing says so in one line — "Nothing: this is a leaf
 expertise" — because composition is a fact this node owns and an unanswered
 section reads exactly like an unopened one.}}
+
+## Testing idiom
+
+{{A language node only (growth-audit holds it to this): how a test is written
+in this stack in this project, the runner and where its tests live, how a test
+feeds inputs to the code it guards, and what a fixture is here. Other kinds
+delete this section with its `owns` line.}}
 
 ## Version in play
 

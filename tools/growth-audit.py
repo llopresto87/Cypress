@@ -87,6 +87,16 @@ A graft to a newer seed that adds a collection or an agent therefore adds
 required rows the plant does not yet answer, and they surface as MISSING until
 the graft grows them. That is the "grafted is not grown" gap, made mechanical.
 
+PLANT NEEDS (SPEC-0011) are a fifth set: a fact a landed capability reads from
+the plant (its gate commands, its model map and billing, where a host reports
+token usage, its trust paths, its test layout, an engine the cycle driver can
+read). The NEEDS table below is their one home. Each is probed from the
+plant's files on every run; `--plan` writes a `needs` row per need with what
+it found and prints `PLANT NEED` for each open one, and the lint prints
+`note: plant need <id> is not configured for this plant` and lists them on its
+summary line. A need is never a verdict and never sets the exit code; the
+owner's decision to go without one is its row's `status: ABSENT` and `reason`.
+
 VERDICTS (a row fails the gate unless noted)
 
   MISSING      a required row is absent from the record entirely
@@ -141,7 +151,8 @@ The lint (with or without --json, not --agents) then runs the seed's
 tools/source-index.py build from the plant root and prints its report after
 the verdicts, as advice: it is never a verdict and never sets the exit code.
 --json appends it as one last item, {"source_index_report": [<line>, ...]},
-empty when the build did not answer.
+empty when the build did not answer; an item {"plant_needs": [...]} precedes it
+when a plant need is not configured.
 
 Exit 0 when every required row is answered and every planned artifact is
 present and substantive; 1 on any failing verdict; 2 on a malformed command
@@ -891,11 +902,274 @@ def needs_staffing(item, closed=False):
             or item.get("significance") == "core")
 
 
+# The inventory kinds whose expertise node also owns the stack's testing idiom:
+# how a test is written in it here (SPEC-0011
+# LANGUAGE_EXPERTISE_OWNS_ITS_TESTING_IDIOM). The tester writes against it and
+# the worth check's reviewer reads it; a language is the stack a test is in.
+TESTING_IDIOM_KINDS = ("language",)
+TESTING_IDIOM_KEY = "{slug}.testing-idiom"
+
+
+def testing_idiom_gap(plant, item):
+    """Why the item's expertise node does not yet own its testing idiom, or
+    None when it does or the item owes none."""
+    if item.get("kind") not in TESTING_IDIOM_KINDS or item.get("significance") == "incidental":
+        return None
+    slug = item.get("slug") or slugify(item.get("name", ""))
+    rel = EXPERTISE_PATH.format(slug=slug)
+    key = TESTING_IDIOM_KEY.format(slug=slug)
+    owns = parse_frontmatter(plant / GRAPH_HOME / rel).get("owns") or [] \
+        if (plant / GRAPH_HOME / rel).is_file() else []
+    if isinstance(owns, str):
+        owns = [owns]
+    if key in owns:
+        return None
+    return (f"{GRAPH_HOME}/{rel} owns no `{key}` — a language's expertise node "
+            f"carries how a test is written in it here (the runner and where its "
+            f"tests live, how a test feeds inputs to the code it guards, what a "
+            f"fixture is), which the tester writes against")
+
+
 def blank_row(**kw):
     row = {"status": "", "evidence": [], "reason": "", "searched": [],
            "blocker": ""}
     row.update(kw)
     return row
+
+
+# ------------------------------------------------------------- plant needs
+#
+# A capability the seed landed reads a fact only the plant can supply: the
+# gate commands it runs, the model each class runs on, the billing that sets
+# its cache lifetimes, where a host reports token usage, which paths are trust
+# paths, where its tests live, an engine the cycle driver can read. Installing
+# the capability carries it; it is grown when the plant supplies the fact. Each
+# need is probed from the plant's own files on every run (SPEC-0011), so the
+# record holds no verdict about it a later edit could leave stale: `--plan`
+# writes one row per need with what the probe found, and keeps only the
+# owner's answer (`status: ABSENT` with a `reason`) when the owner decided the
+# plant goes without. An unconfigured need is named as not configured for this
+# plant, never as clean, and never fails the gate: each capability has a safe
+# default (inherit the caller's model, `not recorded`, read every increment as
+# a trust path, the worth check's own "not configured" line).
+
+RUNBOOK_REL = "runbooks/verification.md"
+GATE_PLACEHOLDER_ROW = re.compile(r"^\|\s*`<gate>`\s*\|", re.M)
+MAP_ROW = re.compile(r"^\|\s*(authoring|investigation)\s*\|\s*(\w+)\s*\|(.*)\|\s*$", re.M)
+MAP_COLUMNS = {"prime-agent": "Prime Agent", "opencode": "opencode"}
+FACT_LINE = "^- {}:[ \t]*(.+)$"
+CACHE_FACTS = ("Billing", "Lead cache lifetime", "Worker cache lifetime")
+TOKEN_FACT = "Token usage"
+TRANSCRIPT_HOSTS = ("claude-code",)
+SPAWNING_HOSTS = ("opencode", "prime-agent", "codex", "github-copilot")
+
+
+def _read(path):
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+
+
+def _section(text, heading):
+    m = re.search(rf"^## {re.escape(heading)}\s*$(.*?)(?=^## |\Z)", text, re.M | re.S)
+    return m.group(1) if m else None
+
+
+def _fact(text, name):
+    """The value of a `- Name: value` line, None when the line is absent, ""
+    when it still holds its `<placeholder>`."""
+    m = re.search(FACT_LINE.format(re.escape(name)), text, re.M)
+    if not m:
+        return None
+    return "" if "<" in m.group(1) else m.group(1).strip()
+
+
+def stamped_tools(plant):
+    raw = _stamp(plant).get("tools") or ""
+    return raw.split() if isinstance(raw, str) else [str(t) for t in raw]
+
+
+def need_gate_output(plant, seed, tools):
+    text = _read(plant / GRAPH_HOME / RUNBOOK_REL)
+    tail = ("so no gate of this plant is recorded as printing its failing ids and "
+            "a one-line summary with its log kept (verify.null-result), and no slow "
+            "command is marked to run detached or before the spawn "
+            "(toolcraft.bounded-execution)")
+    if text is None:
+        return f"{GRAPH_HOME}/{RUNBOOK_REL} does not exist, {tail}"
+    if GATE_PLACEHOLDER_ROW.search(text):
+        return (f"{GRAPH_HOME}/{RUNBOOK_REL} still holds the template's placeholder "
+                f"gate row `<gate>`, {tail}")
+    gates = _section(text, "Gates") or ""
+    rows = [r for r in re.findall(r"^\|\s*`([^`]+)`\s*\|", gates, re.M)
+            if r != "worth-check"]
+    if not rows:
+        return (f"{GRAPH_HOME}/{RUNBOOK_REL} names no gate of this plant beyond "
+                f"the worth check, {tail}")
+    return None
+
+
+def need_cycle_driver(plant, seed, tools):
+    text = _read(plant / GRAPH_HOME / "grill-lint.py")
+    if text is None:
+        return (f"{GRAPH_HOME}/grill-lint.py does not exist, so {GRAPH_HOME}/cycle.py "
+                f"reads the plan through the seed template's engine")
+    if "def plan_graph(" not in text or "def pack(" not in text:
+        return (f"{GRAPH_HOME}/grill-lint.py predates {GRAPH_HOME}/cycle.py (no "
+                f"plan_graph or pack), so the cycle driver reads §9 through the "
+                f"seed template's engine and its configuration; graft Phase 3 "
+                f"reconciles the plant's engine")
+    return None
+
+
+def need_model_map(plant, seed, tools):
+    text = _read(plant / GRAPH_HOME / MODEL_MAP)
+    inherit = "so every agent runs on its caller's model"
+    if text is None:
+        return f"{GRAPH_HOME}/{MODEL_MAP} does not exist, {inherit}"
+    map_text = _section(text, "Map") or ""
+    header = next((ln for ln in map_text.splitlines()
+                   if ln.startswith("|") and "Class" in ln), "")
+    cols = [c.strip() for c in header.strip().strip("|").split("|")][2:]
+    rows = [[c.strip() for c in m.group(3).split("|")] for m in MAP_ROW.finditer(map_text)]
+    filled = lambda cell: bool(cell) and "<" not in cell
+    if not any(filled(c) for row in rows for c in row):
+        return f"{GRAPH_HOME}/{MODEL_MAP} is unfilled, {inherit}"
+    gaps = []
+    for host, col in MAP_COLUMNS.items():
+        if host not in tools or col not in cols:
+            continue
+        i = cols.index(col)
+        empty = sum(1 for row in rows if i >= len(row) or not filled(row[i]))
+        if empty:
+            gaps.append(f"its {col} column holds the placeholder in {empty} of "
+                        f"{len(rows)} rows, so those {host} agents run on their "
+                        f"caller's model")
+    return "; ".join(gaps) or None
+
+
+def need_cache_lifetime(plant, seed, tools):
+    if not set(TRANSCRIPT_HOSTS) & set(tools):
+        return None
+    text = _read(plant / GRAPH_HOME / MODEL_MAP)
+    tail = ("so the lead's and the workers' prompt-cache lifetimes are the host's "
+            "defaults, which nobody chose for this plant's billing "
+            "(integrations/claude-code/README.md)")
+    if text is None:
+        return f"{GRAPH_HOME}/{MODEL_MAP} does not exist, {tail}"
+    values = {name: _fact(text, name) for name in CACHE_FACTS}
+    if all(v is None for v in values.values()):
+        return (f"{GRAPH_HOME}/{MODEL_MAP} records no billing mode or cache "
+                f"lifetime (the page predates its `## Billing and cache lifetime` "
+                f"section, which the seed's templates/docs/models.md carries), {tail}")
+    open_ = [n for n, v in values.items() if not v]
+    if open_:
+        return (f"{GRAPH_HOME}/{MODEL_MAP} leaves {', '.join(open_)} unfilled, {tail}")
+    return None
+
+
+def need_token_ledger(plant, seed, tools):
+    hosts = [t for t in tools if t in SPAWNING_HOSTS]
+    if not hosts:
+        return None
+    text = _read(plant / GRAPH_HOME / MODEL_MAP) or ""
+    if _fact(text, TOKEN_FACT):
+        return None
+    return (f"{GRAPH_HOME}/{MODEL_MAP} records no `{TOKEN_FACT}:` reader for "
+            f"{', '.join(hosts)}, and brief.py reads a usage transcript on Claude "
+            f"Code only, so the Tokens line of `brief.py --log` reads `not "
+            f"recorded` for a spawn there; record how the lead obtains a spawn's "
+            f"usage JSON on that host (`brief.py --tokens <spawn id> --usage <file>`)")
+
+
+def need_trust_paths(plant, seed, tools):
+    nodes = plant / GRAPH_HOME / "nodes"
+    for p in sorted(nodes.rglob("*.md")) if nodes.is_dir() else []:
+        head = (_read(p) or "").split("---", 2)
+        fm = head[1] if len(head) == 3 else ""
+        if re.search(r"^kind:\s*crosscut\s*$", fm, re.M) \
+                and re.search(r"^trust:\s*true\s*$", fm, re.M | re.I):
+            return None
+    return (f"no crosscut node under {GRAPH_HOME}/nodes/ carries `trust: true`, "
+            f"so brief.py reads every increment as on a trust path and owes each a "
+            f"tester RED spawn (SPEC-0008); mark each security, data-integrity or "
+            f"money crosscut `trust: true` with the paths it claims "
+            f"(`graph-lint.py --trust-unsettled` names the candidates)")
+
+
+def _test_globs(path):
+    import ast
+    try:
+        tree = ast.parse(_read(path) or "")
+    except SyntaxError:
+        return None
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(
+                isinstance(t, ast.Name) and t.id == "TEST_GLOBS" for t in node.targets):
+            try:
+                return ast.literal_eval(node.value)
+            except ValueError:
+                return None
+    return None
+
+
+def need_test_layout(plant, seed, tools):
+    have = _test_globs(plant / GRAPH_HOME / "spec-lint.py")
+    if not have:
+        return (f"{GRAPH_HOME}/spec-lint.py sets no TEST_GLOBS, so the spec lint "
+                f"and the worth check read no test of this plant "
+                f"(grow.gate.spec-wired)")
+    if have == _test_globs(seed / "templates" / "knowledge-graph" / "spec-lint.py"):
+        return (f"TEST_GLOBS in {GRAPH_HOME}/spec-lint.py is still the seed's "
+                f"default, which no owner confirmed, so the spec lint and the "
+                f"worth check read only the conventional test layouts "
+                f"(grow.gate.spec-wired)")
+    return None
+
+
+# (id, what the plant supplies, its probe). One home: the grow step
+# `grow.plant-needs` and SPEC-0011 §6 quote this table.
+NEEDS = (
+    ("gate-output", "the plant's gate commands in runbooks/verification.md, "
+     "each printing its failing ids and a one-line summary and keeping its log, "
+     "the slow ones marked", need_gate_output),
+    ("cycle-driver", "a plan-reading engine the cycle driver can use "
+     "(docs/graph/grill-lint.py with plan_graph and pack)", need_cycle_driver),
+    ("model-map", "a model for each class and effort on each host that reads "
+     "docs/graph/models.md (delegation.model-map)", need_model_map),
+    ("cache-lifetime", "the billing mode and the lead's and workers' cache "
+     "lifetimes the owner chose, in docs/graph/models.md", need_cache_lifetime),
+    ("token-ledger", "where each host other than Claude Code reports a spawn's "
+     "token usage, in docs/graph/models.md", need_token_ledger),
+    ("trust-paths", "the trust-path marking: `trust: true` on each security, "
+     "data-integrity or money crosscut", need_trust_paths),
+    ("test-layout", "TEST_GLOBS in docs/graph/spec-lint.py set to the layout "
+     "the owner confirmed", need_test_layout),
+)
+# The hosts whose plants owe a need at all; None is every plant.
+NEED_HOSTS = {"cache-lifetime": TRANSCRIPT_HOSTS, "token-ledger": SPAWNING_HOSTS}
+
+
+def plant_needs(plant, seed, rec=None):
+    """[(id, what, detail or None, declined reason or None)] for each need this
+    plant owes, in table order."""
+    tools = stamped_tools(plant)
+    answered = {n.get("name"): n for n in (rec or {}).get("needs") or []
+                if isinstance(n, dict)}
+    out = []
+    for name, what, probe in NEEDS:
+        hosts = NEED_HOSTS.get(name)
+        if hosts is not None and not set(hosts) & set(tools):
+            continue
+        detail = probe(plant, seed, tools)
+        row = answered.get(name) or {}
+        declined = None
+        if detail and str(row.get("status") or "").strip().upper() == "ABSENT" \
+                and str(row.get("reason") or "").strip():
+            declined = str(row["reason"]).strip()
+        out.append((name, what, detail, declined))
+    return out
 
 
 def do_plan(plant, seed, opt):
@@ -979,6 +1253,15 @@ def do_plan(plant, seed, opt):
         if needs_staffing(item):
             item.setdefault("expert", {})
 
+    # The probe answers each need; the record keeps only the owner's answer.
+    kept = {n.get("name"): n for n in rec.get("needs") or [] if isinstance(n, dict)}
+    needs = plant_needs(plant, seed, rec)
+    rec["needs"] = [{"name": name, "what": what, "configured": detail is None,
+                     "detail": detail or "",
+                     "status": (kept.get(name) or {}).get("status", ""),
+                     "reason": (kept.get(name) or {}).get("reason", "")}
+                    for name, what, detail, _declined in needs]
+
     out = plant / RECORD_REL
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(rec, indent=2, ensure_ascii=False) + "\n",
@@ -1004,6 +1287,11 @@ def do_plan(plant, seed, opt):
           f"inventory items: {len(rec['inventory'])}")
     for a in added:
         print(f"  NEW ROW      {a}")
+    for name, what, detail, declined in needs:
+        if detail and not declined:
+            print(f"  PLANT NEED   {name} — not configured for this plant: {detail}. "
+                  f"Supply {what} (grow.plant-needs), or record the owner's "
+                  f"decision to go without in this row")
     if not rec["inventory"]:
         print("  !! the inventory is empty — growth has nothing to be held to. "
               "Fill it from the scouts' reconciled ledgers (one row per "
@@ -1027,6 +1315,10 @@ def do_plan(plant, seed, opt):
                   f"{', '.join(majors[slug])} — expertise.{slug} composes one child "
                   f"per major, and each child's load_when carries that "
                   f"target's own tokens")
+        gap = testing_idiom_gap(plant, item)
+        if gap:
+            print(f"  NEEDS TESTING IDIOM {item.get('kind')} {item.get('name', '?')} — "
+                  f"{gap}")
         if needs_staffing(item) and "warranted" not in (item.get("expert") or {}):
             print(f"  NEEDS EXPERT {item.get('kind', 'item')} "
                   f"{item.get('name', '?')} — this surface owes an expertise "
@@ -1703,6 +1995,11 @@ def lint_inventory(plant, rec, templates, findings):
                                             f"home rather than restating it, so "
                                             f"without that edge it routes to "
                                             f"nothing"))
+        node = EXPERTISE_PATH.format(slug=item.get("slug") or slugify(name))
+        if (plant / GRAPH_HOME / node).is_file():
+            gap = testing_idiom_gap(plant, item)
+            if gap:
+                findings.append(Finding("HOLLOW", label, gap))
         if needs_staffing(item, closed):
             # The decision ledger §9 was always supposed to force, recorded
             # where it survives the run. A dominant domain or a core part of
@@ -1958,19 +2255,23 @@ def do_lint(plant, seed, opt):
 
     # The full lint only: --agents is a partial audit and runs no build.
     report, why = source_index_report(plant, seed) if not opt.get("agents") else (None, None)
+    # SPEC-0011: named, never clean, never a failing verdict.
+    needs = [] if opt.get("agents") else \
+        [(n, d, dec) for n, _w, d, dec in plant_needs(plant, seed, rec) if d]
     if opt.get("json"):
         doc = [{"verdict": f.verdict, "row": f.row, "detail": f.detail} for f in findings]
+        if needs:
+            doc.append({"plant_needs": [{"name": n, "configured": False, "detail": d,
+                                         "declined": dec or ""} for n, d, dec in needs]})
         if report is not None:
             doc.append({"source_index_report": report})
         print(json.dumps(doc, indent=2))
     else:
         for f in findings:
             print(f)
-        model_map = plant / GRAPH_HOME / MODEL_MAP
-        if model_map.is_file() and model_map.read_bytes() == templates.get(MODEL_MAP):
-            print(f"  note: {GRAPH_HOME}/{MODEL_MAP} is unfilled, so every agent "
-                  f"runs on its caller's model. It is the plant's configuration, "
-                  f"disclosed here and not a coverage row.")
+        for name, detail, declined in needs:
+            print(f"  note: plant need {name} is not configured for this plant"
+                  + (f", by the owner's decision: {declined}" if declined else f" — {detail}"))
         # After the verdicts and before the summary line, which stays the last
         # line (graft-run.py reads it as the coverage gate's evidence).
         if report is not None:
@@ -1994,7 +2295,11 @@ def do_lint(plant, seed, opt):
         else:
             print(f"  coverage complete"
                   + (f" ({len(unknown)} named blocker(s) carried)"
-                     if unknown else ""))
+                     if unknown else "")
+                  + (f"; {len(needs)} plant need(s) not configured for this "
+                     f"plant: " + ", ".join(n + (" (declined)" if dec else "")
+                                            for n, _d, dec in needs)
+                     if needs else ""))
     return 1 if any(f.fatal() for f in findings) else 0
 
 

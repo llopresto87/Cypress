@@ -1509,7 +1509,16 @@ check_opencode_projections() {
         [[ "$name" == _routes.golden.tsv && -f "$home/$name" ]] && continue
         stale+=("$name")
     done
-    local rc=0
+    local rc=0 out
+    if [[ -d "$dest" ]]; then
+        # DELIVERY_LINT (OPENCODE_CHECK_HOLDS_THE_MUST_REACH_RULES): the same
+        # table as claude-code, each role found by its callable name
+        if out="$(run_python "$SEED_ROOT/tools/delivery_rules.py" "$dest" 2>&1)"; then
+            log "opencode agents carry every must-reach rule."
+        else
+            warn "$out"; rc=1
+        fi
+    fi
     check_opencode_skill_projections || rc=1
     check_opencode_config_shape || rc=1
     if [[ ${#stale[@]} -eq 0 ]]; then
@@ -1547,7 +1556,7 @@ check_opencode_config_shape() {
     local cfg="$PROJECT_DIR/opencode.json"
     [[ -f "$cfg" ]] || return 0
     if run_python -B -c 'import json, sys; sys.exit(0 if "subagent_depth" in json.load(open(sys.argv[1])) else 1)' "$cfg" 2>/dev/null; then
-        warn "opencode.json is in the earlier shape: its top-level subagent_depth is an unsupported legacy setting on OpenCode 2, which omits it. Re-run: install.sh opencode (the file is replaced and the old one kept as a backup)"
+        warn "opencode.json is in the earlier shape: its top-level subagent_depth is an unsupported legacy setting on OpenCode 2, which omits it. The remedy depends on how the plant is upgraded: outside a graft, re-run install.sh opencode (it replaces the file and keeps the old one as a backup); inside a graft, which keeps the plant's file, merge the seed's integrations/opencode/opencode.json into it in Phase 3 (Reconcile the machinery), and graft.gate.kept-deltas names the lines it still lacks"
         return 1
     fi
     return 0
@@ -3423,6 +3432,7 @@ ARGV = {"UserPromptSubmit": ["--prompt=" + PROMPT], "SessionStart": ["--source=s
 SCRIPT = re.compile(r"\$\{CLAUDE_PROJECT_DIR:-\$PWD\}/([^\"'\s;|&]+\.py)")
 RUNNER = re.compile(r"\bthen\s+([^\s\"';|&]+)(?:\s+-[A-Za-z]+)*\s+\"\$f\"")
 TS_RUNNER = re.compile(r'^const PYTHON = "([^"\s]+)";$', re.M)
+GUARDED = re.compile(r'\bif \[ -f "\$f" \]; then\b')
 hooks, failed = [], 0
 usable = {}
 
@@ -3506,11 +3516,21 @@ if settings.is_file():
         for h in entry.get("hooks", []):
             m = SCRIPT.search(str(h.get("command", ""))) if isinstance(h, dict) and h.get("type") == "command" else None
             if m:
-                guards.append((str(entry.get("matcher", "")), m.group(1)))
-for matcher, script in guards:
+                guards.append((str(entry.get("matcher", "")), m.group(1),
+                               bool(GUARDED.search(str(h.get("command", ""))))))
+for matcher, script, *guarded in guards:
     name = f"hook PreToolUse[{matcher}] {script}"
     if (root / script).is_file():
         print(f"[seed] --check: {name} is present; a guard is not run.")
+    elif guarded and not guarded[0]:
+        # An older seed's wiring runs the script with no existence test: the
+        # interpreter exits 2 on a missing file and the host blocks the tool
+        # (CHECK_SAYS_AN_UNGUARDED_WIRING_BLOCKS_THE_TOOL).
+        print(f"[seed] WARNING: --check: {name} is wired without an existence test and the "
+              f"script is missing, so the host's interpreter exits 2 on it and every {matcher} "
+              f"call is blocked; re-run install.sh to restore the script and the guarded wiring",
+              file=sys.stderr)
+        failed = 1
     else:
         print(f"[seed] WARNING: --check: {name} is wired but the script is missing; "
               f"the guard is off; re-run install.sh to restore it", file=sys.stderr)
