@@ -958,10 +958,10 @@ PY
     rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$P" 2>&1)" || rc=$?
     [[ $rc -ne 0 ]] && grep -q "claude-code agents are STALE: .*02-implementer.md.*install.sh claude-code --recompose-agents" <<<"$out" \
         || fail "AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK: the STALE line does not name --recompose-agents (rc $rc): $out"
-    before="$(cd "$P" && find . -path ./.claude/agents -prune -o -type f -print | sort | xargs shasum | shasum)"
+    before="$(cd "$P" && find . -path ./.claude/agents -prune -o -type f -print | sort | xargs "${SHA256[@]}" | "${SHA256[@]}")"
     rc=0; out="$("$ROOT/install.sh" claude-code --recompose-agents --project-dir "$P" 2>&1)" || rc=$?
     [[ $rc -eq 0 ]] || fail "AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK: --recompose-agents exited $rc: $out"
-    after="$(cd "$P" && find . -path ./.claude/agents -prune -o -type f -print | sort | xargs shasum | shasum)"
+    after="$(cd "$P" && find . -path ./.claude/agents -prune -o -type f -print | sort | xargs "${SHA256[@]}" | "${SHA256[@]}")"
     [[ "$before" == "$after" ]] \
         || fail "AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK: --recompose-agents wrote outside .claude/agents/"
     grep -q '^A plant posture rule the graft kept\.$' "$P/.claude/agents/02-implementer.md" \
