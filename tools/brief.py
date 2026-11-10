@@ -45,6 +45,16 @@ for another role is refused (mint once, `delegation.tracing`).
 `--log` prints the log as the delivery's attribution lines and exits; it exits
 1 with a BLOCK line for each logged review of trust-path files that no later
 `security` spawn follows (`test-first.security-path`).
+
+`--tokens SPAWN_ID --usage FILE|-` appends the spawn's host-reported token
+counts to `tokens.jsonl` beside the spawn log, one record per logged spawn_id
+(keys: spawn_id, model, input, cache_write, cache_write_5m, cache_write_1h,
+cache_read, output, source). A count the usage object does not give is the
+literal `not recorded`; nothing is estimated and no price is stored.
+`--tokens SPAWN_ID --transcript PATH` reads a Claude Code subagent transcript
+instead: each message counts once, from the last record carrying its id.
+Exit 0 with one `tokens:` line; exit 2 naming an unlogged or already recorded
+spawn_id, a key outside the schema, or a count that is not a whole number.
 """
 
 import argparse
@@ -205,7 +215,103 @@ def read_log(plan: Path) -> list[dict]:
     return rows
 
 
+NR = "not recorded"
+COUNTS = ("input", "cache_write", "cache_write_5m", "cache_write_1h", "cache_read", "output")
+TOKEN_KEYS = ("spawn_id", "model") + COUNTS + ("source",)
+
+
+def token_ledger(plan: Path) -> Path:
+    return plan.parent / "tokens.jsonl"
+
+
+def transcript_usage(path: Path) -> dict:
+    """Sums of a Claude Code subagent transcript's `assistant` usage, each
+    message id counted once from its last record (a streamed message repeats
+    its id and only the last record holds the final output count); a
+    `<synthetic>` record is the host's, not a model response. No usage gives {}."""
+    last = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        try:
+            r = json.loads(line)
+        except ValueError:
+            continue
+        m = r.get("message") if isinstance(r, dict) else None
+        if r.get("type") != "assistant" or not isinstance(m, dict) or not isinstance(m.get("usage"), dict) \
+                or m.get("model") == "<synthetic>":
+            continue
+        last[m.get("id") or f"line{len(last)}"] = m
+    if not last:
+        return {"source": "claude-code transcript"}
+    host = {"input": ("input_tokens",), "cache_write": ("cache_creation_input_tokens",),
+            "cache_write_5m": ("cache_creation", "ephemeral_5m_input_tokens"),
+            "cache_write_1h": ("cache_creation", "ephemeral_1h_input_tokens"),
+            "cache_read": ("cache_read_input_tokens",), "output": ("output_tokens",)}
+    out = {"model": ", ".join(sorted({m.get("model") for m in last.values() if m.get("model")})) or NR,
+           "source": "claude-code transcript"}
+    for key, where in host.items():
+        vals = []
+        for m in last.values():
+            v = m["usage"]
+            for w in where:
+                v = v.get(w) if isinstance(v, dict) else None
+            if isinstance(v, int) and not isinstance(v, bool):
+                vals.append(v)
+        if vals:
+            out[key] = sum(vals)
+    return out
+
+
+def record_tokens(argv: list) -> int:
+    tp = argparse.ArgumentParser(prog="brief.py --tokens")
+    tp.add_argument("--tokens", required=True, metavar="SPAWN_ID")
+    src = tp.add_mutually_exclusive_group(required=True)
+    src.add_argument("--usage", help="a JSON usage object, or - for stdin")
+    src.add_argument("--transcript", help="a Claude Code subagent transcript")
+    tp.add_argument("--plan", default=str(GRAPH / "plans" / "grill.md"))
+    a = tp.parse_args(argv)
+    sid, plan = a.tokens, Path(a.plan)
+    try:
+        if a.transcript:
+            usage = transcript_usage(Path(a.transcript))
+        else:
+            usage = json.loads(sys.stdin.read() if a.usage == "-" else Path(a.usage).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        print(f"brief: --tokens could not read the usage: {e}", file=sys.stderr)
+        return 2
+    if not isinstance(usage, dict):
+        print("brief: --tokens takes a JSON object", file=sys.stderr)
+        return 2
+    extra = sorted(set(usage) - set(TOKEN_KEYS[1:]))
+    if extra:
+        print(f"brief: --tokens: {', '.join(extra)} is outside the ledger's keys "
+              f"({', '.join(TOKEN_KEYS[1:])}); no price is stored", file=sys.stderr)
+        return 2
+    for k in COUNTS:
+        v = usage.get(k, NR)
+        if v != NR and (isinstance(v, bool) or not isinstance(v, int) or v < 0):
+            print(f"brief: --tokens: {k} is {v!r}, not a whole number or {NR!r}", file=sys.stderr)
+            return 2
+    if not any(r.get("spawn_id") == sid for r in read_log(plan)):
+        print(f"brief: spawn_id {sid} is not in the spawn log {spawn_log(plan)}", file=sys.stderr)
+        return 2
+    ledger = token_ledger(plan)
+    held = ledger.read_text(encoding="utf-8").splitlines() if ledger.is_file() else []
+    if any(json.loads(l).get("spawn_id") == sid for l in held if l.strip().startswith("{")):
+        print(f"brief: spawn_id {sid} is already recorded in {ledger}; the ledger is append-only", file=sys.stderr)
+        return 2
+    rec = {k: usage.get(k, NR) for k in TOKEN_KEYS}
+    rec["spawn_id"] = sid
+    with open(ledger, "a", encoding="utf-8") as fh:
+        fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    print(f"tokens: {sid} — {rec['model']} — input {rec['input']}, cache write {rec['cache_write']} "
+          f"(5m {rec['cache_write_5m']}, 1h {rec['cache_write_1h']}), cache read {rec['cache_read']}, "
+          f"output {rec['output']} — source: {rec['source']}")
+    return 0
+
+
 def main() -> int:
+    if "--tokens" in sys.argv[1:]:
+        return record_tokens(sys.argv[1:])
     if "--log" in sys.argv[1:]:
         lp = argparse.ArgumentParser()
         lp.add_argument("--log", action="store_true")

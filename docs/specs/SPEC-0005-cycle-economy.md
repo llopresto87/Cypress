@@ -537,6 +537,40 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   amendments to one tester `amend` spawn and its code follow-up to one
   implementer `fix`, both low
 
+### Contract: TOKEN_LEDGER_RECORDS_HOST_USAGE
+- **Test file:** `tests/test-brief.sh`
+- **Given:** a plant whose spawn log holds spawn ids `a`, `b` and `c`
+- **When:** `brief.py --tokens <spawn_id> --usage FILE|-` runs with a full
+  usage object for `a` (`input`, `cache_write`, `cache_write_5m`,
+  `cache_write_1h`, `cache_read`, `output`, `model`, `source`), a partial one
+  for `b` and `{}` for `c`
+- **Then:** `docs/graph/plans/tokens.jsonl`, beside the spawn log, gains one
+  JSON line per spawn with exactly the keys `spawn_id`, `model`, `input`,
+  `cache_write`, `cache_write_5m`, `cache_write_1h`, `cache_read`, `output`
+  and `source`; a value the usage gave is stored as given, every other value
+  is the literal `not recorded`, and stdout carries one line
+  `tokens: <spawn_id> — <model> — input N, cache write N (5m N, 1h N), cache read N, output N — source: <source>`
+  (exit 0)
+- **And:** a spawn_id the spawn log does not hold, one the ledger already
+  holds, a count that is not a whole number, or a key outside the schema is
+  refused (exit 2, one stderr line naming it), and the ledger is unchanged;
+  the spawn log is never rewritten, and no price is stored
+
+### Contract: TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT
+- **Test file:** `tests/test-brief.sh`
+- **Given:** a subagent transcript in the shape Claude Code writes (one JSON
+  record per line; an `assistant` record carries `message.id`,
+  `message.model` and `message.usage` with `input_tokens`,
+  `cache_creation_input_tokens`, `cache_creation.ephemeral_5m_input_tokens`,
+  `cache_creation.ephemeral_1h_input_tokens`, `cache_read_input_tokens` and
+  `output_tokens`; one message streams as several records with one id, the
+  last carrying the final `output_tokens`), and a transcript with no usage
+- **When:** `brief.py --tokens <spawn_id> --transcript PATH` runs on each
+- **Then:** the first records the sums over messages, each message counted
+  once from its last record, the 5m and 1h cache writes apart, the model,
+  and `source: claude-code transcript`; a `<synthetic>` record counts for
+  nothing; the second records `not recorded` for every count and the model
+
 ### Contract: REVIEW_BRIEF_NAMES_THE_SECURITY_PASS
 - **Test file:** `tests/test-brief.sh`
 - **Given:** a plant graph with a `trust: true` crosscut claiming `app/trusted/**`,
@@ -2525,6 +2559,8 @@ gives.
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | X495 the security brief carries the SECURITY PATH block byte for byte; a tester brief does not | tests/test-brief.sh | fixture | green |
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | (none) the `TRUST_PATH_TAKES_THE_SECURITY_PASS` row of seed-lint's `TEXT_RULES`: `protocols/test-first.md` holds that the security pass is the one fix round of reviewer findings on the covered files; red id: `TRUST_PATH_TAKES_THE_SECURITY_PASS: protocols/test-first.md does not hold 'the security pass is their one fix round'` | tests/seed-lint.py | real-tree | green |
 | BRIEF_DERIVES_THE_SPAWN_EFFORT | X502 six role, kind and label fixtures print their effort; the log records it; an unknown kind is refused; X503 a first review of trust paths reads `first-trust`; seen red first | tests/test-brief.sh | fixture | green |
+| TOKEN_LEDGER_RECORDS_HOST_USAGE | X505 a full, a partial and an empty usage are stored as given or `not recorded`; an unknown spawn, a second record, a fractional count and an unknown key are refused; seen red first | tests/test-brief.sh | fixture | green |
+| TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT | X506 a hand transcript with a repeated message id, a 1h write and a `<synthetic>` record sums once per message; an empty transcript records `not recorded`; seen red first | tests/test-brief.sh | fixture | green |
 | REVIEW_BRIEF_NAMES_THE_SECURITY_PASS | X503 a review naming `app/trusted/session.py` with `app/trusted/gate.py` uncommitted prints both; a review of `app/ui/page.py` prints nothing; `--log` blocks until a security spawn follows; seen red first | tests/test-brief.sh | fixture | green |
 | IMPLEMENTER_WRITES_A_DESIGN_NOTE | (none) the `IMPLEMENTER_WRITES_A_DESIGN_NOTE` row of seed-lint's `TEXT_RULES`; red id: `IMPLEMENTER_WRITES_A_DESIGN_NOTE: agents/02-implementer.md does not hold 'restart of the component that holds state'`; seen red first | tests/seed-lint.py | real-tree | green |
 | RED_TEST_HOLDS_ITS_EVIDENCE | (none) the `RED_TEST_HOLDS_ITS_EVIDENCE` row of seed-lint's `TEXT_RULES`; red id: `RED_TEST_HOLDS_ITS_EVIDENCE: skills/test-first/SKILL.md does not hold 'again after rebuilding the component that holds the state'`; seen red first | tests/seed-lint.py | real-tree | green |
@@ -3019,3 +3055,13 @@ kept outside the seed.
   stays medium. The review, the high-effort security pass and the findings
   tester are the quality net. BRIEF_DERIVES_THE_SPAWN_EFFORT reads it (seen
   red first).
+- 2026-11-10 — the owner's brief of 2026-11-10 asks that token use be visible
+  per spawn with no number estimated. `brief.py --tokens` writes one record
+  per spawn_id to `tokens.jsonl` beside the spawn log, from a usage file or
+  from a Claude Code subagent transcript, and stores `not recorded` for what
+  the host did not report (TOKEN_LEDGER_RECORDS_HOST_USAGE,
+  TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT, seen red first). The writer
+  is a mode of `brief.py`, the spawn log's one writer, so no new script is
+  placed in a plant. The transcript shape was read from real subagent
+  transcripts on 2026-11-10: a message streams as several records with one
+  id and only the last carries its final output count.

@@ -2,7 +2,7 @@
 status: implemented
 status_date: 2026-10-05
 owner: architect
-status_evidence: tests/test-session-metrics.sh (15 cases: X399, X400, X404, X406 to X410, X412 to X414, X416, X417, X423, X484), tests/test-lint-audibility.sh (X415) and tests/test-full-install.sh (E14), all wired into tests/run.sh, every §10 row green over the 25 contracts; one sanity check after the cut (an empty value never reported, caught by X400); a read-only `--all --json` query over eight plant changelogs that finds their one delivery entry, filled
+status_evidence: tests/test-session-metrics.sh (16 cases: X399, X400, X404, X406 to X410, X412 to X414, X416, X417, X423, X484, X504), tests/test-lint-audibility.sh (X415) and tests/test-full-install.sh (E14), all wired into tests/run.sh, every §10 row green over the 27 contracts; one sanity check after the cut (an empty value never reported, caught by X400); a read-only `--all --json` query over eight plant changelogs that finds their one delivery entry, filled
 ---
 
 # SPEC-0006: the session-metrics reader
@@ -287,10 +287,10 @@ Retired 2026-10-05 (consolidation, `test-first.proportionate-checks`): no named 
 
 ### Contract: METRICS_LABELS_FROM_DELIVER_NODE
 - **Given:** a deliver node built from the shipped `protocols/deliver.md`
-  whose template block carries one extra line, `- Tokens: <per spawn>`, and a judged entry that carries every
-  `protocols/deliver.md` label but not `Tokens`
+  whose template block carries one extra line, `- Wall time: <per spawn>`, and a judged entry that carries every
+  `protocols/deliver.md` label but not `Wall time`
 - **When:** the lint role runs with `--deliver` naming that node
-- **Then:** it exits 1 with one `METRICS_LINE_MISSING` finding naming `Tokens`
+- **Then:** it exits 1 with one `METRICS_LINE_MISSING` finding naming `Wall time`
 
 ### Contract: METRICS_SHIPPED_DELIVER_NODE_PARSES
 - **Given:** the seed's own `protocols/deliver.md`, as shipped
@@ -303,6 +303,29 @@ Retired 2026-10-05 (consolidation, `test-first.proportionate-checks`): no named 
   shipping condition
 - **Note:** narrowed 2026-10-05 (consolidation): the check that the file names
   `not recorded: <reason>` is dropped; it read back prose (§10 coverage loss)
+
+### Contract: METRICS_OPTIONAL_LINE_MAY_BE_ABSENT
+- **Given:** the shipped `protocols/deliver.md`, whose template line
+  `- Tokens:` has a value starting `<optional`, and a judged T2 entry that
+  carries every other label but no `Tokens` line
+- **When:** the lint role runs on it
+- **Then:** it exits 0 with the PASS headline, so a delivery written before
+  the Tokens line existed still passes; `--labels` still prints `Tokens`
+- **And:** an optional line that is present is judged like any other: empty,
+  or `not recorded` with no reason, is a finding
+
+### Contract: METRICS_TOKENS_LINE_READ
+- **Given:** three T2 entries: one whose `- Tokens:` line reads
+  `input 1200, cache write 300 (5m 300, 1h 0), cache read 9000, output 400 — 3 of 4 spawns recorded`,
+  one whose line reads `not recorded: the host reported no usage`, and one
+  whose line reads `about 10k`
+- **When:** the lint role runs on each, and `--all --json` on the first
+- **Then:** the first two pass; the third exits 1 with one
+  `METRICS_TOKENS_UNREADABLE` finding on its line naming the shape; `--all
+  --json` reports the line verbatim under `lines` as `Tokens`
+- **And:** each count of the shape is a whole number or `not recorded`, never
+  an estimate, and the line names how many of the entry's spawns the token
+  ledger recorded
 
 ### Contract: METRICS_DELIVER_NODE_UNPARSEABLE_FAILS_LOUD
 - **Given:** a deliver node with no fenced block that holds a
@@ -979,8 +1002,10 @@ its survivor, or records a coverage loss:
 | METRICS_SECTION_HEADINGS_STAY_IN_ENTRY | X410 case_entry_headings: one entry written flat | tests/test-session-metrics.sh | unit (fixture) | green |
 | METRICS_LINES_COUNTED_AS_GREP_DOES | X423 case_lines_as_grep | tests/test-session-metrics.sh | unit (fixture) | green |
 | METRICS_LEADING_BOM_IGNORED | X417 case_other_entry_is_a_note: arm (d), the file starts with the byte-order mark, `--entry 1` | tests/test-session-metrics.sh | unit (fixture) | green |
-| METRICS_LABELS_FROM_DELIVER_NODE | X412 case_labels_from_node: the Tokens node built in the case from `protocols/deliver.md` | tests/test-session-metrics.sh | unit (fixture) | green |
+| METRICS_LABELS_FROM_DELIVER_NODE | X412 case_labels_from_node: the Wall time node built in the case from `protocols/deliver.md` | tests/test-session-metrics.sh | unit (fixture) | green |
 | METRICS_SHIPPED_DELIVER_NODE_PARSES | X413 case_shipped_deliver_node: the labels and the `--since … --entry` command line | tests/test-session-metrics.sh | unit (real tree) | green |
+| METRICS_OPTIONAL_LINE_MAY_BE_ABSENT | X504 case_tokens_line: an entry without `Tokens` passes against the shipped node; an empty optional line fails; seen red first | tests/test-session-metrics.sh | unit (fixture) | green |
+| METRICS_TOKENS_LINE_READ | X504 case_tokens_line: the filled shape and `not recorded: <reason>` pass, `about 10k` is `METRICS_TOKENS_UNREADABLE`, `--all --json` reports the line; seen red first | tests/test-session-metrics.sh | unit (fixture) | green |
 | METRICS_DELIVER_NODE_UNPARSEABLE_FAILS_LOUD | X414 case_deliver_node_unparseable: the no-fence node built in the case | tests/test-session-metrics.sh | unit (fixture) | green |
 | METRICS_UNREADABLE_CHANGELOG_FAILS_LOUD | X415, one row of the unreadable-input sweep | tests/test-lint-audibility.sh | unit (fixture) | green |
 | METRICS_ALL_REPORTS_EVERY_ENTRY | X416 case_all_json | tests/test-session-metrics.sh | unit (fixture) | green |
@@ -1163,3 +1188,12 @@ its survivor, or records a coverage loss:
   each case now carries every slug the case asserts, which the `# Asserts`
   comments carried before, because spec-lint now counts a slug only a
   comment carries as a WARN, never as coverage. Contracts 24 → 25.
+- 2026-11-10 — the token ledger (SPEC-0005 TOKEN_LEDGER_RECORDS_HOST_USAGE)
+  gives the delivery a Tokens line. A template line whose value starts
+  `<optional` is optional: absent, it is no finding, so every delivery written
+  before it still passes (METRICS_OPTIONAL_LINE_MAY_BE_ABSENT); present, it is
+  judged like any line, and the Tokens value is held to its shape
+  (METRICS_TOKENS_LINE_READ, finding `METRICS_TOKENS_UNREADABLE`). X412's
+  extra label is renamed from Tokens to Wall time, since the shipped node now
+  carries Tokens; the case asserts the same rule. Contracts 25 → 27, seen red
+  first.

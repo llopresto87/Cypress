@@ -168,11 +168,11 @@ case_entry_headings() {
 case_labels_from_node() {
   CASE=METRICS_LABELS_FROM_DELIVER_NODE
   local r; r="$(groot tokens)"
-  sed 's/^- Quality:/- Tokens: <per spawn>\n- Quality:/' "$NODE" >"$TMP/deliver-tokens.md"
+  sed 's/^- Quality:/- Wall time: <per spawn>\n- Quality:/' "$NODE" >"$TMP/deliver-tokens.md"
   { printf '# Delivery — t — 2026-10-05\n\n## Session metrics\n'; metrics; } >"$r/changelog.md"
   run 1 --root "$r" --deliver "$TMP/deliver-tokens.md" --since "$SINCE"
-  has_finding "$(lineof "$r/changelog.md" '## Session metrics')" METRICS_LINE_MISSING Tokens
-  [ "$(findings 'METRICS_[A-Z_]+')" -eq 1 ] || fail "expected exactly one finding (Tokens)"
+  has_finding "$(lineof "$r/changelog.md" '## Session metrics')" METRICS_LINE_MISSING "Wall time"
+  [ "$(findings 'METRICS_[A-Z_]+')" -eq 1 ] || fail "expected exactly one finding (Wall time)"
   echo "  X412 the line list comes from the deliver node --deliver names — OK"
 }
 
@@ -288,10 +288,37 @@ case_all_zero_entries_named() {
   echo "  X484 --all over dated headings in no recognized form names the count and the forms — OK"
 }
 
+# X504
+case_tokens_line() {
+  CASE="METRICS_OPTIONAL_LINE_MAY_BE_ABSENT METRICS_TOKENS_LINE_READ"
+  local r f; r="$(groot tokens)"; f="$r/changelog.md"
+  { printf '# Delivery — t — 2026-10-05\n\n## Session metrics\n'; metrics; } >"$f"
+  run 0 --root "$r" --since "$SINCE"
+  pass_counts "1 filled"
+  run 0 --root "$r" --labels
+  grep -qx 'Tokens' "$TMP/out" || fail "--labels does not print Tokens"
+  { printf '# Delivery — t — 2026-10-05\n\n## Session metrics\n'; metrics
+    echo '- Tokens: input 1200, cache write 300 (5m 300, 1h 0), cache read 9000, output 400 — 3 of 4 spawns recorded'; } >"$f"
+  run 0 --root "$r" --since "$SINCE"
+  python3 "$SM" --root "$r" --all --json >"$TMP/out" 2>&1 || fail "--all exited non-zero"
+  grep -qF '"Tokens": "input 1200, cache write 300 (5m 300, 1h 0), cache read 9000, output 400 — 3 of 4 spawns recorded"' "$TMP/out" \
+    || fail "--all --json does not report the Tokens line verbatim"
+  { printf '# Delivery — t — 2026-10-05\n\n## Session metrics\n'; metrics; echo '- Tokens: not recorded: the host reported no usage'; } >"$f"
+  run 0 --root "$r" --since "$SINCE"
+  { printf '# Delivery — t — 2026-10-05\n\n## Session metrics\n'; metrics; echo '- Tokens: about 10k'; } >"$f"
+  run 1 --root "$r" --since "$SINCE"
+  has_finding "$(lineof "$f" '- Tokens: about 10k')" METRICS_TOKENS_UNREADABLE Tokens
+  [ "$(findings 'METRICS_[A-Z_]+')" -eq 1 ] || fail "expected exactly one finding (the unreadable Tokens line)"
+  { printf '# Delivery — t — 2026-10-05\n\n## Session metrics\n'; metrics; echo '- Tokens:'; } >"$f"
+  run 1 --root "$r" --since "$SINCE"
+  has_finding "$(lineof "$f" '- Tokens:')" METRICS_LINE_EMPTY Tokens
+  echo "  X504 the optional Tokens line may be absent; present, it is read and its shape held — OK"
+}
+
 ALL="case_entry_span case_block_defects case_exemptions case_before_since_not_judged
 case_no_entry_since case_missing_changelog case_since_required case_entry_headings
 case_labels_from_node case_shipped_deliver_node case_deliver_node_unparseable
-case_all_json case_other_entry_is_a_note case_lines_as_grep case_all_zero_entries_named"
+case_all_json case_other_entry_is_a_note case_lines_as_grep case_all_zero_entries_named case_tokens_line"
 
 if [ "$#" -gt 0 ]; then
   for c in "$@"; do "$c"; done
