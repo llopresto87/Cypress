@@ -165,13 +165,13 @@ match, and the caller passes that value on the spawn: (1) `security`,
 review, diagnosing a red gate: `high`; (2) the row below (`by label`: the hardest increment label of
 `delegation.effort-scale`, low or medium-low → low, medium → medium,
 medium-hard or hard → high; a `first` review of trust-claimed files reads
-`first-trust`; `at most` caps it); (3) the definition's default. The implementer caps at medium (owner, 2026-11-09): replays of a new flow's GREEN graded higher with each step up in effort, high only marginally above medium at half again the cost, and fix sets graded alike at low and medium, low at half the cost. A whole-increment GREEN defaults to low (measured on 2026-11-09): a replay of a whole increment at low cost about a third less than at medium and graded no worse, while a single feature built alone graded lower at low; so low by default, medium for a medium-hard or hard increment. Where several kinds fit, `fix`, `mechanical` and `amend` win over `trust` and `red-trust` (`--kind trust,fix` reads low): a follow-up or fix-round implementer runs at low, while a trust-surface GREEN stays medium.
+`first-trust`; `at most` caps it); (3) the definition's default. The implementer caps at medium (owner, 2026-11-09): replays of a new flow's GREEN graded higher with each step up in effort, high only marginally above medium at half again the cost, and fix sets graded alike at low and medium, low at half the cost. A whole-increment GREEN defaults to low (measured on 2026-11-09): a replay of a whole increment at low cost about a third less than at medium and graded no worse, while a single feature built alone graded lower at low. Implementation runs at low (owner, 2026-11-10): every implementer kind is low and only an increment labelled hard is medium, because the review, the high-effort security pass and the findings tester are the quality net for low-effort implementation. Where several kinds fit, `fix`, `mechanical` and `amend` win over `trust` and `red-trust` (`--kind trust,fix` reads low).
 
 | Role | Kind | Effort |
 |---|---|---|
-| implementer | `increment`: an increment batch | low; medium when labelled medium-hard or hard |
-| implementer | `flow`: a new user-facing feature, flow or stateful contract, unlabelled | medium |
-| implementer | `trust`: new code on a trust surface | medium |
+| implementer | `increment`: an increment batch | low; medium when labelled hard |
+| implementer | `flow`: a new user-facing feature, flow or stateful contract, unlabelled | low |
+| implementer | `trust`: new code on a trust surface | low |
 | implementer | `fix`: a contained change or a review-fix set | low |
 | implementer | `mechanical`: an edit, rename or one-line fix | low |
 | tester | `red`: RED for an increment's contracts | by label |

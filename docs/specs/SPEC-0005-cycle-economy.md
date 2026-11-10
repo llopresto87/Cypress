@@ -523,15 +523,14 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   `by label` row), with `--security-path`, or with neither
 - **Then:** stderr carries `effort: <value> (<reason>)`: a reviewer `recheck`
   is low, an implementer `increment` is low by default and medium when
-  labelled medium-hard or hard (never above medium), so one labelled medium
+  labelled hard (never above medium), so one labelled medium-hard, medium
   or medium-low or unlabelled is low, a tester `red`
-  labelled hard is high, an implementer `flow` is medium and a `fix` low, an
+  labelled hard is high, an implementer `flow`, `trust` and `fix` are low, an
   architect `ruling` is medium, a `--security-path` brief is high, other than a
   tester's `findings` (RED for a security pass's findings), which is medium, a
   `first` review of trust-path files is high, and no kind gives the
   definition's default; of several kinds, `fix`, `mechanical` or `amend`
-  wins, so an implementer `trust,fix` is low while `trust` alone is medium,
-  and a tester `red-trust,amend` is low; the spawn log records the same value
+  wins, so an implementer `trust,fix` is low and a tester `red-trust,amend` is low; the spawn log records the same value
 - **And:** a kind the role has no row for is refused (exit 2) naming the
   role's kinds
 - **And:** `delegation.ruling-amendment` gives a ruling pass's test
@@ -3014,3 +3013,9 @@ kept outside the seed.
   questions held meanwhile, and the code follow-up an implementer `fix`
   (low). BRIEF_DERIVES_THE_SPAWN_EFFORT gains the rule, held by seed-lint
   (seen red first).
+- 2026-11-10 — the owner decided on 2026-11-10 that implementing spawns run
+  at low effort: implementer `flow`, `trust`, `fix` and `mechanical` are low,
+  and `increment` is low unless its hardest label is hard (medium); the cap
+  stays medium. The review, the high-effort security pass and the findings
+  tester are the quality net. BRIEF_DERIVES_THE_SPAWN_EFFORT reads it (seen
+  red first).

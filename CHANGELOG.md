@@ -497,6 +497,12 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   carries all of its test amendments and the test questions held while it
   ran, and the implementer's follow-up is a `fix` (low)
   (`delegation.ruling-amendment`, SPEC-0005).
+- **Implementing runs at low effort.** The owner decided on 2026-11-10 that
+  every implementer kind (`flow`, `trust`, `fix`, `mechanical`) runs at low,
+  and an `increment` at low unless its hardest label is hard, which runs at
+  medium; the cap stays medium. The review, the high-effort security pass and
+  the findings tester are the quality net for low-effort implementation
+  (SPEC-0005, X502).
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 
