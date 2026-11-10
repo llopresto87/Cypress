@@ -53,8 +53,12 @@ grep -q 'continuation:' "$W/err" && grep -q 'delegation.continuation' "$W/err" &
 # the worker cache lifetime the host is configured for (environment, project and
 # user settings, the agent's `experimental: cacheTtl`), 300 s when unreadable.
 P="$W/plant"; H="$W/home"; mkdir -p "$P/.claude/agents" "$H/.claude"
+w5='{"type":"assistant","message":{"id":"m1","role":"assistant","usage":{"cache_creation_input_tokens":900,"cache_creation":{"ephemeral_5m_input_tokens":900,"ephemeral_1h_input_tokens":0}},"content":[]}}'
+w1='{"type":"assistant","message":{"id":"m0","role":"assistant","usage":{"cache_creation_input_tokens":900,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":900}},"content":[]}}'
+w1p='{"type":"assistant","message":{"id":"m0","role":"assistant","usage":{"cache_creation_input_tokens":0},"content":[]}}'
+w0='{"type":"assistant","message":{"id":"m2","role":"assistant","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":500},"content":[]}}'
 for m in 4 30 90; do
-    printf '%s\n' "$HANDBACK" > "$S/agent-ai$m.jsonl"
+    printf '%s\n' "$w1" "$HANDBACK" > "$S/agent-ai$m.jsonl"
     printf '{"agentType":"worker","isBuiltIn":false}' > "$S/agent-ai$m.meta.json"
 done
 "$PY" - "$S" <<'PY'
@@ -106,5 +110,22 @@ printf 'not json' > "$P/.claude/settings.json"; x507 "unreadable settings" 4; re
 printf '%s' "$(env ai90 'Implement increment 12')" | command env -u CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL HOME="$H" CLAUDE_PROJECT_DIR="$P" \
     CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL=1h "$PY" "$HOOK" 2>"$W/err" >/dev/null || true
 grep -q '60-minute' "$W/err" || { echo "  X507 refusal names the resolved lifetime — FAIL: $(cat "$W/err")"; fail=1; x=1; }
+# A configured 1h counts only when the worker's transcript shows the host wrote
+# a one-hour cache: the last record with cache-creation tokens decides.
+written() { for m in 4 30 90; do printf '%s\n' "$@" "$HANDBACK" > "$S/agent-ai$m.jsonl"; done
+    "$PY" - "$S" <<'PY'
+import os, sys, time
+for m in (4, 30, 90):
+    t = time.time() - m * 60
+    os.utime(f"{sys.argv[1]}/agent-ai{m}.jsonl", (t, t))
+PY
+}
+XENV="CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL=1h"
+written "$w1" "$w5" "$w0"; x507 "configured 1h, last write 5m only" 4
+written "$w1p" "$w1" "$w0"; x507 "configured 1h, last write one hour (repeated id, last record wins)" 4 30
+written "$w1" "$w1p"; x507 "configured 1h, last record of the 1h id has no write" 4
+written "$w0"; x507 "configured 1h, no creation tokens" 4
+XENV="ENABLE_PROMPT_CACHING_1H=1"; written "$w5"; x507 "enable-1h, last write 5m only" 4
+XENV=""
 [[ $x == 0 ]] && echo "  X507 RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME: 5m, 1h, invalid and unset from each source against 4, 30 and 90 min idle — OK"
 if [[ "$fail" == 0 ]]; then echo "test-resume-hook: PASS"; else echo "test-resume-hook: FAIL"; exit 1; fi

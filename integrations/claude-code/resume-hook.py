@@ -22,7 +22,10 @@ cacheTtl`, its `.claude/agents/` file found by the `agentType` of
 read from the environment, then from the `env` block of those settings files.
 Only `5m` and `1h` count; any other value, an unreadable source, and the
 default give COLD_AFTER (300 s), the shorter lifetime, so the guard never
-assumes a warm cache it cannot prove. A frontmatter `1h` also gives 300 s: the
+assumes a warm cache it cannot prove. A resolved `1h` counts only when the
+worker's own transcript confirms it: the latest message with cache-creation
+tokens (last record per message id) wrote `ephemeral_1h_input_tokens`; a
+5m-only write, or none, gives 300 s, since a host can ignore the setting. A frontmatter `1h` also gives 300 s: the
 host ignores it while a subscription draws on usage credits, which a hook
 cannot see. Managed settings are not read. Two cases are told apart from the
 transcript's tail:
@@ -113,6 +116,27 @@ def frontmatter_ttl(agents: Path, agent_type: str):
     return None
 
 
+def wrote_1h(worker: Path) -> bool:
+    """Whether the host's last cache write for this worker was a one-hour one:
+    the last record per message id wins (the one home of that reading is
+    `transcript_usage` in tools/brief.py, which a plant's .claude/ lacks), and
+    the latest message with cache-creation tokens decides."""
+    last = {}
+    for line in worker.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            r = json.loads(line)
+        except ValueError:
+            continue
+        m = r.get("message") if isinstance(r, dict) and r.get("type") == "assistant" else None
+        if isinstance(m, dict) and isinstance(m.get("usage"), dict):
+            last.pop(m.get("id") or f"line{len(last)}", None)
+            last[m.get("id") or f"line{len(last)}"] = m["usage"]
+    for u in reversed(list(last.values())):
+        if (u.get("cache_creation_input_tokens") or 0) > 0:
+            return ((u.get("cache_creation") or {}).get("ephemeral_1h_input_tokens") or 0) > 0
+    return False
+
+
 def lifetime(environ, project: Path | None, home: Path | None, meta: Path) -> int:
     """The worker cache lifetime in seconds, by the host's precedence."""
     files = [project / ".claude" / n for n in ("settings.local.json", "settings.json")] if project else []
@@ -169,6 +193,8 @@ def main() -> int:
         home = os.environ.get("HOME")
         ttl = lifetime(dict(os.environ), Path(project) if project else None,
                        Path(home) if home else None, worker.with_suffix(".meta.json"))
+        if ttl > COLD_AFTER and not wrote_1h(worker):
+            ttl = COLD_AFTER                  # configured 1h the host has not shown it honours
         if idle <= ttl:
             return 0
         last = last_assistant(worker)
