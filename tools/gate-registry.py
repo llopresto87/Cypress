@@ -153,6 +153,12 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "the brief composer carries both bootstrap blocks verbatim with slots filled, and the handback block",
         TEMP, "representation",
         "a brief is checked against the templates it was built from, not against what a worker then does"),
+    "test-cycle.sh": (
+        "the cycle driver prints the ready batches, the held increments with their condition, "
+        "the expected-red list, RED-hash mismatches and whether a ruling pass is owed, "
+        "and writes the batch record only through its two subcommands",
+        TEMP, "representation",
+        "runs on a hand-written plan in a fresh install with synthetic commits, not a real round's history"),
     "test-resume-hook.sh": (
         "the cold-resume guard refuses new work to an idle worker and fails open",
         FIXTURES, "representation",
