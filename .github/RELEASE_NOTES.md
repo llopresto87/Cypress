@@ -1,65 +1,87 @@
-## 8.3.2 — a missing guard script no longer blocks, and fixes from an independent review (2026-11-10)
+## 8.4.0 — opencode is a first-class host, on OpenCode 2 (2026-11-10)
 
-An independent review of 8.3.1 confirmed eight defects. This round reproduces
-each, fixes it and adds a test that failed first. A plant installed without
-changes behaves as before, except where a defect below says otherwise. The
-kernel is 7049 bytes and the always-loaded figures of every host are the same
-as 8.3.1's; the brief blocks did not change. The review's other findings change
-a default the owner set, or need evidence this round could not produce; they
-are written up for the owner and not landed.
+The owner decided on 2026-11-10 that opencode becomes a first-class host at
+parity with Claude Code, and that the seed supports OpenCode 2 only
+([ADR-0033](docs/decisions/adr-0033-opencode-first-class-on-opencode-2.md)). The
+adapter keeps its name; the documents say which generation it means. Measured on
+OpenCode 2.2.6 before any change, the 8.3.2 projection registered none of the
+seed's specialists: a `tools:` list in an agent file makes the host drop the
+file without a diagnostic, and every seed agent has one. This round makes the
+adapter work there, in the host's own format, and records what is still
+different from Claude Code. The kernel is 7049 bytes. By the owner's decision
+of 2026-11-10 (below) opencode's always-loaded surface is now 67131 bytes,
+recorded as a second `EAGER_EXEMPTIONS` entry; it was 24207. The budget itself
+did not move.
 
 ### The round in brief
 
-- **A missing guard script no longer blocks the tool it guards.** The Bash and
-  SendMessage guards ran `python3 <script>` with no existence test, and
-  `python3` exits 2 on a missing file, which the host reads as a refusal. The
-  settings commands now test that the script is a regular file. When it is, the
-  script runs and its exit code passes through, so exit 2 still blocks. When it
-  is absent, a dangling link or a directory, the command exits 0 and prints
-  `cypress: hook script missing: <path>; the guard is off. Re-run install.sh to
-  restore it.` on stderr. Only the Claude Code adapter wires such a guard.
-- **`--check` names a missing guard script.** It looked only at the two
-  context hooks. It now fails with the event, matcher and path of a missing
-  `PreToolUse` script and the remedy, and still runs no guard.
-- **The hooks' documentation states the real failure model.** A bug inside a
-  guard allows the call; a missing script is the wiring's case.
-- **The source index describes the plant's code.** After an install it
-  listed the installer's own hooks, agents, skills, commands, prompts and
-  kernel files as the plant's code. The installer's stamp does not list the
-  files it placed, and a directory rule would hide a file the plant wrote
-  beside them, so the index now skips a list of the exact paths the installer
-  places. A test installs every host and fails on a placed file the list lacks.
-- **`--check` flags a drifted skill.** It compared the Claude Code agents with
-  their nodes and left `.claude/skills/` unchecked, so an edit to a skill's
-  node passed. It now names each skill projection that differs from its node.
-  `install.sh claude-code --recompose-agents` re-projects skills as well as
-  agents, backs up a projection it replaces, and writes no node.
-- **The gate runs as uid 0.** Two cases depend on `chmod` denying access, which
-  it does not for root. Each now prints one SKIPPED line there and is unchanged
-  for any other user.
-- **The bound hook treats equivalent spellings alike.** `npm i`, `npm add`,
-  `pnpm`, `yarn` and `bun` installs, `npm clean-install`, `python -m pip
-  install`, `uv pip install`, `podman` and `nerdctl` runs, `docker exec -ti`,
-  `cargo b`, `gmake`, `tail -F` and the `--follow` forms are blocked as the
-  commands they spell, and pass when bounded. Quoted text, heredoc bodies and
-  commands that are not equivalent (`npm info`, `pip list`, `git log --follow`)
-  stay allowed.
-- **The front door states the whole measurement.** The README cost row read
-  "11% more tokens". The record behind it also reports 20% more tool calls, 20%
-  more wall-clock time, a defect that the run without the method found and the
-  run with it missed, and that it was one task run once. The row now says all
-  of it, and a seed-lint check holds each number to the record or the slice it
-  cites.
+- **opencode is first-class.** The tier arrays, the lint, the host matrix and
+  every document that states the tiers agree. `install.sh all` installs the
+  same hosts in the same order. The `supported` tier stays defined and empty.
+- **Specialists register in the host's native form.** Each agent is rendered
+  as `.opencode/agents/<callable name>.md` with `description`, `mode`, `model`
+  from the plant's model map and `permissions`; the seed's own frontmatter does
+  not reach the host. The tool bound is deny-all followed by an allow per tool,
+  from one table (`integrations/opencode/tool-permissions.json`) that stops the
+  render on a tool name it does not know. `delegates_to` becomes the host's
+  `subagent` rules. A map cell may end in `#<variant>`, which is how a plant
+  expresses an effort on a model that has one. The composed agents carry their
+  always-loaded nodes through the same function Claude Code's use
+  (`tools/agent_compose.py`).
+- **The config is OpenCode 2's.** `experimental.subagent_depth: 3` replaces the
+  top-level key, which the host reports as an unsupported legacy setting and
+  omits. The installer prints one line saying it targets OpenCode 2.
+- **Route, status and bounded execution reach opencode.** One plugin,
+  `.opencode/plugins/cypress.ts`, runs the same three Python cores Claude Code
+  runs, placed under `.opencode/hooks/`. The route and status text arrive as
+  synthetic messages ahead of the prompt, byte-identical to the cores' text; a
+  child session gets none; a shell command the bound core refuses is denied with
+  the core's reason. The plugin composes no text, writes no file and fails open.
+  It loads with no install step and no network.
+- **`--check` and `--recompose-agents` cover opencode.** `--check` names a
+  drifted agent or skill, an `opencode.json` still in the earlier shape, a
+  missing plugin and a missing core, each with a remedy and a non-zero exit.
+  `--recompose-agents` takes `opencode` and rewrites only projections.
+- **The lead plays the orchestrator.** The owner decided on 2026-11-10 that
+  the orchestrator is opencode's default agent and that its surface is exempt
+  from the budget. `opencode.json` sets `default_agent` to `orchestrator`; a
+  new session starts in that `primary` agent, whose instructions are the
+  charter and its always-loaded nodes. The host's built-in coding prompt does
+  not apply to that agent, and the user can switch to `build`. OpenCode 2.2.6
+  accepted the key with no warning and a new session started in the
+  orchestrator.
+- **`brief.py --charter` is refused on an opencode plant**, whose agent type
+  carries the charter, as on Claude Code.
 
-### Also in this round
+### Behaviour change for existing opencode plants
 
-- Seven owner decision notes in
-  `docs/plans/owner-decisions-8.3.2-review-fixes.md`, prepared and not adopted:
-  the bound hook's scope, the interpreter floor, the knowledge rule, token
-  estimates, copied code, undated corpus pages and the evidence for 8.3.0's
-  figures.
-- The test that pinned the unguarded `PreToolUse` command now pins the
-  exit-preserving, missing-script-safe form.
-- Not done: `--check` still does not compare skill projections of the other
-  hosts (plan row 12.2).
-- The plan of record is `docs/plans/grill-8.3.2-review-fixes.md`.
+A re-install over a plant installed by an earlier seed succeeds. It moves each
+numbered agent file (`02-implementer.md` and the rest) and the old
+`opencode.json` to timestamped backups beside them, so a plant's edit is kept,
+and writes the OpenCode 2 files. The plant then loads on OpenCode 2 with no
+warning and passes `--check`. Nothing is promised for OpenCode 1 afterwards, and
+the installer neither detects nor branches on it. Two placed tools change in every plant: `docs/graph/brief.py`
+(its behaviour changes only on an opencode plant) and `docs/graph/source_paths.py`
+(the source index leaves out the installer's opencode files).
+
+### Verified live, and what is not
+
+Observed on OpenCode 2.2.6: the agents list with their models, variants and
+rules; an agent with neither edit nor shell loses its write tool; a launch
+outside a coordinator's list is refused by the host and one inside it runs; three
+nested launches run and a fourth is refused at the configured depth; the plugin
+loads with no install; the route and status text reach the model once, ahead of
+the prompt; a child gets nothing; a refused command's reason reaches the model.
+Not verified live: the second-prompt reminder in one host process (held by fixtures; the owner closed it without a live check on 2026-11-10), slash commands, and whether the provider applies a model variant, which stays the user's choice through the model map. The procedure is
+`docs/skills/opencode-live-verification.md`; the version it records is in
+`integrations/opencode/verified-version`.
+
+### Not landed: parity defects
+
+There is no worker-continuation guard (the shared core reads Claude Code's
+transcript layout), a compose-mode plant's opencode session does not see the
+kernel, and there is no compaction reset; the owner accepted these on
+2026-11-10 and asked for none to be built now. Prime Agent has no pre-tool
+guard, which the owner set aside for this round. The host matrix records each with what
+would close it; the decision notes are in
+`docs/plans/owner-decisions-8.4.0-opencode-2.md`.
