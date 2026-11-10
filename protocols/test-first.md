@@ -40,11 +40,13 @@ cycles, each tied to one or more contracts in a spec, with the
 verification gates passing at the end.
 
 This node owns **the test-first rule**: tests authorize code; you
-integrate, not bolt on. No production code without a failing test
-that authorizes it: RED → GREEN → REFACTOR → COMMIT, per increment.
-A change with nothing a test could get wrong, such as a declarative
-selector or config entry, is authorized instead by the run that shows
-it working (`test-first.proportionate-checks`).
+integrate, not bolt on. Production logic is authorized by a failing
+test: RED → GREEN → REFACTOR → COMMIT, per increment, and RED comes
+before GREEN wherever a test exists. A contract the spec checks by
+`run` or `review` is authorized by that declared run or review, named
+in the increment's `Run:` or `Review:` field; a `covered` contract by
+the existing test that already asserts it (`grill.increment-shape`,
+`test-first.proportionate-checks`).
 The test encodes a named spec contract and must fail for the right
 reason first; GREEN adds the minimum new behavior, integrated into
 the file, not stapled to its edge; REFACTOR is not optional when you
@@ -112,10 +114,11 @@ the mutation pass, is `docs/graph/method/delegation-cycle-economy.md`.
 | SECURITY | `security`, once, after REVIEW, when the increment takes the security path (`test-first.security-path`; `brief.py` prints `SECURITY PASS REQUIRED` when it composes a review of a trust path) | why the pass is required, the diff and files, every reviewer finding on the covered files whatever its rating | each attempt, blocked or bypass, with the test that pins it, and its probe and control files left in the tree; its findings go to one fresh `tester` (RED), then one fresh `implementer` (GREEN), then one light `security` re-check of that fix |
 | COMMIT | the session | a clean review | grill.md §15 entry with the `spawn_id`s in issue order; the commit; the spec's status advanced |
 
-An increment whose §9 row reads `Tests to write (RED): none — …` was
-judged at planning to need no test (`grill.increment-shape`): it has no
-RED phase. `implementer` makes the change and runs the proof the row
-names; REVIEW and COMMIT stand.
+An increment whose §9 row reads `Tests to write (RED): none — …` holds no
+`test` contract (`grill.increment-shape`): it has no RED phase.
+`implementer` makes the change and returns the evidence its `Run:` names,
+the command with its result; a `Review:` is confirmed by the reviewer in
+REVIEW. REVIEW and COMMIT stand.
 
 The one merge the tiers allow: a T2 increment covering a single
 contract (or, on the contained lane, a single reproduced defect) whose
@@ -361,8 +364,8 @@ orchestrator so the team can address it directly.
 
 ## Exit conditions
 
-- Every spec contract for the increment has a passing test, named for
-  the contract; its targeted tests and every cross-cutting gate its
+- Every `test` contract of the increment has a passing test, and every
+  `run` or `review` contract its recorded run result or confirmation; its targeted tests and every cross-cutting gate its
   files hit pass. The full suite runs once, at the batch tip
   (`delegation.tip-cadence`).
 - The increment's named gate ran; the full `verify` pass ran before

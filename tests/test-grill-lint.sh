@@ -581,5 +581,107 @@ case_misnamed_spec_refused() {
 }
 collect_case M1 case_misnamed_spec_refused 'a misnamed spec fails and is named; index and readme are exempt'
 
+# Contract kinds (SPEC-0005 X540 to X543). SPEC-0002 declares `Contract form:
+# kinds`: one contract each of kind test, run, review and covered. kinds_plan
+# adds increment 3 (the test-kind contract) and increment 4 (the other three)
+# to the valid plan; KEY=VALUE arguments replace its field values.
+kinds_plan() {
+  local t3="SPEC-0002 §10 rows: \"A valid submission is refused...\"" t4="none — no contract here holds logic"
+  local ph4="GREEN" run4="- Run: \`make build && grep -c Send dist/index.html\`"
+  local rev4="- Review: the rejected-form copy in web/errors.html" a
+  for a in "$@"; do case "$a" in T3=*) t3="${a#T3=}";; T4=*) t4="${a#T4=}";; PH4=*) ph4="${a#PH4=}";;
+    RUN4=*) run4="${a#RUN4=}";; REV4=*) rev4="${a#REV4=}";; esac; done
+  cp "$ROOT/tests/fixtures/grill/kinds/SPEC-0002-kinds.md" "$G/specs/"
+  write_plan "sub:## 10. Verification Plan=### Increment 3 — Accept valid submissions
+- Spec contracts: SPEC-0002/SUBMIT_RETURNS_2XX
+- Tests to write (RED): $t3
+- Rollback path: revert
+- Phase: RED
+- Depends on: increment 2
+
+### Increment 4 — Label, copy and redirect
+- Spec contracts: SPEC-0002/SUBMIT_LABEL_IS_SEND, SPEC-0002/ERROR_COPY_READS_CLEARLY, SPEC-0002/LEGACY_ROUTE_REDIRECTS
+- Tests to write (RED): $t4
+$run4
+$rev4
+- Rollback path: revert
+- Phase: $ph4
+- Depends on: increment 3
+
+## 10. Verification Plan"
+}
+
+case_x540_test_kind_cites_a_risk_row() {
+  # X540 GRILL_TEST_KIND_CITES_A_RISK_ROW: a test-kind contract's increment
+  # cites a §10 row covering it, by its risk text or its test name.
+  set -e; trap 'rm -f "$G/specs/SPEC-0002-kinds.md"' RETURN
+  kinds_plan; wrun; rc 0
+  kinds_plan T3="test_valid_submit_accepted"; wrun; rc 0
+  kinds_plan T3="the happy path"; wrun; rc 1
+  has_re 'grill\.md §9 increment 3: contract SPEC-0002/SUBMIT_RETURNS_2XX has kind test but `Tests to write \(RED\):` cites no SPEC-0002 §10 row covering it; cite the row.s risk text in quotes or its test name \(rows covering it: tests/submit_test\.py::test_valid_submit_accepted\)'
+  kinds_plan T3="none — trivial"; wrun; rc 1; has_re 'increment 3: contract SPEC-0002/SUBMIT_RETURNS_2XX has kind test'
+}
+collect_case X540 case_x540_test_kind_cites_a_risk_row 'GRILL_TEST_KIND_CITES_A_RISK_ROW: a test-kind contract cites a §10 row covering it'
+
+case_x541_no_test_kind_schedules_no_red() {
+  # X541 GRILL_NO_TEST_KIND_SCHEDULES_NO_RED: an increment whose contracts are
+  # all run, review or covered reads `none — <why>` and is not Phase: RED.
+  set -e; trap 'rm -f "$G/specs/SPEC-0002-kinds.md"' RETURN
+  kinds_plan T4="test_label_reads_send"; wrun; rc 1
+  has_re 'grill\.md §9 increment 4: no contract here has kind test, yet `Tests to write \(RED\):` schedules a RED spawn; write `none — <why>`'
+  kinds_plan PH4="RED"; wrun; rc 1
+  has_re 'grill\.md §9 increment 4: no contract here has kind test, yet `Phase: RED`; its phase is GREEN'
+}
+collect_case X541 case_x541_no_test_kind_schedules_no_red 'GRILL_NO_TEST_KIND_SCHEDULES_NO_RED: an increment with no test-kind contract schedules no RED'
+
+case_x542_run_and_review_need_their_fields() {
+  # X542 GRILL_RUN_AND_REVIEW_NEED_THEIR_FIELDS: a run contract needs `Run:`,
+  # a review contract `Review:`; the label may carry a parenthesis.
+  set -e; trap 'rm -f "$G/specs/SPEC-0002-kinds.md"' RETURN
+  kinds_plan RUN4="- Gate: unit"; wrun; rc 1
+  has_re 'grill\.md §9 increment 4: contract SPEC-0002/SUBMIT_LABEL_IS_SEND has kind run but the increment has no `Run:` field; add `- Run: <the command that proves it>`'
+  kinds_plan REV4="- Gate: unit"; wrun; rc 1
+  has_re 'grill\.md §9 increment 4: contract SPEC-0002/ERROR_COPY_READS_CLEARLY has kind review but the increment has no `Review:` field; add `- Review: <what the reviewer confirms>`'
+  kinds_plan RUN4="- Run (proves the run-kind contracts): \`make build\`"; wrun; rc 0
+}
+collect_case X542 case_x542_run_and_review_need_their_fields 'GRILL_RUN_AND_REVIEW_NEED_THEIR_FIELDS: a run contract needs Run:, a review contract Review:'
+
+case_x543_legacy_plan_lints_unchanged() {
+  # X543 GRILL_LEGACY_PLAN_LINTS_UNCHANGED (guard): a spec with no `Contract
+  # form:` line and no `Check:` line is legacy; its contracts read as kind
+  # test, and `none — <why>; proved by <run>` still passes.
+  set -e; trap 'rm -f "$G/specs/SPEC-0002-kinds.md"' RETURN
+  kinds_plan T3="none — a declarative edit; proved by make build" T4="test_label" PH4="RED" RUN4="" REV4=""
+  sed -i.bak '/Contract form:/d; /\*\*Check:\*\*/d' "$G/specs/SPEC-0002-kinds.md"; rm -f "$G/specs/SPEC-0002-kinds.md.bak"
+  wrun; rc 0; lacks 'has kind|no contract here has kind'
+}
+collect_case X543 case_x543_legacy_plan_lints_unchanged 'GRILL_LEGACY_PLAN_LINTS_UNCHANGED: a legacy spec plan lints as today'
+
+case_x544_legacy_spec_check_label_is_read() {
+  # X544 GRILL_READS_A_CHECK_LABEL_IN_A_LEGACY_SPEC: a spec with no `Contract
+  # form:` line may label a contract `Check: run`; that contract needs `Run:`
+  # and the spec's unlabelled contract reads as kind test, citing its §10 row.
+  set -e; trap 'rm -f "$G/specs/SPEC-0002-kinds.md"' RETURN
+  write_plan "sub:## 10. Verification Plan=### Increment 3 — Label and accept
+- Spec contracts: SPEC-0002/SUBMIT_LABEL_IS_SEND, SPEC-0002/SUBMIT_RETURNS_2XX
+- Tests to write (RED): RUNTESTS
+RUNFIELD
+- Rollback path: revert
+- Phase: RED
+- Depends on: increment 2
+
+## 10. Verification Plan"
+  cp "$G/plans/grill.md" "$TMP/x544.md"
+  printf -- '- **Status:** active\n\n### Contract: SUBMIT_LABEL_IS_SEND\n- **Check:** run\n\n### Contract: SUBMIT_RETURNS_2XX\n\n## 10. Test mapping\n\n| Contract / Failure | Test name | Test file | Level | Status |\n|---|---|---|---|---|\n| SUBMIT_RETURNS_2XX | test_valid_submit_accepted | tests/submit_test.py | unit | red |\n' \
+    > "$G/specs/SPEC-0002-kinds.md"
+  sed 's/RUNTESTS/the happy path/; s/^RUNFIELD$/- Gate: unit/' "$TMP/x544.md" > "$G/plans/grill.md"
+  wrun; rc 1
+  has_re 'increment 3: contract SPEC-0002/SUBMIT_LABEL_IS_SEND has kind run but the increment has no `Run:` field'
+  has_re 'increment 3: contract SPEC-0002/SUBMIT_RETURNS_2XX has kind test but `Tests to write \(RED\):` cites no SPEC-0002 §10 row covering it'
+  sed 's/RUNTESTS/test_valid_submit_accepted/; s/^RUNFIELD$/- Run: `make build`/' "$TMP/x544.md" > "$G/plans/grill.md"
+  wrun; rc 0
+}
+collect_case X544 case_x544_legacy_spec_check_label_is_read 'GRILL_READS_A_CHECK_LABEL_IN_A_LEGACY_SPEC: a Check label in a legacy spec sets its contract kind'
+
 [ "$CASE_FAILED" -eq 0 ] || { echo 'grill lint contract: FAIL (cases above)'; exit 1; }
 echo 'grill lint contract: PASS'

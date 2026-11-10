@@ -95,9 +95,9 @@ for canonize (`method.stewardship-posture`).
 a change lands as a new entry. Owner: `protocol.grill` (`rule.grill`).
 
 ### 3.4 The test-first rule
-Logic starts from a failing test that authorizes it: RED → GREEN →
-REFACTOR → COMMIT; characterize untested code first. A declarative edit
-with nothing to get wrong is proved by a run, not a test.
+A failing test authorizes production logic: RED → GREEN → REFACTOR →
+COMMIT; characterize untested code first. Other contracts are
+authorized by the run or review their own spec declares for them.
 Owner: `protocol.test-first` (`rule.test-first`).
 
 ### 3.5 The verify rule

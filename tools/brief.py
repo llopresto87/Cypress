@@ -61,7 +61,10 @@ stderr carries one `brief: batch notice — ...` line naming the table's number
 and the spawn record gains a `notice` field. It never refuses: a security
 brief, `--security-path`, `--alone REASON` (a concurrency GREEN batched alone)
 prints no notice; an unknown increment or unreadable plan prints one
-`brief: batch notice skipped — <reason>` line and logs nothing. Without the
+`brief: batch notice skipped — <reason>` line and logs nothing. A briefed
+increment whose §9 row carries `Run:` or `Review:` adds an `Evidence this
+hand-back owes` section after the handback block: the run command with its
+result, or the review confirmation (`grill.increment-shape`). Without the
 flags nothing changes.
 
 `--tokens SPAWN_ID --usage FILE|-` appends the spawn's host-reported token
@@ -461,6 +464,34 @@ def batch_notice(plan: Path, unit: str, increments: str) -> str:
         return f"batch notice skipped — {e}"
 
 
+def evidence_owed(plan: Path, increments: str) -> list[str]:
+    """The evidence the briefed increments' hand-back owes, from their §9 `Run:`
+    and `Review:` fields (`grill.increment-shape`): one line per field, read
+    through grill-lint.py's own field reader. An increment with neither, or a
+    plan it cannot read, owes nothing here; the brief is composed either way."""
+    try:
+        sys.dont_write_bytecode = True
+        spec = importlib.util.spec_from_file_location("cypress_grill_lint", GRAPH / "grill-lint.py")
+        gl = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(gl)
+        text = gl.strip_comments(plan.read_text(encoding="utf-8", errors="replace"))
+        wanted = {int(x) for x in increments.split(",") if x.strip()}
+        out = []
+        for n, _title, block in gl.increments(gl.sections(text).get(9, ""), None, plan.resolve()):
+            if n not in wanted:
+                continue
+            f = {k.split("(")[0].strip(): v.strip() for k, v in gl.fields(block).items()}
+            if f.get("Run"):
+                out.append(f"- increment {n} runs {f['Run']}: put that command and its result "
+                           f"under `gates:` executed")
+            if f.get("Review"):
+                out.append(f"- increment {n} is reviewed for {f['Review']}: confirm it, or name "
+                           f"what fails it, in the report body")
+        return out
+    except Exception:  # evidence lines never block the brief
+        return []
+
+
 def main() -> int:
     if "--tokens" in sys.argv[1:]:
         return record_tokens(sys.argv[1:])
@@ -564,6 +595,9 @@ def main() -> int:
     out += ["", "## Task", "", part.rstrip("\n"), "",
             "## Handback (fill these fields; the rules are in docs/graph/templates/prompts/handback-payload.md)",
             "", "```", payload.rstrip("\n"), "```"]
+    owed = evidence_owed(Path(a.plan), a.increments) if a.increments else []
+    if owed:
+        out += ["", "## Evidence this hand-back owes (its run and review contracts)", ""] + owed
     if not routes_expertise(a.task, a.role):
         print("brief: the task line routes no expertise.* or subsystem.* node; name the files it "
               "touches or their stack in --task, so the worker loads that expertise "

@@ -261,17 +261,25 @@ slice is signed, its increments' `Spec contracts:` field reads
 not ready (below) and goes to no RED; when the slice lands, the row
 names its slugs and the spec-plan alignment is pressed again for it.
 
-**Ask of every increment: does it need a test?** Decide it here, while
-slicing, not at RED. An increment needs a test when it adds behavior that
-can be wrong while the code is present, and something breaks, for someone,
-if it is (`test-first.proportionate-checks`). A declarative edit (a
-selector, a pipeline stage, a flag, a config key) usually does not: its
-field reads `none — <why>; proved by <run>`, naming the run that shows it
-working, and the increment gets no RED spawn. `spec-lint.py` counts
-the contracts that row names as covered by the run. A declaration that holds
-logic (a pattern, a condition, an order that changes the output) does
-need one. When the planner cannot tell, the row keeps its test and the
-tester makes the call at RED, handing back unwritten if the answer is no.
+**Carry each contract's kind from the spec.** The architect settled at
+specify how each contract is checked: its `Check:` line reads `test`,
+`run`, `review` or `covered` (`test-first.proportionate-checks`). The
+planner copies that into the increment's fields:
+
+- `Tests to write (RED):` cites the spec's §10 rows that cover the
+  increment's `test` contracts, by the row's risk text in quotes or its
+  test name.
+- `Run:` names the command that proves the `run` contracts; present when
+  the increment holds one.
+- `Review:` names what the reviewer confirms for the `review` contracts;
+  present when the increment holds one.
+
+An increment with no `test` contract schedules no RED spawn: its `Tests to
+write (RED):` reads `none — <why>` and its phase is GREEN. A contract with
+no `Check:` line reads as `test`. A plan over specs that carry no `Check:`
+line keeps today's form, `none — <why>; proved by <run>` included, and
+`spec-lint.py` counts the contracts that row names as covered by the run.
+`grill-lint.py` holds the fields to the kinds.
 
 `Tests to write (RED):` cites tests, it does not define them: the names
 of the spec's §10 tests this increment turns red, as the test design states
@@ -283,7 +291,7 @@ goes back to the tester as a design question before the increment is
 written.
 
 An increment is ready when it names its spec contracts, its cited §10 tests
-(or its `none` and the run that proves it), its rollback, and its
+(or its `none`), the `Run:` or `Review:` its kinds call for, its rollback, and its
 dependencies, and the tester can write the failing test from §10 as
 designed. An increment missing any of them is re-sliced, and so is one
 that touches many files to add several behaviors.

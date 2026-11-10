@@ -99,12 +99,10 @@ you touch an existing file.
    behavior this increment delivers.
 2. The plan in grill.md §9 names the spec contracts this increment
    satisfies.
-3. The tester has written tests for those contracts, and they fail for
-   the right reason (RED). On existing untested code, that RED comes
-   from a **characterization test** that first pinned current behavior
-   (see `docs/graph/protocols/test-first.md`). If no failing test
-   exists, stop and hand back naming `tester`, because the RED is what
-   authorizes the edit.
+3. Each `test` contract has a failing test, seen RED for the right
+   reason (on untested code, a **characterization test** first); each
+   `run` or `review` contract has its §9 `Run:` or `Review:`. With
+   neither, hand back naming `tester` or `architect`.
 4. Every library you are about to use has a page in `docs/graph/libraries/`.
    If not, STOP and hand back
    (`docs/graph/templates/prompts/handback-payload.md`) naming
