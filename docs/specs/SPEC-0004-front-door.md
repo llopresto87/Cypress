@@ -127,9 +127,13 @@ answers one question, and none depends on a later one:
    per-session figure is marked as computed from the installed files. It is a
    lower bound, not a live measurement. The section then lists what that
    figure leaves out: on-demand graph nodes, each specialist spawn, the hook
-   injections and the one-time growth pass. The method-overhead figure gives
-   the value its evidence records, marked as measured once on one small task,
-   with a link to the record. The section says that no money figure exists.
+   injections and the one-time growth pass. The method-overhead row states
+   every outcome its evidence record states: the token figure, the tool-call
+   and wall-clock figures, that the run without the method found a defect the
+   run with it missed, and that it was measured once on one small task, with a
+   link to the record. Each number in the row is one the record or the slice it
+   cites holds (COST_ROW_REPORTS_THE_WHOLE_MEASUREMENT). The section says that
+   no money figure exists.
 5. **Try it.** The two commands (clone, install with a harness name and a
    project path), then the next step: paste the entry prompt into an agent
    session rooted at the project. The section says that running these needs no
@@ -354,6 +358,19 @@ the real-tree seed-lint step is the partner of every planted case.
 - **And:** every value in `PROJECT_NODE_LINE_FIGURES` occurs as a literal in
   `templates/knowledge-graph/graph-lint.py`, so the exemption cannot outlive
   the ceiling it names
+
+### Contract: COST_ROW_REPORTS_THE_WHOLE_MEASUREMENT
+- **Given:** the README row of the cost table that links the method-overhead
+  evidence record
+- **When:** seed-lint's front-door check reads it beside that record and the
+  files the record links
+- **Then:** the row names each outcome the record states (the token figure, the
+  tool-call figure, the wall-clock figure, that the run without the method found
+  a defect the run with the method missed, and that it was measured once), and
+  every number in the row appears in the record or in a file it links
+- **And:** a row that omits an outcome the record states, or carries a number
+  neither holds, is a finding naming the row and the missing outcome or number;
+  a README with no row that links the record is a finding too
 
 ### Contract: FRONT_DOOR_ANCHORS_RESOLVE
 - **Given:** every front-door file
@@ -598,6 +615,13 @@ are in the history of this file; their numbers are not reused.)
       `tools/gate-registry.py --lint` exit 1 naming the lines. The check lives
       in `tests/test_gate_registry.py`.
       Contracts: maps to PROSE_FLOOR_HELD_PER_FILE.
+- [ ] **AC-30.** The README cost row that links the method-overhead evidence
+      record names the token figure, the tool-call figure, the wall-clock
+      figure, the defect the run with the method missed and that it was measured
+      once, and every number in it is held by the record or a file it links. A
+      planted row that drops the tool-call figure, or adds a number the record
+      lacks, fails.
+      Contracts: maps to COST_ROW_REPORTS_THE_WHOLE_MEASUREMENT.
 
 | Contract | Accepted by |
 |---|---|
@@ -606,6 +630,7 @@ are in the history of this file; their numbers are not reused.)
 | MECHANISM_CLAIMS_TRACED | AC-25 |
 | EAGER_FIGURES_CHECKED_WHEREVER_PUBLISHED | AC-17 |
 | BODY_FIGURES_HAVE_A_REQUIRED_HOME | AC-17 |
+| COST_ROW_REPORTS_THE_WHOLE_MEASUREMENT | AC-30 |
 | FRONT_DOOR_ANCHORS_RESOLVE | AC-25 |
 | PROSE_FLOOR_HELD_PER_FILE | AC-29 |
 
@@ -624,6 +649,7 @@ are not reused.
 | EAGER_FIGURES_CHECKED_WHEREVER_PUBLISHED | X318, a scope row of the published-figures check: an always-loaded figure nothing computes, in `documentation/agents-reference.md` and in `INSTALL.md` | tests/test-seed-lint.sh | fixture (scope) | green |
 | BODY_FIGURES_HAVE_A_REQUIRED_HOME | X319, a scope row of the published-figures check: the median dropped from the home; a body figure in `INSTALL.md` | tests/test-seed-lint.sh | fixture (scope) | green |
 | BODY_FIGURES_HAVE_A_REQUIRED_HOME | X332, a scope row of the published-figures check: the `PROJECT_NODE_LINE_FIGURES` exemption and its binding to `graph-lint.py` | tests/test-seed-lint.sh | fixture (scope) | green |
+| COST_ROW_REPORTS_THE_WHOLE_MEASUREMENT | X518 case_fd_cost_row_outcome_dropped, case_fd_cost_row_number_invented, case_fd_cost_row_missing · `check_fd_cost_row_reports_the_whole_measurement` | tests/test-seed-lint.sh | fixture (scope) | green |
 | FRONT_DOOR_ANCHORS_RESOLVE | X320 case_fd_anchor_resolves, case_fd_anchor_duplicate · `check_fd_front_door_anchors_resolve` | tests/test-seed-lint.sh | fixture (scope) | green |
 | PROSE_FLOOR_HELD_PER_FILE | test_prose_lint_one_step_per_file | tests/test_gate_registry.py | unit (scope) | green |
 | PROSE_FLOOR_HELD_PER_FILE | test_prose_lint_multi_file_refused | tests/test_gate_registry.py | unit (scope) | green |
@@ -757,4 +783,10 @@ Rows about the contracts retired on 2026-09-29 left with them (§12).
   held is judged by the reviewer (§3 note). §1, §2, §5, §8 and §11 are cut to
   match; §3 keeps product's text with a note, and §3.6 keeps the prose-floor
   paragraph only. The status stays `implemented`.
-
+- 2026-11-10 — an independent review found that the README row read "11% more
+  tokens" and left out what the same record and the slice it cites also report:
+  20% more tool calls, 20% more wall-clock time, a defect that the run without
+  the method found and the run with it missed, and that it was one task run
+  once. §3.4 now asks the row to state every outcome the record states, and
+  COST_ROW_REPORTS_THE_WHOLE_MEASUREMENT (X518, seen red first) holds it. The
+  evidence record carries the outcomes it had left to its slice.

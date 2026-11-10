@@ -322,6 +322,10 @@ ROWS = [
     ("X306 GLOSSARY_PATHS_EXIST install literal", "front_door_checks", lambda: (fixture(), sub("DOCUMENTATION.md", "produces `.cypress/seed.json`", "produces `.cypress/no-such.json`")), "`.cypress/no-such.json` does not occur in install.sh"),
     ("X306 GLOSSARY_PATHS_EXIST install function", "front_door_checks", lambda: (fixture(), sub("DOCUMENTATION.md", "`write_seed_stamp`", "`write_nothing`")), "`write_nothing` is not a function install.sh defines"),
     ("X306 GLOSSARY_PATHS_EXIST no path", "front_door_checks", lambda: (fixture(), sub("DOCUMENTATION.md", r"^(- \*\*Implemented at:\*\*).*$", r"\1 the installer.", True)), "does not begin `n/a`"),
+    ("X518 COST_ROW_REPORTS_THE_WHOLE_MEASUREMENT tool calls dropped", "front_door_checks", lambda: (fixture(), sub("README.md", "20% more tool calls (72 against 60) and ", "")), "does not state the tool-call figure"),
+    ("X518 COST_ROW_REPORTS_THE_WHOLE_MEASUREMENT defect dropped", "front_door_checks", lambda: (fixture(), sub("README.md", ", and the run without the method found a defect that the run with the method missed", "")), "does not state that the run without the method found a defect the run with it missed"),
+    ("X518 COST_ROW_REPORTS_THE_WHOLE_MEASUREMENT number invented", "front_door_checks", lambda: (fixture(), sub("README.md", "131 583 tokens", "131 583 tokens (31%)")), "the number 31 is in neither the evidence record nor a file it links"),
+    ("X518 COST_ROW_REPORTS_THE_WHOLE_MEASUREMENT row missing", "front_door_checks", lambda: (fixture(), sub("README.md", "method-overhead-evidence.md", "no-such-record.md")), "no cost row links the method-overhead evidence record"),
     ("X312 MECHANISM_CLAIMS_TRACED artifact missing", "front_door_checks", lambda: (fixture(), sub("DOCUMENTATION.md", "| `install.sh` (`place_file`) |", "| `tools/no-such.sh` |")), "Artifact: `tools/no-such.sh` does not resolve"),
 ]
 

@@ -1,10 +1,20 @@
 # Evidence record: method overhead on one small task
 
 The record behind the overhead figure in the README's cost section. It carries
-the figure, the method, the date and the seed revision, and nothing else.
+the outcomes of the one measurement, the method, the date and the seed
+revision, and nothing else.
 
 - **Figure:** 11% more tokens per task: 131 583 tokens with the method's brief
   against 118 973 tokens without it, on one task, run once in each condition.
+- **Other outcomes:** the same run took 72 tool calls with the method against
+  60 without it (20% more), and 12m 40s of wall clock against 10m 32s (20%
+  more). Both runs fixed all three linters. Only the run with the method showed
+  a red-before-green proof for each fix. The run without the method found a
+  fourth linter with the same defect, which the run with the method did not,
+  because its brief named three.
+- **Conditions:** one task, run once in each condition, by one model class. The
+  task was small, well localized and highly specified. The measurement ends at
+  the first delivery and does not speak to larger work.
 - **Method:** one small, well-specified task (three linters answered an
   unreadable file by skipping it silently; make each report and fail, and add a
   test) was run twice from the same starting revision by the same model class.

@@ -3387,7 +3387,7 @@ and §6 now state each:
 | Contract / Failure | Test name | Test file | Level | Status |
 |---|---|---|---|---|
 | BUILD_INVENTORIES_THE_CODE_OF_EVERY_GOVERNED_REPOSITORY | X425 case_build_inventory | tests/test-source-index.sh | integration (synthetic Git plant) | green |
-| SEED_PLACED_FILES_ARE_NOT_THE_PLANTS_CODE | X484 case_seed_placed_scope: an install of the five hosts into a plant with its own files, one of them under `.claude/` and two under agent directories; `build`, `impact` and `symbols` | tests/test-source-index.sh | integration (synthetic Git plant, real install); red on arrival (the build listed 60 files, the placed ones among them) | green |
+| SEED_PLACED_FILES_ARE_NOT_THE_PLANTS_CODE | X519 case_seed_placed_scope: an install of the five hosts into a plant with its own files, one of them under `.claude/` and two under agent directories; `build`, `impact` and `symbols` | tests/test-source-index.sh | integration (synthetic Git plant, real install); red on arrival (the build listed 60 files, the placed ones among them) | green |
 | BUILD_IS_DETERMINISTIC | X426 case_build_deterministic | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | CACHE_WRITTEN_SELF_IGNORED | X427 case_cache_self_ignored: arm (a) | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | CACHE_REUSED_WHILE_THE_KEY_HOLDS | X428 case_cache_reused; arm m4, a tracked `d/` replaced by a symlink to an outside directory: an edit there leaves the second query `reused` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
@@ -3612,6 +3612,6 @@ flagged assumption in grill.md §12. Sign-off keeps the status `draft`;
 - 2026-11-10 — an independent review found that after a fresh install the
   index inventoried the installer's own files (54 of 60 inventoried files and
   210 of 212 definitions were seed tooling), so `impact` and `symbols` answered
-  with them. Added SEED_PLACED_FILES_ARE_NOT_THE_PLANTS_CODE (X484, seen red
+  with them. Added SEED_PLACED_FILES_ARE_NOT_THE_PLANTS_CODE (X519, seen red
   first). The design is a list of exact placed paths, because the stamp does not
   enumerate placed paths and a directory prefix would hide plant-authored files.
