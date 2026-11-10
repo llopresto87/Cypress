@@ -158,7 +158,8 @@ deploys to), because an approval given against an ambiguous name can land
 on the wrong target. Default on; the owner may waive it.
 
 The metrics block is telemetry: `brief.py --log` prints the Spawns,
-Serial waits and Tokens lines from the spawn log, copied unchanged, and
+Serial waits and Tokens lines from the spawn log, copied unchanged (a
+lead that knows the handback order replaces the inferred Serial waits value), and
 the orchestrator fills the rest from its trace (handbacks, gate runs). It is a required part of the full form, not an optional extra: a
 line the trace cannot fill says `not recorded: <reason>`, and a full-form
 entry without the block is incomplete the way one without its gates is.

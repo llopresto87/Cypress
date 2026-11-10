@@ -383,7 +383,8 @@ def metrics_lines(plan: Path, rows: list[dict]) -> list[str]:
             issues.append([])
         issues[-1].append(r["spawn_id"])
         prev = at
-    out.append(f"- Serial waits: {len(issues) - 1} (issue groups, a gap over {ISSUE_GAP} s between "
+    out.append(f"- Serial waits: {len(issues) - 1} (inferred from composition times, not handback order: "
+               f"issue groups, a gap over {ISSUE_GAP} s between "
                f"compositions: " + " → ".join(" ".join(g) for g in issues) + ")" if issues else
                "- Serial waits: not recorded: a spawn log line carries no composition time")
     ledger = token_ledger(plan)
