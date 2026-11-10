@@ -2864,6 +2864,38 @@ def x483(base):
     return "a worktree added under the plant: the rest of the moved list answered, the work tree named"
 
 
+@case("X484", "SEED_PLACED_FILES_ARE_NOT_THE_PLANTS_CODE")
+def x484(base):
+    """Every file the installer places is machinery, not the plant's code; a file
+    the plant authored in the same directories is still the plant's."""
+    t = git_target(base, "placed", {"app.py": "def run():\n    return 1\n",
+                                    "lib/util.py": "def helper():\n    return 2\n",
+                                    "tests/test_app.py": "import app\n\ndef test_run():\n    assert app.run() == 1\n"})
+    mine = {".claude/hooks/custom.py": "def custom_hook():\n    return 3\n",
+            ".claude/agents/my-agent.md": "# my agent\n", ".github/agents/mine.agent.md": "# mine\n"}
+    for rel, text in mine.items():
+        write(t, rel, text)
+    r = subprocess.run(["bash", str(SEED / "install.sh"), "claude-code", "opencode", "prime-agent", "github-copilot",
+                        "codex", "--project-dir", str(t)], capture_output=True, timeout=600, env=ENV)
+    check(r.returncode == 0, f"the five-host install exited {r.returncode}: {r.stderr[-400:]!r}")
+
+    class P:
+        dir = t
+    d = query(P, "build")
+    got = sorted(r_["path"] for r_ in d.get("inventory", []))
+    want = sorted(["app.py", "lib/util.py", "tests/test_app.py", *mine])
+    check(got == want, f"inventory: missing {sorted(set(want) - set(got))}, "
+                       f"placed files listed {sorted(set(got) - set(want))[:8]} ({len(set(got) - set(want))} in all)")
+    imp = query(P, "impact", "app.py")
+    seeded = [p_ for p_ in json.dumps(imp).split('"') if p_.startswith((".claude/", ".prime/", ".opencode/", ".codex/", ".github/"))
+              and p_ not in mine]
+    check(not seeded, f"impact of app.py returned placed files {seeded[:5]}")
+    sym = query(P, "symbols", "custom_hook", "route_prompt", "main")
+    where = [p_ for p_ in json.dumps(sym).split('"') if p_.startswith((".claude/", ".prime/")) and p_ not in mine]
+    check(not where, f"symbols found definitions in placed files {where[:5]}")
+    return "five hosts installed: the inventory is the plant's files and its own files under host directories, impact and symbols agree"
+
+
 failed = []
 for label, slug, fn in CASES:
     if ONLY and label not in ONLY:

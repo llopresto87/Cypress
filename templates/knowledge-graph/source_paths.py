@@ -56,6 +56,43 @@ _fm_spec.loader.exec_module(_frontmatter)
 
 GIT_TIMEOUT = 10            # seconds per Git call
 NOT_CODE = ("docs/graph/", ".cypress/")
+
+# The files install.sh places as seed machinery outside docs/graph/ and .cypress/.
+# They are not the plant's code, but a directory prefix would also hide a file the
+# plant authored beside them (a hook of its own under .claude/, an agent under
+# .github/agents/), so the rule is a list of exact paths. The stamp does not
+# enumerate what an install placed, so there is nothing to derive it from; the
+# source-index test installs every host and fails on a placed file this list
+# does not cover (SPEC-0007 SEED_PLACED_FILES_ARE_NOT_THE_PLANTS_CODE).
+_AGENTS = ("00-orchestrator", "01-architect", "02-implementer", "03-reviewer", "04-tester",
+           "05-security", "06-reliability", "07-data-ml", "08-product", "09-docs-librarian",
+           "10-research-scout", "11-pentest", "12-devils-advocate", "13-ui-ux-designer",
+           "14-legal", "growth-orchestrator", "growth-scout", "multi-agent-architect",
+           "seed-installer", "tool-smith")
+_SKILLS = ("adopt-existing", "adr-writer", "brainstorm-internal", "brainstorm-socratic",
+           "context-router", "holistic-editing", "humanizer", "knowledge-graph", "library-wiki",
+           "research-and-ingest", "source-index", "spec-author", "test-first", "toolcraft",
+           "validate-knowledge")
+_COMMANDS = ("brainstorm", "canonize", "deliver", "from-scratch", "grill", "ingest-library",
+             "initialize", "recover", "specify", "test-first", "verify")
+SEED_PLACED = frozenset(
+    [f"{d}/{a}.md" for d in (".claude/agents", ".codex/agents", ".opencode/agents", ".prime/agent/agents")
+     for a in _AGENTS]
+    + [f"{d}/_routes.golden.tsv" for d in (".claude/agents", ".codex/agents", ".opencode/agents", ".prime/agent/agents")]
+    + [f".github/agents/{a.split('-', 1)[1] if a[:2].isdigit() else a}.agent.md" for a in _AGENTS]
+    + [f"{d}/{s}/SKILL.md" for d in (".claude/skills", ".codex/skills", ".opencode/skills", ".prime/agent/skills")
+       for s in _SKILLS]
+    + [f".github/instructions/{s}-skill.instructions.md" for s in _SKILLS]
+    + [f"{d}/{c}.md" for d in (".claude/commands", ".opencode/commands", ".prime/agent/prompts") for c in _COMMANDS]
+    + [f".github/prompts/{c}.prompt.md" for c in _COMMANDS]
+    + [".claude/agent-lint.py", ".claude/bound-hook.py", ".claude/frontmatter.py", ".claude/resume-hook.py",
+       ".claude/route-hook.py", ".claude/status-hook.py", ".claude/settings.json", ".claude/output-styles/orchestrator.md",
+       ".codex/codex-config-snippet.toml", ".github/copilot-instructions.md",
+       ".github/hooks/route.json", ".github/hooks/status.json", ".github/hooks/route-hook.py", ".github/hooks/status-hook.py",
+       ".prime/agent/APPEND_SYSTEM.md", ".prime/agent/settings.json",
+       ".prime/agent/extensions/route-extension.ts", ".prime/agent/extensions/status-extension.ts",
+       ".prime/agent/hooks/route-hook.py", ".prime/agent/hooks/status-hook.py",
+       "AGENTS.md", "CLAUDE.md", "opencode.json", "EXPERT_SEED_INSTALL_PROMPT.md"])
 NOISE_DIR = "__pycache__"                       # build and backup files: never code
 NOISE_NAME = re.compile(r"\.(pyc|bak)$|\.bak-\d")   # *.bak-<digit>*: the installer's stamp
 DELETED = "deleted"
@@ -128,11 +165,13 @@ def plant_path(repo: str, path: str) -> str:
 
 
 def is_code(repo: str, path: str) -> bool:
-    """False for the graph and its state, and for build and backup noise
+    """False for the graph and its state, for the files the installer placed as
+    seed machinery (SEED_PLACED), and for build and backup noise
     (SPEC-0003 ANCHOR_IGNORES_BUILD_AND_BACKUP_NOISE)."""
     rel = plant_path(repo, path.rstrip("/"))
     *dirs, name = rel.split("/")
-    return not ((rel + "/").startswith(NOT_CODE) or NOISE_DIR in dirs or NOISE_NAME.search(name))
+    return not ((rel + "/").startswith(NOT_CODE) or rel in SEED_PLACED
+                or NOISE_DIR in dirs or NOISE_NAME.search(name))
 
 
 def relative(path) -> bool:

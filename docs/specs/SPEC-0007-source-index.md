@@ -298,6 +298,27 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
   code-path rule is the one `code-anchor.py` applies and the plant edge is the
   one `plant_walk.py` applies
 
+### Contract: SEED_PLACED_FILES_ARE_NOT_THE_PLANTS_CODE
+- **Given:** a plant work tree after a fresh `install.sh` of every host
+  (`claude-code`, `opencode`, `prime-agent`, `github-copilot`, `codex`), with
+  two code files and a test file of its own, and plant-authored files in the
+  directories the installer writes: a script under `.claude/`, an agent under
+  `.claude/agents/` and one under `.github/agents/`
+- **When:** `source-index.py build --json`, `impact` and `symbols` run
+- **Then:** the inventory lists the plant's own files and those plant-authored
+  files, and no file the installer placed as seed machinery: the hook scripts,
+  settings, agents, skills, commands, prompts, instructions and output style
+  of every host directory, the kernel files at the plant root
+  (`AGENTS.md`, `CLAUDE.md`, `opencode.json`) and `EXPERT_SEED_INSTALL_PROMPT.md`
+- **And:** the build report counts exactly the plant's files, `impact` of a
+  plant file returns no placed file, and `symbols` finds no definition in one
+- **And:** the rule is a list of exact paths beside `NOT_CODE` in
+  `source_paths.py` (`SEED_PLACED`), not a directory prefix, so a file the
+  plant authored in the same directory stays inventoried; the installer's
+  stamp does not enumerate placed paths, so nothing can be derived from it
+- **And:** the case installs every host and fails when a placed file is not
+  covered by the list, which is how a path the installer gains later is caught
+
 ### Contract: BUILD_IS_DETERMINISTIC
 - **Given:** the plant of the contract above
 - **When:** `source-index.py build` runs twice, with the cache removed between
@@ -3366,6 +3387,7 @@ and §6 now state each:
 | Contract / Failure | Test name | Test file | Level | Status |
 |---|---|---|---|---|
 | BUILD_INVENTORIES_THE_CODE_OF_EVERY_GOVERNED_REPOSITORY | X425 case_build_inventory | tests/test-source-index.sh | integration (synthetic Git plant) | green |
+| SEED_PLACED_FILES_ARE_NOT_THE_PLANTS_CODE | X484 case_seed_placed_scope: an install of the five hosts into a plant with its own files, one of them under `.claude/` and two under agent directories; `build`, `impact` and `symbols` | tests/test-source-index.sh | integration (synthetic Git plant, real install); red on arrival (the build listed 60 files, the placed ones among them) | green |
 | BUILD_IS_DETERMINISTIC | X426 case_build_deterministic | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | CACHE_WRITTEN_SELF_IGNORED | X427 case_cache_self_ignored: arm (a) | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | CACHE_REUSED_WHILE_THE_KEY_HOLDS | X428 case_cache_reused; arm m4, a tracked `d/` replaced by a symlink to an outside directory: an edit there leaves the second query `reused` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
@@ -3587,3 +3609,9 @@ flagged assumption in grill.md §12. Sign-off keeps the status `draft`;
   arm, §6 "Helper" `repo_claim`, §9 and X459's root+outside arm (seen red
   first) follow; SPEC-0002 GRAPH_ROUTE_NAMED_PATH_LOADS_ITS_OWNER says the
   same. The rest of option D stands.
+- 2026-11-10 — an independent review found that after a fresh install the
+  index inventoried the installer's own files (54 of 60 inventoried files and
+  210 of 212 definitions were seed tooling), so `impact` and `symbols` answered
+  with them. Added SEED_PLACED_FILES_ARE_NOT_THE_PLANTS_CODE (X484, seen red
+  first). The design is a list of exact placed paths, because the stamp does not
+  enumerate placed paths and a directory prefix would hide plant-authored files.
