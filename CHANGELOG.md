@@ -484,6 +484,13 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   The tester gains a `findings` kind at medium that starts from the probe and
   control files the security pass wrote; `security` and a tester's RED of a
   security contract before GREEN stay high (SPEC-0005, X502).
+- **A security pass's findings go to a tester, then an implementer.**
+  `test-first.security-path` sent them to one implementer, which
+  `delegation.green-self-test` keeps off test files. The route is now one
+  tester writing their RED from the pass's probe and control files (medium),
+  one implementer greening them (low), and the light `security` re-check.
+  The security charter leaves its probe files in the tree and the tester
+  charter starts from them (SPEC-0005, TRUST_PATH_TAKES_THE_SECURITY_PASS).
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 

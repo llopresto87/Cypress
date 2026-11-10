@@ -1575,6 +1575,10 @@ TEXT_RULES = (
     # a reviewer finding on a trust path is fixed inside the security pass
     ("TRUST_PATH_TAKES_THE_SECURITY_PASS", "require", lambda: ["protocols/test-first.md"],
      re.escape("the security pass is their one fix round"), {"collapse": True}),
+    # its findings take one tester (RED) then one implementer (GREEN), so no implementer writes tests
+    ("TRUST_PATH_TAKES_THE_SECURITY_PASS", "require", lambda: ["protocols/test-first.md"],
+     r"findings and those reviewer findings go to one fresh `tester`.*?then one fresh `implementer`",
+     {"collapse": True}),
     ("ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES", "require", lambda: ["protocols/graft.md"],
      re.escape("install.sh claude-code --check"),
      {"section": r"(?m)^\| `graft\.gate\.projection-drift` .*$", "where": " graft.gate.projection-drift"}),
