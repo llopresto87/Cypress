@@ -315,10 +315,46 @@ case_tokens_line() {
   echo "  X504 the optional Tokens line may be absent; present, it is read and its shape held — OK"
 }
 
+# X620
+case_test_counts() {
+  CASE="METRICS_TEST_COUNTS_MAY_BE_ABSENT METRICS_TEST_COUNTS_READ"
+  local r f l; r="$(groot counts)"; f="$r/changelog.md"
+  run 0 --root "$r" --labels
+  for l in "Tests written" "Dropped at RED" "Refused by worth check" "Tests removed"; do
+    grep -qxF "$l" "$TMP/out" || fail "--labels does not print '$l'"
+  done
+  # the older form: a delivery written before the counts existed passes unchanged.
+  { printf '# Delivery — t — 2026-10-05\n\n## Session metrics\n'; metrics; } >"$f"
+  run 0 --root "$r" --since "$SINCE"
+  pass_counts "1 filled"
+  python3 "$SM" --root "$r" --all --json >"$TMP/out" 2>&1 || fail "--all exited non-zero"
+  python3 - "$TMP/out" <<'PY' || fail "an absent count does not read 'not recorded' in --all --json"
+import json, sys
+lines = json.load(open(sys.argv[1], encoding="utf-8"))[0]["lines"]
+for l in ("Tests written", "Dropped at RED", "Refused by worth check", "Tests removed"):
+    if lines.get(l) != "not recorded": sys.exit(f"{l}: {lines.get(l)!r}")
+if "Tokens" in lines: sys.exit("the absent Tokens line was filled in")
+PY
+  { printf '# Delivery — t — 2026-10-05\n\n## Session metrics\n'; metrics
+    echo '- Tests written: design 4, bug 1, security control 0'
+    echo '- Dropped at RED: 2'
+    echo '- Refused by worth check: not recorded: the worth check did not run'
+    echo '- Tests removed: 1'; } >"$f"
+  run 0 --root "$r" --since "$SINCE"
+  python3 "$SM" --root "$r" --all --json >"$TMP/out" 2>&1 || fail "--all exited non-zero"
+  grep -qF '"Tests written": "design 4, bug 1, security control 0"' "$TMP/out" \
+    || fail "--all --json does not report the Tests written line verbatim"
+  { printf '# Delivery — t — 2026-10-05\n\n## Session metrics\n'; metrics; echo '- Dropped at RED: a few'; } >"$f"
+  run 1 --root "$r" --since "$SINCE"
+  has_finding "$(lineof "$f" '- Dropped at RED: a few')" METRICS_COUNT_UNREADABLE "Dropped at RED"
+  [ "$(findings 'METRICS_[A-Z_]+')" -eq 1 ] || fail "expected exactly one finding (the unreadable count)"
+  echo "  X620 the four test counts may be absent (read as not recorded); present, each holds whole numbers — OK"
+}
+
 ALL="case_entry_span case_block_defects case_exemptions case_before_since_not_judged
 case_no_entry_since case_missing_changelog case_since_required case_entry_headings
 case_labels_from_node case_shipped_deliver_node case_deliver_node_unparseable
-case_all_json case_other_entry_is_a_note case_lines_as_grep case_all_zero_entries_named case_tokens_line"
+case_all_json case_other_entry_is_a_note case_lines_as_grep case_all_zero_entries_named case_tokens_line case_test_counts"
 
 if [ "$#" -gt 0 ]; then
   for c in "$@"; do "$c"; done

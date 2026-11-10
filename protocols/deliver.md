@@ -131,6 +131,10 @@ your run; name it under Known limitations if it matters.
 - Overflow notes: <none, or count + paths of handback overflow notes>
 - Quality: <review Critical/Major per increment; red full-suite runs and bisects; mutants killed/total, or "no mutation pass">
 - Tokens: <optional: input N, cache write N (5m N, 1h N), cache read N, output N — K of M spawns recorded, summed from the token ledger; or not recorded: <reason>>
+- Tests written: <optional count: design N, bug N, security control N, from the plan's §10 rows>
+- Dropped at RED: <optional count: N, the §10 rows with a `dropped:` note>
+- Refused by worth check: <optional count: N, from the worth check's output>
+- Tests removed: <optional count: N, the §10 rows with a `removed:` note>
 
 ## Recommended next step
 <single highest-leverage action, named specifically>

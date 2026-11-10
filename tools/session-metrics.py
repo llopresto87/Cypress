@@ -23,7 +23,9 @@ holds no copy of the list, so a plant that changes its block is checked
 against its own block. A template line whose value starts `<optional` may be
 absent; present, it is judged like any line, and a `Tokens` value must read
 `input N, cache write N (5m N, 1h N), cache read N, output N — K of M spawns
-recorded` (each N a whole number or `not recorded`) or `not recorded: <reason>`. Stdlib only, config-free, writes nothing.
+recorded` (each N a whole number or `not recorded`) or `not recorded: <reason>`.
+A line whose value starts `<optional count` holds whole numbers; absent,
+the query reads it `not recorded`. Stdlib only, config-free, writes nothing.
 
 Exit codes: 0 pass (query: always, on content); 1 lint findings;
 2 usage error, `--entry` naming a line that is not a delivery heading,
@@ -56,6 +58,8 @@ TOKENS_RE = re.compile(
     rf"output {NUM} — \d+ of \d+ spawns? recorded$")
 TOKENS_SHAPE = ("input N, cache write N (5m N, 1h N), cache read N, output N — "
                 "K of M spawns recorded")
+COUNT_RE = re.compile(r"^(?:[A-Za-z][A-Za-z ]* )?\d+(?:, [A-Za-z][A-Za-z ]* \d+)*$")
+COUNTS = set()   # labels whose template value starts `<optional count`, filled by parse_deliver
 EMPTY_WORDS = {"tbd", "todo", "?", "...", "…", "-", "–", "—"}
 
 
@@ -158,6 +162,8 @@ def parse_deliver(path):
                         labels.append(" ".join(lm.group("label").split()))
                         if lm.group("value").strip().startswith("<optional"):
                             optional.add(norm(lm.group("label")))
+                        if lm.group("value").strip().startswith("<optional count"):
+                            COUNTS.add(norm(lm.group("label")))
             if not labels:
                 raise Fatal(f"{path}: no Session metrics template was found: "
                             "the fenced `## Session metrics` block names no label")
@@ -213,6 +219,11 @@ def judge(entry, lines, mask, labels, optional=frozenset()):
         first.setdefault(norm(label), (idx, label, value))
     entry["lines"] = {label: value for _, label, value in
                       (first[k] for k in first)}
+    if entry["block"] is not None:
+        # an older delivery written before a count line existed reads `not recorded`
+        for label in labels:
+            if norm(label) in COUNTS and norm(label) not in first:
+                entry["lines"][label] = "not recorded"
     tier = entry["heading_tier"]
     tier_line = first.get("tier")
     tier_unreadable = None
@@ -256,6 +267,11 @@ def judge(entry, lines, mask, labels, optional=frozenset()):
                                  f"{label}: `{got[2]}` is not `{TOKENS_SHAPE}` "
                                  "(each N a whole number or `not recorded`, as the token "
                                  "ledger holds it), nor `not recorded: <reason>`"))
+            elif norm(label) in COUNTS and not got[2].casefold().startswith("not recorded") \
+                    and not COUNT_RE.match(got[2]):
+                findings.append(("METRICS_COUNT_UNREADABLE", got[0] + 1,
+                                 f"{label}: `{got[2]}` is not a count: write whole numbers "
+                                 "as the template names them, or `not recorded: <reason>`"))
             elif tier_unreadable is not None and got is tier_unreadable:
                 findings.append(("METRICS_TIER_UNREADABLE", got[0] + 1,
                                  f"{label}: `{got[2]}` names no tier; start the value "

@@ -327,6 +327,28 @@ Retired 2026-10-05 (consolidation, `test-first.proportionate-checks`): no named 
   an estimate, and the line names how many of the entry's spawns the token
   ledger recorded
 
+### Contract: METRICS_TEST_COUNTS_MAY_BE_ABSENT
+- **Given:** the shipped deliver node, whose template carries four count lines
+  (`Tests written`, `Dropped at RED`, `Refused by worth check`, `Tests
+  removed`) each marked `<optional count`, and a T2 entry written in the older
+  form, with none of the four
+- **When:** the lint role runs on it, and `--all --json` on the same file
+- **Then:** the lint role passes it unchanged; `--labels` prints the four
+  labels; `--all --json` reads each absent count as `not recorded`
+- **And:** an entry with no block keeps `lines: {}`, and an absent optional
+  line that is not a count (Tokens) is not filled in
+
+### Contract: METRICS_TEST_COUNTS_READ
+- **Given:** a T2 entry whose count lines read `design 4, bug 1, security
+  control 0`, `2`, `not recorded: the worth check did not run` and `1`, and a
+  second entry whose `- Dropped at RED:` line reads `a few`
+- **When:** the lint role runs on each, and `--all --json` on the first
+- **Then:** the first passes and `--all --json` reports each line verbatim;
+  the second exits 1 with one `METRICS_COUNT_UNREADABLE` finding on its line
+- **And:** a count is whole numbers, each optionally after its origin word, as
+  the plan's §10 rows (`dropped:` and `removed:` notes) and the worth check's
+  output feed them; the reader reads them and derives none
+
 ### Contract: METRICS_DELIVER_NODE_UNPARSEABLE_FAILS_LOUD
 - **Given:** a deliver node with no fenced block that holds a
   `## Session metrics` heading
@@ -1006,6 +1028,8 @@ its survivor, or records a coverage loss:
 | METRICS_SHIPPED_DELIVER_NODE_PARSES | X413 case_shipped_deliver_node: the labels and the `--since … --entry` command line | tests/test-session-metrics.sh | unit (real tree) | green |
 | METRICS_OPTIONAL_LINE_MAY_BE_ABSENT | X504 case_tokens_line: an entry without `Tokens` passes against the shipped node; an empty optional line fails; seen red first | tests/test-session-metrics.sh | unit (fixture) | green |
 | METRICS_TOKENS_LINE_READ | X504 case_tokens_line: the filled shape and `not recorded: <reason>` pass, `about 10k` is `METRICS_TOKENS_UNREADABLE`, `--all --json` reports the line; seen red first | tests/test-session-metrics.sh | unit (fixture) | green |
+| METRICS_TEST_COUNTS_MAY_BE_ABSENT | X620 case_test_counts: the older-form entry passes against the shipped node and reads each count `not recorded`; seen red first | tests/test-session-metrics.sh | unit (fixture) | green |
+| METRICS_TEST_COUNTS_READ | X620 case_test_counts: the filled counts pass and are reported verbatim, `a few` is `METRICS_COUNT_UNREADABLE`; seen red first | tests/test-session-metrics.sh | unit (fixture) | green |
 | METRICS_DELIVER_NODE_UNPARSEABLE_FAILS_LOUD | X414 case_deliver_node_unparseable: the no-fence node built in the case | tests/test-session-metrics.sh | unit (fixture) | green |
 | METRICS_UNREADABLE_CHANGELOG_FAILS_LOUD | X415, one row of the unreadable-input sweep | tests/test-lint-audibility.sh | unit (fixture) | green |
 | METRICS_ALL_REPORTS_EVERY_ENTRY | X416 case_all_json | tests/test-session-metrics.sh | unit (fixture) | green |
@@ -1197,3 +1221,10 @@ its survivor, or records a coverage loss:
   extra label is renamed from Tokens to Wall time, since the shipped node now
   carries Tokens; the case asserts the same rule. Contracts 25 → 27, seen red
   first.
+- 2026-11-10 — amended: the deliver node's block gains four optional count
+  lines (tests written by origin, cases dropped at RED, tests refused by the
+  worth check, tests removed). §4 gains `METRICS_TEST_COUNTS_MAY_BE_ABSENT`
+  and `METRICS_TEST_COUNTS_READ` (finding `METRICS_COUNT_UNREADABLE`), mapped
+  to X620, seen red first. An older delivery without them passes unchanged.
+  No tool derives these counts yet; the lead writes them from the plan's §10
+  notes and the worth check's output.
