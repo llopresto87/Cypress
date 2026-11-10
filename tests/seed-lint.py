@@ -2207,6 +2207,52 @@ def check_fd_install_section_names_target_paths() -> None:
                                                   f"links `DOCUMENTATION.md#{FD_BACKUP_ROW}`")
 
 
+FD_COST_RECORD = "docs/plans/grill-7.29.0-front-door/method-overhead-evidence.md"
+# What the README's cost row must state when the evidence record states it:
+# (what it is, the row's pattern, the record's pattern).
+FD_COST_OUTCOMES = (
+    ("the token figure", r"\btokens\b", r"\btokens\b"),
+    ("the tool-call figure", r"\btool calls\b", r"\btool calls\b"),
+    ("the wall-clock figure", r"\bwall[- ]clock\b", r"\bwall[- ]clock\b|\bwall clock\b"),
+    ("that the run without the method found a defect the run with it missed",
+     r"\bdefect\b[^|]*\bmissed\b", r"\bfourth linter\b[^|]*\bdid not\b"),
+    ("that it was measured once", r"\bonce\b", r"\bonce\b"),
+)
+
+
+def check_fd_cost_row_reports_the_whole_measurement() -> None:
+    """SPEC-0004 COST_ROW_REPORTS_THE_WHOLE_MEASUREMENT: the README cost row that
+    links the method-overhead evidence record names each outcome the record
+    states, and holds no number the record (or a file it links) lacks."""
+    slug = "COST_ROW_REPORTS_THE_WHOLE_MEASUREMENT"
+    doc = fd_doc(slug, "README.md")
+    record = fd_text(slug, FD_COST_RECORD)
+    if doc is None or record is None:
+        return
+    rows = [(n, t) for n, t in fd_units(doc) if t.lstrip().startswith("|")
+            and any(fd_resolve("README.md", g) and fd_resolve("README.md", g)[0] == FD_COST_RECORD
+                    for g, *_r in fd_links(t))]
+    if not rows:
+        fd_fail(slug, "README.md", 0, "no cost row links the method-overhead evidence record")
+        return
+    held = record
+    for target in re.findall(r"\]\(([^)#\s]+)", record):
+        linked = posixpath.normpath(posixpath.join(posixpath.dirname(FD_COST_RECORD), target))
+        if linked.endswith(".md") and (ROOT / linked).is_file():
+            held += "\n" + (ROOT / linked).read_text(encoding="utf-8", errors="replace")
+    for n, text in rows:
+        prose = fd_mask(text)
+        for what, in_row, in_record in FD_COST_OUTCOMES:
+            if re.search(in_record, record, re.I) and not re.search(in_row, prose, re.I):
+                fd_fail(slug, "README.md", n, f"the cost row does not state {what}, which "
+                                              f"{FD_COST_RECORD} states")
+        for m in re.finditer(r"(?<![\w.])\d+(?: \d{3})*(?![\w.]*\d)", prose):
+            number = m.group(0)
+            if not re.search(rf"(?<![\d.]){re.escape(number)}(?!\d)", held):
+                fd_fail(slug, "README.md", n, f"the number {number} is in neither the evidence "
+                                              f"record nor a file it links")
+
+
 def check_fd_front_door_anchors_resolve() -> None:
     """SPEC-0004 FRONT_DOOR_ANCHORS_RESOLVE: every term, row and region link
     lands on exactly one explicit anchor, and README's relative links resolve.
@@ -2319,6 +2365,7 @@ def fd_mechanism_paths_exist(doc) -> None:
 def front_door_checks() -> None:
     """SPEC-0004's install-section and anchors checks."""
     check_fd_install_section_names_target_paths()
+    check_fd_cost_row_reports_the_whole_measurement()
     check_fd_front_door_anchors_resolve()
 
 

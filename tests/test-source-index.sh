@@ -2864,7 +2864,7 @@ def x483(base):
     return "a worktree added under the plant: the rest of the moved list answered, the work tree named"
 
 
-@case("X484", "SEED_PLACED_FILES_ARE_NOT_THE_PLANTS_CODE")
+@case("X519", "SEED_PLACED_FILES_ARE_NOT_THE_PLANTS_CODE")
 def x484(base):
     """Every file the installer places is machinery, not the plant's code; a file
     the plant authored in the same directories is still the plant's."""
