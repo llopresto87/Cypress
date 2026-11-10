@@ -20,7 +20,10 @@
 The labels are read at run time from the deliver node's fenced template
 (the first fenced block holding a `## Session metrics` line); this file
 holds no copy of the list, so a plant that changes its block is checked
-against its own block. Stdlib only, config-free, writes nothing.
+against its own block. A template line whose value starts `<optional` may be
+absent; present, it is judged like any line, and a `Tokens` value must read
+`input N, cache write N (5m N, 1h N), cache read N, output N — K of M spawns
+recorded` (each N a whole number or `not recorded`) or `not recorded: <reason>`. Stdlib only, config-free, writes nothing.
 
 Exit codes: 0 pass (query: always, on content); 1 lint findings;
 2 usage error, `--entry` naming a line that is not a delivery heading,
@@ -47,6 +50,12 @@ FENCE_OPEN_RE = re.compile(r"^( {0,3})(`{3,}|~{3,})(.*)$")
 DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 SLOT_RE = re.compile(r"^<[^<>]*>")
 TIER_VALUE_RE = re.compile(r"^(?:tier\s+)?(T[0-3])(?![0-9])", re.IGNORECASE)
+NUM = r"(?:\d+|not recorded)"
+TOKENS_RE = re.compile(
+    rf"^input {NUM}, cache write {NUM} \(5m {NUM}, 1h {NUM}\), cache read {NUM}, "
+    rf"output {NUM} — \d+ of \d+ spawns? recorded$")
+TOKENS_SHAPE = ("input N, cache write N (5m N, 1h N), cache read N, output N — "
+                "K of M spawns recorded")
 EMPTY_WORDS = {"tbd", "todo", "?", "...", "…", "-", "–", "—"}
 
 
@@ -113,7 +122,7 @@ def headings(lines, mask):
 
 
 def parse_deliver(path):
-    """(labels in template order, section names) from the deliver node."""
+    """(labels in template order, section names, optional labels) from the deliver node."""
     if not os.path.isfile(path):
         raise Fatal(f"the deliver node {path} does not exist")
     lines = split_lines(read_text(path))
@@ -134,7 +143,7 @@ def parse_deliver(path):
             body.append(lines[j])
             j += 1
         if any(b.strip() == "## Session metrics" for b in body):
-            labels, sections, inside = [], [], False
+            labels, sections, optional, inside = [], [], set(), False
             for b in body:
                 hm = HEADING_RE.match(b)
                 if hm:
@@ -147,10 +156,12 @@ def parse_deliver(path):
                     lm = LINE_RE.match(b)
                     if lm and lm.group("label").strip():
                         labels.append(" ".join(lm.group("label").split()))
+                        if lm.group("value").strip().startswith("<optional"):
+                            optional.add(norm(lm.group("label")))
             if not labels:
                 raise Fatal(f"{path}: no Session metrics template was found: "
                             "the fenced `## Session metrics` block names no label")
-            return labels, sections
+            return labels, sections, optional
         i = j + 1
     raise Fatal(f"{path}: no Session metrics template was found: no fenced block "
                 "holds a `## Session metrics` line")
@@ -192,7 +203,7 @@ def read_block(lines, mask, start, end):
     return items
 
 
-def judge(entry, lines, mask, labels):
+def judge(entry, lines, mask, labels, optional=frozenset()):
     """Fill entry['tier'], ['status'], ['lines'], ['findings']."""
     findings = []
     items = read_block(lines, mask, entry["block"] + 1, entry["block_end"]) \
@@ -223,6 +234,8 @@ def judge(entry, lines, mask, labels):
         bline = entry["block"] + 1
         for label in labels:
             got = first.get(norm(label))
+            if got is None and norm(label) in optional:
+                continue
             if got is None:
                 findings.append(("METRICS_LINE_MISSING", bline,
                                  f"{label}: the block has no `- {label}:` line; fill it, "
@@ -237,6 +250,12 @@ def judge(entry, lines, mask, labels):
                 findings.append((code, got[0] + 1,
                                  f"{label}: `not recorded` needs a reason: "
                                  "`not recorded: <reason>`"))
+            elif norm(label) == "tokens" and not got[2].casefold().startswith("not recorded") \
+                    and not TOKENS_RE.match(got[2]):
+                findings.append(("METRICS_TOKENS_UNREADABLE", got[0] + 1,
+                                 f"{label}: `{got[2]}` is not `{TOKENS_SHAPE}` "
+                                 "(each N a whole number or `not recorded`, as the token "
+                                 "ledger holds it), nor `not recorded: <reason>`"))
             elif tier_unreadable is not None and got is tier_unreadable:
                 findings.append(("METRICS_TIER_UNREADABLE", got[0] + 1,
                                  f"{label}: `{got[2]}` names no tier; start the value "
@@ -310,7 +329,7 @@ def finding_text(path, f):
     return f"{path}:{f['line']}: {f['code']}: {f['message']}"
 
 
-def run_lint(args, path, labels, sections, default_changelog):
+def run_lint(args, path, labels, sections, default_changelog, optional=frozenset()):
     since = args.since
     if not os.path.exists(path):
         if default_changelog:
@@ -341,7 +360,7 @@ def run_lint(args, path, labels, sections, default_changelog):
     else:
         judged, others = since_entries, []
     for e in judged + others:
-        judge(e, lines, mask, labels)
+        judge(e, lines, mask, labels, optional)
     for e in others:
         for f in e["findings"]:
             notes.append(f"  note: {finding_text(path, f)} (not this run's entry; not judged)")
@@ -373,12 +392,12 @@ def run_lint(args, path, labels, sections, default_changelog):
     return rc
 
 
-def run_all(args, path, labels, sections):
+def run_all(args, path, labels, sections, optional=frozenset()):
     if not os.path.exists(path):
         raise Fatal(f"the changelog {path} does not exist")
     lines, mask, entries = parse_changelog(read_text(path), sections)
     for e in entries:
-        judge(e, lines, mask, labels)
+        judge(e, lines, mask, labels, optional)
     if not entries:
         # `[]` reads the same for a changelog with no delivery and for one whose
         # deliveries are written in a form the reader does not know; the second
@@ -449,15 +468,15 @@ def main(argv=None):
         if needs_root and not os.path.isdir(root):
             raise Fatal(f"the graph root {root} does not exist")
         deliver = args.deliver or os.path.join(root, "protocols", "deliver.md")
-        labels, sections = parse_deliver(deliver)
+        labels, sections, optional = parse_deliver(deliver)
         if args.labels:
             for label in labels:
                 print(label)
             return 0
         path = args.changelog or os.path.join(root, "changelog.md")
         if args.all:
-            return run_all(args, path, labels, sections)
-        return run_lint(args, path, labels, sections, args.changelog is None)
+            return run_all(args, path, labels, sections, optional)
+        return run_lint(args, path, labels, sections, args.changelog is None, optional)
     except Fatal as exc:
         print(f"session-metrics: error: {exc}", file=sys.stderr)
         return 2

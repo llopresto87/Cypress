@@ -130,6 +130,7 @@ your run; name it under Known limitations if it matters.
 - Serial waits: <spawns issued only after another's handback returned, read from spawn_id issue order>
 - Overflow notes: <none, or count + paths of handback overflow notes>
 - Quality: <review Critical/Major per increment; red full-suite runs and bisects; mutants killed/total, or "no mutation pass">
+- Tokens: <optional: input N, cache write N (5m N, 1h N), cache read N, output N — K of M spawns recorded, summed from the token ledger; or not recorded: <reason>>
 
 ## Recommended next step
 <single highest-leverage action, named specifically>
@@ -175,8 +176,10 @@ In a long session, take the block after each landed increment as well
 as at the end, and append it to the grill.md §15 entry that increment's
 revision pass writes. The cost curve is then visible while it can still
 change, and a retrospective after the money is spent is too late to act
-on it. Where the host exposes tokens and wall time per spawn, add them to
-the Spawns line; the block does not depend on them.
+on it. The Tokens line is the one optional line: it sums
+`docs/graph/plans/tokens.jsonl`, where `brief.py --tokens <spawn_id>` records
+each spawn's host-reported counts from its usage or transcript, and a count
+the host did not report stays `not recorded`, never estimated.
 
 ## Quality bar
 

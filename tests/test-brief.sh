@@ -170,6 +170,53 @@ rc=0; (cd "$T" && "$PY" docs/graph/brief.py --log >/dev/null 2>&1) || rc=$?
 [[ $rc -eq 0 ]] || { bad "X503 REVIEW_BRIEF_NAMES_THE_SECURITY_PASS" "--log still blocks after the security spawn: rc $rc"; x503=1; }
 [[ $x503 == 0 ]] && ok "X503 REVIEW_BRIEF_NAMES_THE_SECURITY_PASS: a trust-path review names the pass; --log blocks until a security spawn follows"
 rm -rf "$T/app" "$T/docs/graph/nodes/crosscut.gate.md"
+# X505 TOKEN_LEDGER_RECORDS_HOST_USAGE: host usage per spawn_id, beside the
+# spawn log, stored as given or `not recorded`; refusals leave it unchanged
+x505=0; TL="$T/docs/graph/plans/tokens.jsonl"
+tok() { (cd "$T" && "$PY" docs/graph/brief.py "$@"); }
+out="$(echo '{"input": 12, "cache_write": 300, "cache_write_5m": 200, "cache_write_1h": 100, "cache_read": 9000, "output": 40, "model": "m-1", "source": "usage file"}' \
+  | tok --tokens o.9.reviewer.1 --usage - 2>&1)" || { bad "X505 TOKEN_LEDGER_RECORDS_HOST_USAGE" "full usage: $out"; x505=1; }
+[[ "$out" == "tokens: o.9.reviewer.1 — m-1 — input 12, cache write 300 (5m 200, 1h 100), cache read 9000, output 40 — source: usage file" ]] \
+  || { bad "X505 TOKEN_LEDGER_RECORDS_HOST_USAGE" "stdout: $out"; x505=1; }
+echo '{"output": 7, "model": "m-2"}' > "$T/partial.json"
+tok --tokens o.9.reviewer.2 --usage partial.json >/dev/null 2>&1 || { bad "X505 TOKEN_LEDGER_RECORDS_HOST_USAGE" "partial refused"; x505=1; }
+echo '{}' | tok --tokens o.9.security.3 --usage - >/dev/null 2>&1 || { bad "X505 TOKEN_LEDGER_RECORDS_HOST_USAGE" "empty refused"; x505=1; }
+"$PY" - "$TL" <<'PY' || { bad "X505 TOKEN_LEDGER_RECORDS_HOST_USAGE" "ledger rows"; x505=1; }
+import json, sys
+rows = [json.loads(l) for l in open(sys.argv[1])]
+keys = ["spawn_id", "model", "input", "cache_write", "cache_write_5m", "cache_write_1h", "cache_read", "output", "source"]
+assert all(sorted(r) == sorted(keys) for r in rows), rows
+by = {r["spawn_id"]: r for r in rows}
+assert by["o.9.reviewer.1"]["cache_write_1h"] == 100 and by["o.9.reviewer.1"]["input"] == 12, by
+NR = "not recorded"
+assert by["o.9.reviewer.2"]["output"] == 7 and by["o.9.reviewer.2"]["input"] == NR and by["o.9.reviewer.2"]["source"] == NR, by
+assert all(by["o.9.security.3"][k] == NR for k in keys[1:]), by
+PY
+before="$(cat "$TL")"
+for row in "unknown|nobody.1|{}|not in the spawn log" "again|o.9.reviewer.1|{}|already" \
+           "frac|orchestrator.3.tester.1|{\"input\": 1.5}|whole number" "key|orchestrator.3.tester.1|{\"price\": 3}|price"; do
+  IFS='|' read -r n sid js want <<<"$row"
+  rc=0; msg="$(echo "$js" | tok --tokens "$sid" --usage - 2>&1)" || rc=$?
+  [[ $rc -eq 2 ]] && grep -q "$want" <<<"$msg" || { bad "X505 TOKEN_LEDGER_RECORDS_HOST_USAGE" "$n: rc $rc: $msg"; x505=1; }
+done
+[[ "$(cat "$TL")" == "$before" ]] || { bad "X505 TOKEN_LEDGER_RECORDS_HOST_USAGE" "a refusal changed the ledger"; x505=1; }
+[[ $x505 == 0 ]] && ok "X505 TOKEN_LEDGER_RECORDS_HOST_USAGE: full, partial and empty usage stored as given or not recorded; refusals leave the ledger unchanged"
+# X506 TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT: one count per message id
+# (its last record), the 5m and 1h writes apart, a synthetic record ignored
+x506=0
+u() { printf '{"type":"assistant","message":{"id":"%s","model":"%s","usage":{"input_tokens":%s,"cache_creation_input_tokens":%s,"cache_read_input_tokens":%s,"output_tokens":%s,"cache_creation":{"ephemeral_5m_input_tokens":%s,"ephemeral_1h_input_tokens":%s}}}}\n' "$@"; }
+{ echo '{"type":"user","message":{"role":"user","content":"go"}}'
+  u m1 claude-x 2 100 0 5 100 0; u m1 claude-x 2 100 0 551 100 0
+  u m2 claude-x 3 10 100 20 0 10; u s1 '<synthetic>' 0 0 0 0 0 0; } > "$T/agent-a1.jsonl"
+out="$(tok --tokens orchestrator.3.tester.1 --transcript agent-a1.jsonl 2>&1)" || { bad "X506 TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT" "$out"; x506=1; }
+[[ "$out" == "tokens: orchestrator.3.tester.1 — claude-x — input 5, cache write 110 (5m 100, 1h 10), cache read 100, output 571 — source: claude-code transcript" ]] \
+  || { bad "X506 TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT" "stdout: $out"; x506=1; }
+(cd "$T" && "$PY" docs/graph/brief.py --role tester --spawn-id o.9.tester.7 --task t --route r --effort "low (x)" --part part.txt >/dev/null 2>&1) || true
+echo '{"type":"user","message":{"role":"user","content":"go"}}' > "$T/agent-a2.jsonl"
+out="$(tok --tokens o.9.tester.7 --transcript agent-a2.jsonl 2>&1)" || { bad "X506 TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT" "$out"; x506=1; }
+[[ "$out" == "tokens: o.9.tester.7 — not recorded — input not recorded, cache write not recorded (5m not recorded, 1h not recorded), cache read not recorded, output not recorded — source: claude-code transcript" ]] \
+  || { bad "X506 TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT" "no usage: $out"; x506=1; }
+[[ $x506 == 0 ]] && ok "X506 TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT: one count per message id, 5m and 1h apart, no usage is not recorded"
 rc=0; (cd "$T" && "$PY" docs/graph/brief.py --role nobody --spawn-id s --task t --route r --part part.txt) >/dev/null 2>&1 || rc=$?
 [[ $rc -ne 0 ]] && ok "unknown role refused" || bad "unknown role" "exit 0"
 [[ "$fail" == 0 ]] && echo "test-brief: PASS" || { echo "test-brief: FAIL"; exit 1; }
