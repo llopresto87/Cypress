@@ -23,7 +23,9 @@ logged with the spawn. `--kind KIND[,KIND] [--label LABEL]` derives the spawn's 
 from the role and task kind table of `method/delegation-model-classes.md`
 (`delegation.effort`) and prints `effort: <value> (<reason>)` for the caller to
 pass as the spawn's effort; of several kinds, `fix`, `mechanical` or `amend`
-wins; `--effort` given verbatim is logged as it is.
+wins; `--effort` given verbatim is logged as it is. The class table beside it
+gives the kind's model class: `model: <class> (<reason>)` and a `Model:` brief
+line appear only where it differs from the role's `model:`.
 
   python3 docs/graph/brief.py --role tester --spawn-id orchestrator.3.tester.1 \
       --task "<exact task line>" --route "<agent-lint line or rationale>" \
@@ -89,6 +91,7 @@ AGENTS = GRAPH / "agents"
 MODEL_CLASSES = GRAPH / "method" / "delegation-model-classes.md"
 LABELS = {"low": "low", "medium-low": "low", "medium": "medium", "medium-hard": "high", "hard": "high"}
 EFFORTS = ["low", "medium", "high"]
+PICKED = [""]  # the one kind derive_effort read, for derive_class
 LIGHT = ("fix", "mechanical", "amend")  # win over trust and red-trust when several kinds fit
 
 
@@ -116,11 +119,33 @@ def charter_head(role: str) -> str:
     return charter_parts(role)[0]
 
 
-def effort_rows() -> dict:
-    """{(role, kind): effort} from the role and task kind table."""
+def table_rows(cell: str) -> dict:
+    """{(role, kind): value} from a role and task kind table of `delegation.effort`;
+    the effort table's kind cell carries `: description`, the class table's does not."""
     text = MODEL_CLASSES.read_text(encoding="utf-8") if MODEL_CLASSES.is_file() else ""
     return {(r, k): e.strip() for r, k, e in
-            re.findall(r"^\| ([\w-]+) \| `([\w-]+)`:[^|]*\| ([^|]+)\|$", text, re.M)}
+            re.findall(r"^\| ([\w-]+) \| `([\w-]+)`" + cell + r"\| ([^|]+)\|$", text, re.M)}
+
+
+def effort_rows() -> dict:
+    """{(role, kind): effort} from the role and task kind table."""
+    return table_rows(":[^|]*")
+
+
+def class_rows() -> dict:
+    """{(role, kind): model class} from the class table beside it."""
+    return table_rows(" ")
+
+
+def derive_class(role: str, kind: str) -> str:
+    """`<class> (<role> <kind>, definition default <model>)` for the one kind the
+    effort derivation picked, when its class row differs from the role's `model:`; else ""."""
+    want = class_rows().get((role, kind))
+    head = re.search(r"^model:\s*(\S+)", charter_head(role), re.M)
+    default = head.group(1) if head else ""
+    if not want or want == default:
+        return ""
+    return f"{want} ({role} {kind}, definition default {default or 'none'})"
 
 
 def derive_effort(role: str, kind: str, label: str, security_path: bool, trust: list) -> str:
@@ -146,6 +171,7 @@ def derive_effort(role: str, kind: str, label: str, security_path: bool, trust: 
         over = ", over " + ", ".join(k for k in kinds if k != light[0])
         kinds = light[:1]
     kind = kinds[0] if kinds else ""
+    PICKED[0] = kind
     if kind:
         value = rows[(role, kind)]
         when = re.fullmatch(r"(\w+); (\w+) when labelled ([\w-]+(?: or [\w-]+)*)", value)
@@ -506,10 +532,15 @@ def main() -> int:
             return 2
     if a.effort:
         print(f"effort: {a.effort} — pass it as this spawn's effort", file=sys.stderr)
+    model = derive_class(a.role, PICKED[0]) if PICKED[0] else ""
+    if model:
+        print(f"model: {model} — pass it as this spawn's model", file=sys.stderr)
     out = [f"You are `{a.role}`, a CYPRESS specialist. spawn_id: {a.spawn_id}",
            f"Task line (route exactly this): {a.task}"]
     if a.effort:
         out.append(f"Effort: {a.effort}")
+    if model:
+        out.append(f"Model: {model}")
     if a.charter:
         out += ["", "## Your charter", "", body]
     out += ["", "```", graph.rstrip("\n"), "```", "", "```", comp.rstrip("\n"), "```"]

@@ -13,7 +13,7 @@ Author here only once one of the four triggers holds, and say which. A
 light variant of an existing specialist (same mandate, a smaller budget)
 is authored here too: its trigger is the model class, it `requires:` the
 base agent, and its reading and escalation bounds are
-`delegation.light-variants` (docs/graph/method/delegation-model-classes.md).
+`delegation.light-variants` (docs/graph/method/delegation-light-variants.md).
 
 Frontmatter: the routing keys come first, in this order: name,
 description, tools, model, effort, routing_triggers, can_delegate. Every

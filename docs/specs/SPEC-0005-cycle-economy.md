@@ -537,6 +537,19 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   amendments to one tester `amend` spawn and its code follow-up to one
   implementer `fix`, both low
 
+### Contract: BRIEF_DERIVES_THE_MODEL_CLASS
+- **Test file:** `tests/test-brief.sh`
+- **Given:** a plant whose `method/delegation-model-classes.md` keeps, beside
+  the effort table of `delegation.effort`, a class table with one row per role
+  and task kind whose class is the role's agent definition `model:`
+- **When:** `brief.py --kind` composes a brief for every role and kind of the
+  effort table, and again after one class row is changed to another class
+- **Then:** with the shipped table every brief and every stderr line is byte
+  for byte what the tool printed before the class table existed
+- **And:** with the changed row, stderr carries one `model: <class> (<role>
+  <kind>, definition default <model>)` line and the brief one `Model:` line;
+  the kind read is the one the effort derivation picked
+
 ### Contract: TOKEN_LEDGER_RECORDS_HOST_USAGE
 - **Test file:** `tests/test-brief.sh`
 - **Given:** a plant whose spawn log holds spawn ids `a`, `b` and `c`
@@ -2765,6 +2778,7 @@ gives.
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | X495 the security brief carries the SECURITY PATH block byte for byte; a tester brief does not | tests/test-brief.sh | fixture | green |
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | (none) the `TRUST_PATH_TAKES_THE_SECURITY_PASS` row of seed-lint's `TEXT_RULES`: `protocols/test-first.md` holds that the security pass is the one fix round of reviewer findings on the covered files; red id: `TRUST_PATH_TAKES_THE_SECURITY_PASS: protocols/test-first.md does not hold 'the security pass is their one fix round'` | tests/seed-lint.py | real-tree | green |
 | BRIEF_DERIVES_THE_SPAWN_EFFORT | X502 six role, kind and label fixtures print their effort; the log records it; an unknown kind is refused; X503 a first review of trust paths reads `first-trust`; seen red first | tests/test-brief.sh | fixture | green |
+| BRIEF_DERIVES_THE_MODEL_CLASS | X517 every role and kind composes its prior brief byte for byte (hashes from the prior tip); a changed class row adds one Model line; seen red first | tests/test-brief.sh | fixture | green |
 | TOKEN_LEDGER_RECORDS_HOST_USAGE | X505 a full, a partial and an empty usage are stored as given or `not recorded`; an unknown spawn, a second record, a fractional count and an unknown key are refused; seen red first | tests/test-brief.sh | fixture | green |
 | TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT | X506 a hand transcript with a repeated message id, a 1h write and a `<synthetic>` record sums once per message; an empty transcript records `not recorded`; seen red first | tests/test-brief.sh | fixture | green |
 | BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS | X515 a hand spawn log and ledger print `tests/fixtures/brief-log/log.out`; the three lines pass `session-metrics.py` in a delivery entry; no ledger, a broken ledger line and an empty log give their lines; seen red first | tests/test-brief.sh | fixture | green |
@@ -3343,3 +3357,8 @@ kept outside the seed.
   `protocols/verify.md` has a gate return failing ids and a summary, keep its
   exit status and leave its log on disk (GATE_OUTPUT_KEEPS_STATUS_AND_LOG).
   Both seen red first.
+- 2026-11-10 — the owner's brief of 2026-11-10 asks that a trial can move a
+  role and kind to another model class without changing a default. A class
+  table beside the effort table, read by the same loader, reproduces each
+  role's `model:`; `brief.py` prints a class only where a row differs
+  (BRIEF_DERIVES_THE_MODEL_CLASS, X517, seen red first).

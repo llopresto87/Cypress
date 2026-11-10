@@ -3,25 +3,25 @@ id: method.delegation-model-classes
 tier: 2
 kind: method
 origin: seed
-title: delegation model classes — the class and reasoning effort each step runs on, and light variants
+title: delegation model classes — the class and reasoning effort each step runs on, by step and by role and task kind
 owns:
   - delegation.model-classes
-  - delegation.light-variants
   - delegation.effort
   - delegation.model-map
 requires:
 peers:
   - method.delegation
   - method.delegation-cycle-economy
+  - method.delegation-light-variants
 artifacts:
   - templates/agent.template.md
 load_when:
   - "sonnet or opus, which model class"
-  - "reasoning effort, low effort worker, light variant, light reviewer or tester"
+  - "reasoning effort, low effort worker, model class per task kind"
   - "effort for this spawn, effort field in the agent definition"
   - "which model on this host, model map, provider, non-Anthropic model"
 prevents: Every worker run on the most expensive model at full effort, or a cheap one handed authoring, review or a security surface it cannot carry.
-est_tokens: 2397
+est_tokens: 2464
 ---
 
 ## Route by model class
@@ -30,7 +30,7 @@ Read-only investigation and mechanical retrieval/normalization →
 **investigation class** (draft artifacts are finalized by an authoring-class
 librarian); authoring, implementation, judgment-heavy design, review, or
 adversarial validation → **authoring class**. The one exception is a light
-variant (`delegation.light-variants`, below): a light reviewer, a light tester
+variant (`delegation.light-variants`, in `method.delegation-light-variants`): a light reviewer, a light tester
 or a one-line-fix implementer runs small, mechanical work on the investigation
 class (security surfaces excepted, below); every other authoring or review
 step stays in its class. This **model class** lives in each agent's `model:`
@@ -90,53 +90,6 @@ A gate-running worker only runs the gates and asserts what they report,
 failing closed on output it cannot read; the verdict on a red result belongs
 to the authoring class.
 
-### Light variants (`delegation.light-variants`)
-
-**A light variant is a budget, not a new mandate.** A plant may instantiate a
-low-budget variant of an existing specialist for small, mechanical work (a
-pinned test, a one-line fix, a follow-up diff). The variant keeps the base
-agent's mandate unchanged, runs on the investigation class at low effort, and
-its definition `requires:` the base agent and names it as the escalation
-target. Like any commissioned expert (`delegation.routing`, in
-`method.delegation`), it joins only the project's roster.
-
-It reads only the exact ranges its brief names, as `file:line` spans: the spec
-rows, the diff hunks, the test functions. It still runs the graph discipline's
-`--plan` and reports the output, but it loads only the nodes the brief names
-and lists every other one as skipped, brief-scoped.
-
-**Escalation is mechanical.** The variant stops with `blocked-out-of-domain`
-and names the base agent as `recommended_next` when any of these holds,
-whatever the work's size:
-
-- deciding the work needs a line outside the ranges the brief names;
-- the diff changes a line outside the hunks the brief names;
-- the diff changes a spec contract, a public interface, a persisted format, or
-  any line on a security surface (authentication, authorization, secrets, a
-  credential holder, input from outside the trust boundary);
-- the named ranges raise a question the brief does not answer: a second
-  reading of a contract, or a design choice.
-
-**Security surfaces go to the full agent.** Work that touches one runs on the
-full agent at the class the table gives, whatever its size, because the
-investigation class at low effort cannot carry a security surface. The caller
-applies this before routing, and the third escalation condition is the
-variant's backstop when the caller misjudged it.
-
-**Still an independent reviewer.** A light reviewer is a reviewer at a smaller
-budget, independent in the same way: someone other than the author, from
-outside the lane whose output it reviews. It runs the independent review the
-step requires, more cheaply, when the work is small.
-
-**Size the brief to the class before routing to it.** The caller gives a light
-variant the smallest context that decides the work: the exact ranges, the few
-binding rules quoted, a short checklist, the gates and the handback. A caller
-that cannot bound the reading that tightly has work that is not small, and
-routes it to the base agent or splits it into briefs of one source each. A
-brief that asks a variant to transcribe from several sources is not small
-either, and the variant's decline is the correct outcome. The cost of the
-re-route belongs to the brief.
-
 ### Effort (`delegation.effort`)
 
 An agent definition's `effort:` key (`low`, `medium` or `high`) is the role's
@@ -188,6 +141,30 @@ medium-hard or hard → high; a `first` review of trust-claimed files reads
 | docs-librarian | `grow-close-out`: the close-out that ends a grow or a graft | high |
 | product | `ruling`: one product ruling | low |
 | product | `spec`: spec §3 and §9 | medium |
+
+The model class of each role and kind, beside it, is the role's `model:` until a measured trial moves a row, and the owner with it; `brief.py --kind` prints `model: <class>` and adds a `Model:` line only for a row unlike the role's `model:`.
+
+| Role | Kind | Class |
+|---|---|---|
+| implementer | `increment` | opus |
+| implementer | `flow` | opus |
+| implementer | `trust` | opus |
+| implementer | `fix` | opus |
+| implementer | `mechanical` | opus |
+| tester | `red` | opus |
+| tester | `red-trust` | opus |
+| tester | `findings` | opus |
+| tester | `amend` | opus |
+| reviewer | `first-trust` | opus |
+| reviewer | `first` | opus |
+| reviewer | `recheck` | opus |
+| architect | `contract` | opus |
+| architect | `ruling` | opus |
+| architect | `wording` | opus |
+| docs-librarian | `close-out` | opus |
+| docs-librarian | `grow-close-out` | opus |
+| product | `ruling` | opus |
+| product | `spec` | opus |
 
 On a host with no per-spawn setting, a derived value unlike the definition's
 default adds `host applies: definition default <value>` to the logged line.
