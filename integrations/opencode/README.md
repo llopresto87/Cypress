@@ -69,7 +69,7 @@ contracts):
   host lists it as `implementer`.
 - **Fields.** Only the host's own: `description`, `mode`, `model` where the
   map names one, and `permissions`. `mode` is `subagent`, except the
-  orchestrator, which is `primary`: a selectable primary agent that no other
+  orchestrator, which is `primary`: the default agent (below), which no other
   agent may launch. None of the seed's `tools:` list, `effort`,
   `can_delegate`, `routing_triggers` or graph fields reaches the host, and no
   OpenCode 1 field is written.
@@ -114,12 +114,16 @@ load-bearing:
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
+  "default_agent": "orchestrator",
   "experimental": {
     "subagent_depth": 3
   }
 }
 ```
 
+- **`default_agent: "orchestrator"`** starts every new session in the
+  orchestrator (next section). OpenCode 2.2.6 accepted the key with no
+  configuration warning and a new session started in `orchestrator`.
 - **`$schema`** is `https://opencode.ai/config.json`. The `config-schema.json`
   URL returns 404, so an editor pointed at it validates nothing.
 - **`experimental.subagent_depth: 3`** is the load-bearing key. The host's
@@ -238,22 +242,37 @@ The installer keeps one kernel body for both: `CLAUDE.md` and `AGENTS.md` hold
 the same text, one the real file and the other a project-local symlink or an
 identical copy, so the two hosts cannot drift. OpenCode 2 reads `AGENTS.md`
 (documented), so the seed relies on no `CLAUDE.md` fallback, and outside
-compose mode the shared body makes the question moot. The orchestrator is the
-default on Claude Code (its output style); on opencode it is a selectable
-primary agent (below).
+compose mode the shared body makes the question moot. The lead plays the
+orchestrator on both: on Claude Code through its output style, on opencode as
+the default agent (below).
+
+## The lead plays the orchestrator
+
+The owner decided on 2026-11-10 that opencode's lead plays the orchestrator
+and that the orchestrator is the default agent. A new session therefore starts
+in `orchestrator`, a `primary` agent whose instructions are the charter
+followed by its always-loaded nodes, and the user can switch agent as usual.
+Two costs come with it, both accepted in that decision:
+
+- **The host's coding prompt.** On OpenCode 2 an agent with its own
+  instructions replaces the host's built-in prompt for that agent, so the
+  orchestrator runs without it. The host's `build` agent keeps it, one switch
+  away.
+- **The always-loaded budget.** The orchestrator's text is the main session's
+  system prompt on every session, 67,131 bytes in all against the 41,600-byte
+  budget. `EAGER_EXEMPTIONS` in `tests/seed-lint.py` records it as a debt that
+  may only shrink, as Claude Code's output style is.
 
 ## Differences from Claude Code (defects to close)
 
 The [host capability matrix](../../documentation/host-capability-matrix.md#defects-to-close)
 is the one home of each difference, its evidence and what would close it:
 
-1. The lead does not play the orchestrator; it is a selectable primary agent
-   (owner decisions D1 and D2).
-2. No worker-continuation guard.
-3. The seed kernel is absent in a compose-kernel plant.
-4. Per-session dedup is not verified live.
-5. Effort is not verified to reach the provider.
-6. No reset after a compaction.
+1. No worker-continuation guard.
+2. The seed kernel is absent in a compose-kernel plant.
+3. Per-session dedup is not verified live.
+4. Effort is not verified to reach the provider.
+5. No reset after a compaction.
 
 ## Live verification
 

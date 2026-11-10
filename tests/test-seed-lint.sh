@@ -166,7 +166,7 @@ PLACE_ANCHOR = '    place_file "$SEED_ROOT/tools/code-anchor.py" "$g/code-anchor
 
 # label, check, plant, needle, absent. Labels bound by a spec §10 row keep
 # their X/E id (R1); a row folded into another keeps its label beside it.
-OC = {"$schema": "https://opencode.ai/config.json", "experimental": {"subagent_depth": 3}}
+OC = {"$schema": "https://opencode.ai/config.json", "default_agent": "orchestrator", "experimental": {"subagent_depth": 3}}
 AGN = "leaked host 198.18.7.42 and advisory CVE-2031-99999"
 HOME = "Ran it from /home/exampleuser/work."
 NESTED_FIX = "tests/fixtures/nested-skill-corpus/maven/example-stack-procedure.md"
@@ -262,6 +262,7 @@ ROWS = [
     ("opencode-stale-schema", "check_opencode_config", lambda: oc({**OC, "$schema": "https://opencode.ai/config-schema.json"}), "schema must be"),
     ("opencode-invalid-key", "check_opencode_config", lambda: oc({**OC, "agent": {}}), "not a key the seed places on OpenCode 2"),
     ("opencode-version-uncited", "check_opencode_version", lambda: put("integrations/opencode/verified-version", "9.9.9\n"), "does not cite the verified OpenCode 2 version"),
+    ("opencode-default-agent", "check_opencode_config", lambda: oc({k: v for k, v in OC.items() if k != "default_agent"}), "OPENCODE_LEAD_PLAYS_THE_ORCHESTRATOR"),
     ("opencode-legacy-depth-key", "check_opencode_config", lambda: oc({**OC, "subagent_depth": 3}), "unsupported legacy setting"),
     ("opencode-double-load", "check_opencode_config", lambda: oc({**OC, "instructions": ["AGENTS.md"]}), "kernel would load twice"),
     ("opencode-depth-cap", "check_opencode_config", lambda: oc({**OC, "experimental": {"subagent_depth": 1}}), "delegation topology would be capped"),

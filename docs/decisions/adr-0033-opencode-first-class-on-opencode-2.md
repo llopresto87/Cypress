@@ -102,3 +102,12 @@ The tier is three array entries and one table. Moving opencode back to
 `supported` or `frozen` is a new ADR and an array edit; the placed envelopes
 and projections stay valid files in a plant until the next install replaces
 them.
+
+## Amendment 2026-11-10: the lead
+
+The owner decided on 2026-11-10 that opencode's lead plays the orchestrator.
+The consequence above, "delivering the orchestrator's charter ... is an owner
+decision (D1)", is settled: the orchestrator is the default agent
+(`default_agent`), its charter and always-loaded nodes are the main session's
+system prompt, and `EAGER_EXEMPTIONS` records opencode's surface at 67,131
+bytes, a debt that may only shrink. The tier decision above stands unchanged.

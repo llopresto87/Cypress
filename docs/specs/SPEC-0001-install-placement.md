@@ -942,6 +942,19 @@ its own record, and that slug stays as written in §12's history.
 - **And:** the installer prints one line saying the adapter targets OpenCode 2
   and names the command that runs it
 
+### Contract: OPENCODE_LEAD_PLAYS_THE_ORCHESTRATOR
+- **Given:** the owner's decision of 2026-11-10 that opencode's lead plays the
+  orchestrator and that the orchestrator is the default agent
+- **When:** `install.sh opencode` runs
+- **Then:** `opencode.json` names `orchestrator` as `default_agent`, and
+  `.opencode/agents/orchestrator.md` is a `primary` agent whose instructions are
+  the charter followed by its always-loaded nodes, so a new session starts in it
+  with the charter as its system prompt; the host's built-in coding prompt does
+  not apply to that agent, and the user can still switch agent
+- **And:** opencode's always-loaded figure in `tests/seed-lint.py` includes the
+  orchestrator's composition and `EAGER_EXEMPTIONS` records the surface (67,131
+  bytes) as that owner decision, a debt that may only shrink
+
 ### Contract: OPENCODE_REINSTALL_RETIRES_OLD_SHAPE
 - **Given:** an opencode plant installed by an earlier seed: agent files named
   `<digits>-<name>.md` with a `tools:` list (which OpenCode 2 drops without a
@@ -970,7 +983,7 @@ its own record, and that slug stays as written in §12's history.
 - **Given:** the seed's `integrations/opencode/opencode.json`
 - **When:** `seed-lint` runs
 - **Then:** it fails when the file carries a key outside the set the seed has
-  verified on OpenCode 2 (`$schema`, `experimental`), when the top-level
+  verified on OpenCode 2 (`$schema`, `default_agent`, `experimental`), when the top-level
   `subagent_depth` of the earlier shape is present, when `instructions` is
   present (the host accepts it and loads none of its entries, and the kernel
   would load twice), or when `experimental.subagent_depth` does not reach the
@@ -2213,6 +2226,7 @@ $ head -1 /p/docs/graph/libraries/rxjs.md
 | OPENCODE_TOOL_BOUND_IS_HOST_PERMISSIONS | E19 case_opencode_native_agent: each agent's rules, evaluated last-match-wins, allow edit/shell/search/fetch/read exactly for the tools its charter lists, allow `subagent` exactly for its `delegates_to` (none without `Task`), deny any other action and ask on `.env`; a plant agent listing the tool `Teleport` makes the run exit non-zero naming it with `.opencode/agents/` unchanged | tests/test-full-install.sh | integration | green |
 | OPENCODE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | E19, composition arm: each opencode agent body equals Claude Code's composed body after its frontmatter; E20 arms (f) and (g): an edited always-loaded node makes `--check` name the agent with the recompose remedy, `--recompose-agents` clears it, the node keeps the edit and `docs/` is unchanged | tests/test-full-install.sh | integration | green |
 | OPENCODE_HOOK_CORE_AND_PLUGIN_ARE_PLACED | E19 case_opencode_native_agent: the three cores are byte-identical to the seed's and the plugin exists after a fresh install; tests/test-opencode-plugin.sh holds the plugin's static shape | tests/test-full-install.sh | integration | green |
+| OPENCODE_LEAD_PLAYS_THE_ORCHESTRATOR | E23 in case_opencode: the placed `opencode.json` has `default_agent` `orchestrator`; `orchestrator.md` is `mode: primary` and carries an always-loaded section; the opencode-default-agent row of test-seed-lint fails a config without it; a live session started in the orchestrator on the host | tests/test-full-install.sh | integration | green |
 | OPENCODE_REINSTALL_RETIRES_OLD_SHAPE | E20 case_opencode_reinstall_old_shape arms (b) and (c): over a plant in the earlier shape the install exits 0, the numbered files are gone, a plant's edit is in a backup, `opencode.json` has `experimental.subagent_depth` and a backup, and `--check` is then green | tests/test-full-install.sh | integration | green |
 | OPENCODE_CHECK_NAMES_THE_EARLIER_SHAPE | E20 arms (a), (d) and (e): over the earlier shape `--check` exits non-zero naming the old file, the earlier-shape config and the missing plugin; with a core removed it names the core; with the plugin removed it names the plugin | tests/test-full-install.sh | integration | green |
 | OPENCODE_CONFIG_IS_OPENCODE_2 | E21 opencode-stale-schema, opencode-invalid-key, opencode-legacy-depth-key, opencode-double-load and opencode-depth-cap rows of test-seed-lint: each mutated config fails `check_opencode_config` with its message | tests/test-seed-lint.sh | integration | green |
@@ -2977,3 +2991,9 @@ only version surface it has, and it moves with each entry here.
   OPENCODE_CHECK_DETECTS_DRIFT now speak of the native file named by its
   callable name, not a copy of the graph home with one line changed; a map cell
   may end in `#<variant>`.
+- 2026-11-10 — the owner decided that opencode's lead plays the orchestrator
+  (budget exemption) and that the orchestrator is the default agent. Added
+  OPENCODE_LEAD_PLAYS_THE_ORCHESTRATOR (E23). `default_agent` joins the keys the
+  seed places, verified on OpenCode 2.2.6 (a session started in the orchestrator,
+  no configuration warning). OPENCODE_CONFIG_IS_OPENCODE_2 now also fails a
+  config whose `default_agent` is not `orchestrator`.

@@ -10,8 +10,10 @@ OpenCode 2.2.6 before any change, the 8.3.2 projection registered none of the
 seed's specialists: a `tools:` list in an agent file makes the host drop the
 file without a diagnostic, and every seed agent has one. This round makes the
 adapter work there, in the host's own format, and records what is still
-different from Claude Code. The kernel is 7049 bytes and opencode's
-always-loaded surface is 24207 bytes, the same as 8.3.2's; no budget moved.
+different from Claude Code. The kernel is 7049 bytes. By the owner's decision
+of 2026-11-10 (below) opencode's always-loaded surface is now 67131 bytes,
+recorded as a second `EAGER_EXEMPTIONS` entry; it was 24207. The budget itself
+did not move.
 
 ### The round in brief
 
@@ -42,6 +44,14 @@ always-loaded surface is 24207 bytes, the same as 8.3.2's; no budget moved.
   drifted agent or skill, an `opencode.json` still in the earlier shape, a
   missing plugin and a missing core, each with a remedy and a non-zero exit.
   `--recompose-agents` takes `opencode` and rewrites only projections.
+- **The lead plays the orchestrator.** The owner decided on 2026-11-10 that
+  the orchestrator is opencode's default agent and that its surface is exempt
+  from the budget. `opencode.json` sets `default_agent` to `orchestrator`; a
+  new session starts in that `primary` agent, whose instructions are the
+  charter and its always-loaded nodes. The host's built-in coding prompt does
+  not apply to that agent, and the user can switch to `build`. OpenCode 2.2.6
+  accepted the key with no warning and a new session started in the
+  orchestrator.
 - **`brief.py --charter` is refused on an opencode plant**, whose agent type
   carries the charter, as on Claude Code.
 
@@ -70,15 +80,14 @@ effort, and slash commands. The procedure is
 `docs/skills/opencode-live-verification.md`; the version it records is in
 `integrations/opencode/verified-version`.
 
-### Not landed: parity defects and decisions for the owner
+### Not landed: parity defects
 
-The lead does not play the orchestrator (it would take opencode's always-loaded
-surface from 24207 to 67131 bytes against a 41600-byte budget; decisions D1 and
-D2), there is no worker-continuation guard (the shared core reads Claude Code's
+There is no worker-continuation guard (the shared core reads Claude Code's
 transcript layout), a compose-mode plant's opencode session does not see the
-kernel, there is no compaction reset, and Prime Agent has no pre-tool guard
-(D4). The host matrix records each with what would close it; the decision notes
-are in `docs/plans/owner-decisions-8.4.0-opencode-2.md`.
+kernel, there is no compaction reset, and Prime Agent has no pre-tool guard,
+which the owner set aside for this round. The host matrix records each with what
+would close it; the decision notes are in
+`docs/plans/owner-decisions-8.4.0-opencode-2.md`.
 
 ## 8.3.2 — a missing guard script no longer blocks, and fixes from an independent review (2026-11-10)
 

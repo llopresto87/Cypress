@@ -141,6 +141,9 @@ case_opencode() {
   need "$T/.opencode/agents/orchestrator.md" opencode
   need "$T/.opencode/plugins/cypress.ts" opencode
   need "$T/.opencode/hooks/route-hook.py" opencode
+  # E23 OPENCODE_LEAD_PLAYS_THE_ORCHESTRATOR: the default agent is a primary file carrying the charter and its always-loaded nodes
+  grep -qx 'mode: primary' "$T/.opencode/agents/orchestrator.md" || die "E23 OPENCODE_LEAD_PLAYS_THE_ORCHESTRATOR: orchestrator.md is not mode: primary"
+  grep -q '^## Always loaded: ' "$T/.opencode/agents/orchestrator.md" || die "E23 OPENCODE_LEAD_PLAYS_THE_ORCHESTRATOR: orchestrator.md carries no always-loaded section"
   [[ ! -e "$T/opencode.jsonc" ]] || die "two opencode configs installed; precedence is unspecified"
   python3 - "$T/opencode.json" <<'EOF'
 import json, sys
@@ -150,6 +153,7 @@ assert "AGENTS.md" not in cfg.get("instructions", []), f"opencode double-load: {
 assert cfg["$schema"] == "https://opencode.ai/config.json", f"stale $schema: {cfg['$schema']}"
 for dead in ("agent", "agents", "commands", "tools", "permission"):
     assert dead not in cfg, f"{dead!r} is not placed: a deprecated version 1 field or one the projections own"
+assert cfg.get("default_agent") == "orchestrator", "OPENCODE_LEAD_PLAYS_THE_ORCHESTRATOR: a new session must start in the orchestrator"
 assert "subagent_depth" not in cfg, "the top-level subagent_depth is an unsupported legacy setting on OpenCode 2"
 assert cfg["experimental"]["subagent_depth"] == 3, f"delegation depth capped: {cfg.get('experimental')}"
 EOF
