@@ -103,7 +103,7 @@ wrote, and its test ids, in the batch record (`python3 docs/graph/cycle.py recor
 --test ID...`, or `--wrong REASON`). It re-checks those hashes before it commits a GREEN file set and before the
 batch-tip run (`cycle.py --unit U` prints `mismatch:`, exit 1). A GREEN writer's pathspec commit lists only production
 paths. A mismatch, or a GREEN handback that lists a test path, is a block: the GREEN is re-briefed from the recorded RED.
-The batch record is `docs/graph/plans/<unit of work>/batch-record.txt`, written only by `cycle.py`, one fact per line: `red N <sha256> <path>`, `test N <id>`, `wrong N <reason>`, `ruled <ruling> N <old sha256> <path>`, and the tip's `expected-red <id>`, `not-run <id>`, `fail N <id>` (`record-tip`). An increment has landed once every contract slug of its §9 row appears in a commit message; with none to match, `landed: unknown`.
+The batch record is `docs/graph/plans/<unit of work>/batch-record.txt`, written only by `cycle.py`, one fact per line: `red N <sha256> <path>`, `test N <id>`, `wrong N <reason>`, `ruled <ruling> N <old sha256> <path>`, and the tip's `expected-red <id>`, `not-run <id>`, `fail N <id>` (`record-tip`). An increment has landed once every contract slug of its §9 row appears in a `feat`/`fix` GREEN subject of `test-first.cycle`, printed `landed (inferred from commit subjects)`; with none to match, `landed: unknown`.
 
 ## Tip cadence (`delegation.tip-cadence`)
 

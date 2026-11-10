@@ -42,7 +42,8 @@ rc=0; out="$(C "$P" --unit u 2>&1)" || rc=$?
 for s in ALPHA BETA GAMMA DELTA; do G "$P" commit -q --allow-empty -m "feat(core): $s — implements SPEC-0001"; done
 rc=0; out="$(C "$P" --unit u 2>&1)" || rc=$?
 [[ $rc -eq 0 ]] && ! grep -q '^ready RED\|^ready GREEN' <<<"$out" \
-  && grep -q ' 7 committed' <<<"$out" && grep -qx 'landed: unknown (no commit names its contracts) — increment(s) 7' <<<"$out" \
+  && grep -q ' 7 committed' <<<"$out" && grep -qx 'landed (inferred from commit subjects): increment(s) 1, 2, 3, 4, 5, 6, 8' <<<"$out" \
+  && grep -qx 'landed: unknown (no commit names its contracts) — increment(s) 7' <<<"$out" \
   && ok "X508 CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE: commits in the existing format land their increments; one with no contract is unknown" \
   || bad "X508 CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE (empty)" "rc $rc: $out"
 
@@ -97,10 +98,15 @@ rc=0; out="$(C "$P3" --unit u 2>&1)" || rc=$?
 P9="$T/p9"; cp -R "$P" "$P9"
 C "$P9" record-red 8 --unit u --file tests/test_delta.sh --test delta.case_one >/dev/null
 G "$P9" commit -q --allow-empty -m "test: RED increment 8"
-echo 'echo changed' > "$P9/tests/test_delta.sh"
+G "$P9" commit -q --allow-empty -m "test(core): ALPHA — fails for SPEC-0001"
+G "$P9" commit -q --allow-empty -m "docs(spec): ALPHA — implements SPEC-0001 contract text"
+G "$P9" commit -q --allow-empty -m "plan: increment 3" -m "feat(core): ALPHA — implements SPEC-0001"
+echo 'echo changed' > "$P9/tests/test_delta.sh"; echo 'echo changed' > "$P9/tests/test_alpha.sh"
 rc=0; out="$(C "$P9" --unit u 2>&1)" || rc=$?
 [[ $rc -eq 1 ]] && grep -qx 'expected-red: delta.case_one' <<<"$out" && grep -q '^mismatch: tests/test_delta.sh ' <<<"$out" \
-  && ok "X510 CYCLE_DRIVER_CHECKS_THE_RED_HASHES: a RED committed alone is still expected-red and still checked" \
+  && grep -qx 'expected-red: alpha.case_one' <<<"$out" && grep -q '^mismatch: tests/test_alpha.sh ' <<<"$out" \
+  && ! grep -q '^landed (inferred' <<<"$out" \
+  && ok "X510 CYCLE_DRIVER_CHECKS_THE_RED_HASHES: a RED, spec or plan commit naming the slug lands nothing: still expected-red and still checked" \
   || bad "X510 CYCLE_DRIVER_CHECKS_THE_RED_HASHES (RED committed alone)" "rc $rc: $out"
 
 # X508 with no git history, landing is unknown and the driver still reports

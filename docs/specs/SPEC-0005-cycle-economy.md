@@ -1031,8 +1031,11 @@ through `grill-lint.py`'s own `plan_graph` and `pack`, the spawn log
 (`spawns.jsonl` beside the plan), the batch record and the question files
 (`docs/graph/plans/<unit>/batch-record.txt` and `questions/batch-<N>.md`), and
 git: an increment is committed (landed) when every contract slug its §9 row
-names appears in a commit message on the current branch, the format
-`test-first.cycle` already uses; with no history or no contract the report
+names appears in the slug of a GREEN commit subject on the current branch, in
+the `feat(<scope>): <slug> — implements SPEC-NNNN` or `fix(<scope>): <slug> —
+adds regression for SPEC-NNNN` format `test-first.cycle` defines, and the report
+says the result is inferred; a RED, spec or plan commit naming the slug lands
+nothing; with no history or no contract the report
 prints `landed: unknown (no commit names its contracts) — increment(s) N`. It
 never spawns, and it decides no tier, ruling or acceptance. Invocation:
 `cycle.py --unit UNIT [--plan P]`; `cycle.py record-red N --unit UNIT --file
@@ -1054,6 +1057,7 @@ GREEN wave has handed back.
   per batch, packed by `pack` over the increments ready now; `in flight:` per
   increment a logged spawn of its worker names that has no recorded outcome;
   `waits:` per increment whose files meet a live lane; `held:` lines;
+  `landed (inferred from commit subjects): increment(s) ...` and
   `landed: unknown (no commit names its contracts) — increment(s) ...` when
   any; `expected-red:` per test id, or `expected-red: none`; `not run:` per id of
   the last tip; `mismatch:` lines; `question:` per unruled entry that touches
@@ -1064,8 +1068,9 @@ GREEN wave has handed back.
 - **And:** when no increment is ready the ready lines are one line, `ready:
   nothing is ready to spawn`, and the exit is 0
 - **And:** an increment is committed once every contract slug of its §9 row
-  appears in a commit message on the current branch; an unrelated commit lands
-  nothing; with no git history, or no contract, it is `landed: unknown`
+  appears in the slug of a GREEN `feat`/`fix` commit subject on the current
+  branch; an unrelated commit, and a RED, spec or plan commit naming the slug,
+  land nothing; with no git history, or no contract, it is `landed: unknown`
 
 ### Contract: CYCLE_DRIVER_NAMES_THE_HOLD_CONDITION
 - **Test file:** `tests/test-cycle.sh`
@@ -3379,3 +3384,10 @@ kept outside the seed.
   model-classes row no longer lists the key, a note under the table names the
   new leaf, and §2 points to it. No contract and no test changed;
   `ADOPTED_RULE_HOMES` in `tests/seed-lint.py` already held the new home.
+- 2026-11-10 — corrected in place after an independent review: the cycle
+  driver counted an increment as landed when any commit message named its
+  slugs, so a RED, spec or plan commit naming the slug skipped the RED-hash
+  check. It now reads only GREEN `feat`/`fix` subjects in the
+  `test-first.cycle` format and prints `landed (inferred from commit
+  subjects)`; CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE and the driver section say
+  so (X508, X510, seen red first).
