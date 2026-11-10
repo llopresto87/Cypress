@@ -363,10 +363,13 @@ parity here; the differences are budget mechanics, not enforcement.
 - Claude Code: the lead and worker lifetimes are host settings
   (`promptCacheTtl`, `subagentPromptCacheTtl`, v2.1.242 or later) and a
   subagent frontmatter key (`experimental: cacheTtl`, v2.1.248 or later);
-  workers default to five minutes. Defaults, precedence and when to change
+  `FORCE_PROMPT_CACHING_5M=1` and `ENABLE_PROMPT_CACHING_1H=1` override or
+  request; the lead defaults to one hour on a subscription within included
+  usage, five minutes otherwise; workers default to five minutes. Defaults, precedence and when to change
   them: `integrations/claude-code/README.md`, "Prompt cache lifetime". The
   installer places the lead setting only on `--prompt-cache-ttl 1h`, and
-  `resume-hook.py` reads the worker lifetime. **documented**, not observed.
+  `resume-hook.py` reads the worker lifetime, counting an hour only when the
+  worker's transcript shows a one-hour cache write. **documented**, not observed.
 - opencode, Codex CLI, GitHub Copilot, Prime Agent: **not recorded**.
 
 ### Session-start hook / Routing hook / Status hook

@@ -126,6 +126,7 @@ written "$w1p" "$w1" "$w0"; x507 "configured 1h, last write one hour (repeated i
 written "$w1" "$w1p"; x507 "configured 1h, last record of the 1h id has no write" 4
 written "$w0"; x507 "configured 1h, no creation tokens" 4
 XENV="ENABLE_PROMPT_CACHING_1H=1"; written "$w5"; x507 "enable-1h, last write 5m only" 4
+XENV="ENABLE_PROMPT_CACHING_1H=true"; written "$w1"; x507 "enable-1h other than 1 is not documented" 4
 XENV=""
 [[ $x == 0 ]] && echo "  X507 RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME: 5m, 1h, invalid and unset from each source against 4, 30 and 90 min idle — OK"
 if [[ "$fail" == 0 ]]; then echo "test-resume-hook: PASS"; else echo "test-resume-hook: FAIL"; exit 1; fi

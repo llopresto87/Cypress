@@ -584,7 +584,8 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   environment, then the `env` block of the settings files); the setting
   (`.claude/settings.local.json`, then `.claude/settings.json` under
   `CLAUDE_PROJECT_DIR`, then the user's settings); the agent's frontmatter;
-  `ENABLE_PROMPT_CACHING_1H`; the default. It refuses (exit 2) a worker idle
+  `ENABLE_PROMPT_CACHING_1H`, counted only when it reads `1`, as documented;
+  the default. It refuses (exit 2) a worker idle
   past that lifetime and allows one within it, and the refusal names the
   lifetime in minutes
 - **And:** `5m` and `1h` are the only values; another value, an unreadable
@@ -3112,3 +3113,8 @@ kept outside the seed.
   RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME in place: a resolved
   `1h` counts only when the worker's transcript shows a one-hour cache write
   (X507, the three new cases seen red first).
+- 2026-11-10 — the Claude Code environment-variables and prompt-caching pages,
+  read again on 2026-11-10, document `FORCE_PROMPT_CACHING_5M` and
+  `ENABLE_PROMPT_CACHING_1H`, each "Set to `1`"; the earlier line calling
+  them unverified is superseded. The hook counts the enable variable only at
+  `1` (X507 case seen red first).

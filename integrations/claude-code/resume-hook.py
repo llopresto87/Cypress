@@ -20,6 +20,11 @@ FORCE_PROMPT_CACHING_5M; CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL; the
 cacheTtl`, its `.claude/agents/` file found by the `agentType` of
 `agent-<to>.meta.json`); ENABLE_PROMPT_CACHING_1H; the default. A variable is
 read from the environment, then from the `env` block of those settings files.
+The Claude Code env-vars and prompt-caching pages (read 2026-11-10) document
+both variables as "Set to `1`": FORCE_PROMPT_CACHING_5M forces five minutes
+over every other control (the hook takes any value but empty, 0, false, no or
+off, the shorter side); ENABLE_PROMPT_CACHING_1H requests an hour for lead and
+workers and counts here only when it reads `1`.
 Only `5m` and `1h` count; any other value, an unreadable source, and the
 default give COLD_AFTER (300 s), the shorter lifetime, so the guard never
 assumes a warm cache it cannot prove. A resolved `1h` counts only when the
@@ -166,7 +171,7 @@ def lifetime(environ, project: Path | None, home: Path | None, meta: Path) -> in
             if ttl is not None:
                 return COLD_AFTER     # 5m, or a 1h the host may ignore: unknowable here
     if found is None:
-        return LIFETIMES["1h"] if on(ENABLE_1H) else COLD_AFTER
+        return LIFETIMES["1h"] if env.get(ENABLE_1H, "").strip() == "1" else COLD_AFTER
     return LIFETIMES.get(found.strip(), COLD_AFTER)
 
 
