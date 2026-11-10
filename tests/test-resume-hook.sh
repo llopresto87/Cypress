@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # test-resume-hook.sh — the cold-resume guard (integrations/claude-code/resume-hook.py)
-# refuses a SendMessage to a worker idle past COLD_AFTER unless the host cut the
+# refuses a SendMessage to a worker idle past its configured cache lifetime unless the host cut the
 # worker off (its last record an API error) or the message declares a continuation, and fails open on everything it cannot read.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -49,4 +49,62 @@ printf '%s' "$(env acold 'Implement increment 12')" | "$PY" "$HOOK" 2>"$W/err" >
 grep -q 'continuation:' "$W/err" && grep -q 'delegation.continuation' "$W/err" && grep -q 'handed back' "$W/err" \
   && echo "  refusal names the declaration and the rule — OK" \
   || { echo "  refusal names the declaration and the rule — FAIL"; fail=1; }
+# X507 RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME: the cold threshold is
+# the worker cache lifetime the host is configured for (environment, project and
+# user settings, the agent's `experimental: cacheTtl`), 300 s when unreadable.
+P="$W/plant"; H="$W/home"; mkdir -p "$P/.claude/agents" "$H/.claude"
+for m in 4 30 90; do
+    printf '%s\n' "$HANDBACK" > "$S/agent-ai$m.jsonl"
+    printf '{"agentType":"worker","isBuiltIn":false}' > "$S/agent-ai$m.meta.json"
+done
+"$PY" - "$S" <<'PY'
+import os, sys, time
+for m in (4, 30, 90):
+    t = time.time() - m * 60
+    os.utime(f"{sys.argv[1]}/agent-ai{m}.jsonl", (t, t))
+PY
+agent() { printf -- '---\nname: worker\n%s---\n# worker\n' "$1" > "$P/.claude/agents/02-worker.md"; }
+reset() { rm -f "$P/.claude/settings.json" "$P/.claude/settings.local.json" "$H/.claude/settings.json"; agent ''; }
+x507() {  # label allowed-idle-minutes... (the rest refused); extra env in XENV
+    local label="$1" m want got; shift
+    for m in 4 30 90; do
+        want=2; for a in "$@"; do [[ "$a" == "$m" ]] && want=0; done
+        got=0
+        printf '%s' "$(env ai$m 'Implement increment 12')" | command env -u CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL \
+            -u FORCE_PROMPT_CACHING_5M -u ENABLE_PROMPT_CACHING_1H -u CLAUDE_CODE_PROMPT_CACHE_TTL \
+            HOME="$H" CLAUDE_PROJECT_DIR="$P" ${XENV:-} "$PY" "$HOOK" >/dev/null 2>"$W/err" || got=$?
+        if [[ "$got" != "$want" ]]; then
+            echo "  X507 RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME $label, idle $m min — FAIL (exit $got, want $want): $(cat "$W/err")"; fail=1; x=1
+        fi
+    done
+}
+x=0
+reset
+for v in 5m 1h bogus unset; do
+    if [[ $v == 1h ]]; then al="4 30"; else al="4"; fi
+    if [[ $v == unset ]]; then XENV=""; else XENV="CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL=$v"; fi
+    x507 "env variable $v" $al
+    XENV=""
+    [[ $v != unset ]] && printf '{"subagentPromptCacheTtl":"%s"}' "$v" > "$P/.claude/settings.json"
+    x507 "project setting $v" $al; reset
+    [[ $v != unset ]] && agent "experimental:
+  cacheTtl: $v
+"
+    x507 "agent frontmatter $v (a frontmatter 1h is not trusted)" 4; reset
+done
+XENV="ENABLE_PROMPT_CACHING_1H=1"; x507 "enable-1h variable" 4 30
+XENV="FORCE_PROMPT_CACHING_5M=1 CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL=1h"; x507 "force-5m over the env variable" 4
+XENV="CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL=5m"; printf '{"subagentPromptCacheTtl":"1h"}' > "$P/.claude/settings.json"
+x507 "env variable 5m over a setting 1h" 4; XENV=""
+printf '{"subagentPromptCacheTtl":"5m"}' > "$P/.claude/settings.local.json"; x507 "local setting 5m over shared 1h" 4; reset
+printf '{"env":{"CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL":"1h"}}' > "$P/.claude/settings.json"; x507 "settings env block 1h" 4 30; reset
+printf '{"subagentPromptCacheTtl":"1h"}' > "$H/.claude/settings.json"; x507 "user setting 1h" 4 30; reset
+agent "experimental:
+  cacheTtl: 5m
+"; XENV="ENABLE_PROMPT_CACHING_1H=1"; x507 "frontmatter 5m over enable-1h" 4; XENV=""; reset
+printf 'not json' > "$P/.claude/settings.json"; x507 "unreadable settings" 4; reset
+printf '%s' "$(env ai90 'Implement increment 12')" | command env -u CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL HOME="$H" CLAUDE_PROJECT_DIR="$P" \
+    CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL=1h "$PY" "$HOOK" 2>"$W/err" >/dev/null || true
+grep -q '60-minute' "$W/err" || { echo "  X507 refusal names the resolved lifetime — FAIL: $(cat "$W/err")"; fail=1; x=1; }
+[[ $x == 0 ]] && echo "  X507 RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME: 5m, 1h, invalid and unset from each source against 4, 30 and 90 min idle — OK"
 if [[ "$fail" == 0 ]]; then echo "test-resume-hook: PASS"; else echo "test-resume-hook: FAIL"; exit 1; fi

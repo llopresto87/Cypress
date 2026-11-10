@@ -571,6 +571,28 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   and `source: claude-code transcript`; a `<synthetic>` record counts for
   nothing; the second records `not recorded` for every count and the model
 
+### Contract: RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME
+- **Test file:** `tests/test-resume-hook.sh`
+- **Given:** Claude Code workers that handed back and have been idle 4, 30
+  and 90 minutes, each with its `agent-<id>.meta.json` naming its `agentType`
+- **When:** `resume-hook.py` checks a new-work SendMessage to each, with the
+  worker cache lifetime set to `5m`, to `1h`, to another value, and unset, in
+  turn through `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`, the
+  `subagentPromptCacheTtl` setting and the agent's `experimental: cacheTtl`
+- **Then:** the hook resolves the lifetime by the host's documented
+  precedence, first match wins: `FORCE_PROMPT_CACHING_5M`; the variable (the
+  environment, then the `env` block of the settings files); the setting
+  (`.claude/settings.local.json`, then `.claude/settings.json` under
+  `CLAUDE_PROJECT_DIR`, then the user's settings); the agent's frontmatter;
+  `ENABLE_PROMPT_CACHING_1H`; the default. It refuses (exit 2) a worker idle
+  past that lifetime and allows one within it, and the refusal names the
+  lifetime in minutes
+- **And:** `5m` and `1h` are the only values; another value, an unreadable
+  source and nothing set resolve to 300 seconds, and so does a frontmatter
+  `1h`, which the host ignores while a subscription draws on usage credits,
+  a state the hook cannot see. The host cut-off case, the `continuation:`
+  declaration and fail-open on any internal error are unchanged
+
 ### Contract: REVIEW_BRIEF_NAMES_THE_SECURITY_PASS
 - **Test file:** `tests/test-brief.sh`
 - **Given:** a plant graph with a `trust: true` crosscut claiming `app/trusted/**`,
@@ -2561,6 +2583,7 @@ gives.
 | BRIEF_DERIVES_THE_SPAWN_EFFORT | X502 six role, kind and label fixtures print their effort; the log records it; an unknown kind is refused; X503 a first review of trust paths reads `first-trust`; seen red first | tests/test-brief.sh | fixture | green |
 | TOKEN_LEDGER_RECORDS_HOST_USAGE | X505 a full, a partial and an empty usage are stored as given or `not recorded`; an unknown spawn, a second record, a fractional count and an unknown key are refused; seen red first | tests/test-brief.sh | fixture | green |
 | TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT | X506 a hand transcript with a repeated message id, a 1h write and a `<synthetic>` record sums once per message; an empty transcript records `not recorded`; seen red first | tests/test-brief.sh | fixture | green |
+| RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME | X507 workers idle 4, 30 and 90 minutes against `5m`, `1h`, an invalid value and unset through the variable, the project setting and the agent frontmatter, plus each precedence step; seen red first | tests/test-resume-hook.sh | fixture | green |
 | REVIEW_BRIEF_NAMES_THE_SECURITY_PASS | X503 a review naming `app/trusted/session.py` with `app/trusted/gate.py` uncommitted prints both; a review of `app/ui/page.py` prints nothing; `--log` blocks until a security spawn follows; seen red first | tests/test-brief.sh | fixture | green |
 | IMPLEMENTER_WRITES_A_DESIGN_NOTE | (none) the `IMPLEMENTER_WRITES_A_DESIGN_NOTE` row of seed-lint's `TEXT_RULES`; red id: `IMPLEMENTER_WRITES_A_DESIGN_NOTE: agents/02-implementer.md does not hold 'restart of the component that holds state'`; seen red first | tests/seed-lint.py | real-tree | green |
 | RED_TEST_HOLDS_ITS_EVIDENCE | (none) the `RED_TEST_HOLDS_ITS_EVIDENCE` row of seed-lint's `TEXT_RULES`; red id: `RED_TEST_HOLDS_ITS_EVIDENCE: skills/test-first/SKILL.md does not hold 'again after rebuilding the component that holds the state'`; seen red first | tests/seed-lint.py | real-tree | green |
@@ -3065,3 +3088,15 @@ kept outside the seed.
   placed in a plant. The transcript shape was read from real subagent
   transcripts on 2026-11-10: a message streams as several records with one
   id and only the last carries its final output count.
+- 2026-11-10 — the owner's brief of 2026-11-10 asks that the resume guard
+  follow the worker cache lifetime the host is configured for. The hook had
+  a fixed five minutes and no contract. Added
+  RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME (X507, seen red first).
+  The precedence and the controls were read from the Claude Code documentation
+  on 2026-11-10; `subagentPromptCacheTtl` and
+  `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL` are documented (v2.1.242),
+  `experimental: cacheTtl` is documented (v2.1.248), and the documentation
+  pages read did not describe `FORCE_PROMPT_CACHING_5M` or
+  `ENABLE_PROMPT_CACHING_1H`; the hook honours both on the owner's account of
+  the precedence, unverified. `agentType` in `agent-<id>.meta.json` was read
+  from real subagent records on 2026-11-10.

@@ -32,7 +32,7 @@ established. Continue the earlier worker only when:
 1. it has finished, the follow-up is a small change that needs the context it
    built (the files it read, the reasoning behind its edits), so that a fresh
    brief would have to rebuild most of that context, and its last call is
-   within the host's prompt-cache lifetime (commonly 5 minutes);
+   within its configured prompt-cache lifetime;
    or
 2. a usage or rate limit stopped it mid-turn (below).
 
@@ -51,8 +51,8 @@ resumed only for a small change that needs its whole context or after a usage
 limit, and briefed fresh otherwise.
 
 On Claude Code, `.claude/resume-hook.py` holds the cold case mechanically,
-reading the worker's transcript so the caller does not have to guess. A worker
-idle past the prompt cache's lifetime whose last record is the host's API
+reading the worker's transcript, not a guess. A worker idle past its
+configured cache lifetime (five minutes whenever it cannot tell) whose last record is the host's API
 error (usage or rate limit, network or server error) was cut off and is
 resumed without question. One that handed back is finished: a message to it is
 refused, because it is new work for an old context or a nudge with nothing to
