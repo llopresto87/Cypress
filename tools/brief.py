@@ -277,7 +277,9 @@ def transcript_usage(path: Path) -> dict:
             r = json.loads(line)
         except ValueError:
             continue
-        m = r.get("message") if isinstance(r, dict) else None
+        if not isinstance(r, dict):
+            continue
+        m = r.get("message")
         if r.get("type") != "assistant" or not isinstance(m, dict) or not isinstance(m.get("usage"), dict) \
                 or m.get("model") == "<synthetic>":
             continue
@@ -337,8 +339,19 @@ def record_tokens(argv: list) -> int:
         print(f"brief: spawn_id {sid} is not in the spawn log {spawn_log(plan)}", file=sys.stderr)
         return 2
     ledger = token_ledger(plan)
-    held = ledger.read_text(encoding="utf-8").splitlines() if ledger.is_file() else []
-    if any(json.loads(l).get("spawn_id") == sid for l in held if l.strip().startswith("{")):
+    held, i = [], 0
+    try:
+        for i, l in enumerate(ledger.read_text(encoding="utf-8").splitlines() if ledger.is_file() else [], 1):
+            if l.strip():
+                rec = json.loads(l)
+                if not isinstance(rec, dict):
+                    raise ValueError("not a JSON object")
+                held.append(rec)
+    except (OSError, ValueError) as e:
+        print(f"brief: {ledger} line {i} is not a JSON record ({e}); the ledger is append-only, "
+              f"so repair it by hand", file=sys.stderr)
+        return 2
+    if any(r.get("spawn_id") == sid for r in held):
         print(f"brief: spawn_id {sid} is already recorded in {ledger}; the ledger is append-only", file=sys.stderr)
         return 2
     rec = {k: usage.get(k, NR) for k in TOKEN_KEYS}
