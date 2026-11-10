@@ -35,6 +35,30 @@ out="$(cd "$T/plant" && bash "$ROOT/install.sh" claude-code --check 2>&1)" && rc
 grep -q "lacks rule test-first.proportionate-checks" <<<"$out" || fail "--check silent about the gap ($out)"
 echo "  install.sh --check reports the missing rule — OK"
 
+# X662 OPENCODE_CHECK_HOLDS_THE_MUST_REACH_RULES: the opencode projection names
+# each agent file by its callable name (tester.md, not 04-tester.md); one table
+# finds the role in either directory, and install.sh opencode --check runs it.
+mkdir "$T/oc"; bash "$ROOT/install.sh" opencode --project-dir "$T/oc" >/dev/null 2>&1
+out="$("$PY" "$ROOT/tools/delivery_rules.py" "$T/oc/.opencode/agents" 2>&1)" \
+  || fail "X662 OPENCODE_CHECK_HOLDS_THE_MUST_REACH_RULES: installed opencode prompts read as lacking the rule ($out)"
+out="$(bash "$ROOT/install.sh" opencode --check --project-dir "$T/oc" 2>&1)" \
+  || fail "X662 OPENCODE_CHECK_HOLDS_THE_MUST_REACH_RULES: --check failed a fresh opencode plant ($out)"
+grep -q "opencode agents carry every must-reach rule" <<<"$out" \
+  || fail "X662 OPENCODE_CHECK_HOLDS_THE_MUST_REACH_RULES: --check does not say it read the must-reach rules ($out)"
+"$PY" - "$T/oc/.opencode/agents/tester.md" <<'PYEOF'
+import sys
+p = sys.argv[1]; s = open(p).read()
+assert "Nothing to get wrong, no new test." in s
+open(p, "w").write(s.replace("Nothing to get wrong, no new test.", ""))
+PYEOF
+out="$(bash "$ROOT/install.sh" opencode --check --project-dir "$T/oc" 2>&1)" \
+  && fail "X662 OPENCODE_CHECK_HOLDS_THE_MUST_REACH_RULES: --check passed an opencode tester without the rule"
+grep -q "the loaded prompt of tester lacks rule test-first.proportionate-checks" <<<"$out" \
+  || fail "X662 OPENCODE_CHECK_HOLDS_THE_MUST_REACH_RULES: --check does not name the opencode tester ($out)"
+! grep -q "of architect lacks\|of reviewer lacks" <<<"$out" \
+  || fail "X662 OPENCODE_CHECK_HOLDS_THE_MUST_REACH_RULES: roles that carry the rule were named ($out)"
+echo "  X662 OPENCODE_CHECK_HOLDS_THE_MUST_REACH_RULES: opencode agents are read by callable name; --check names the role that lacks the rule — OK"
+
 # X523 COMPOSER_SELECTS_A_SECTION_BY_SLUG: a slug picks one section, no preamble; an unknown slug is a named error
 "$PY" - "$ROOT" <<'PYEOF'
 import sys

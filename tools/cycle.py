@@ -28,6 +28,12 @@ Usage:
   python3 docs/graph/cycle.py record-red N --unit UNIT --wrong "REASON"
   python3 docs/graph/cycle.py record-tip --unit UNIT [--not-run ID]... [--fail N ID]...
 
+The plan is read by the nearest grill-lint.py that carries `plan_graph` and
+`pack`: the plant's own, else the seed template placed beside it under
+docs/graph/templates/; a report read through the template names it on an
+`engine:` line after the header. A plan whose §9 holds no increments is
+refused with one line that says so, never reported as an empty cycle.
+
 The report (stdout), in this order: the `cycle:` header; `ready RED tester:`,
 `ready prose writer:`, `ready GREEN implementer:` per batch, or `ready: nothing
 is ready to spawn`; `in flight:`; `waits:`; `held:` with the one condition of
@@ -67,16 +73,32 @@ class Refusal(Exception):
     """One stderr line, exit 2."""
 
 
-def grill_lint():
+# The engines that can read §9, nearest first: the plant's own copy (kept
+# add-only by every install, so it can predate this tool), the seed template
+# placed beside it under docs/graph/templates/ (fast-forwarded by every
+# install), and the seed's own template when this file runs from tools/.
+ENGINES = (HERE / "grill-lint.py",
+           HERE / "templates" / "knowledge-graph" / "grill-lint.py",
+           HERE.parent / "templates" / "knowledge-graph" / "grill-lint.py")
+
+
+def grill_lint(rel=str):
+    """(the first engine that carries plan_graph and pack, the older engine it
+    passed over or None). SPEC-0011 CYCLE_DRIVER_FALLS_BACK_TO_THE_TEMPLATE_ENGINE."""
     sys.dont_write_bytecode = True      # the report writes nothing, not even a bytecode cache
-    for path in (HERE / "grill-lint.py", HERE.parent / "templates" / "knowledge-graph" / "grill-lint.py"):
+    older = None
+    for path in ENGINES:
         if path.is_file():
             spec = importlib.util.spec_from_file_location("cypress_grill_lint", path)
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
-            if not hasattr(mod, "plan_graph") or not hasattr(mod, "pack"):
-                raise Refusal(f"{path}: predates cycle.py (no plan_graph or pack); graft the plant")
-            return mod
+            if hasattr(mod, "plan_graph") and hasattr(mod, "pack"):
+                mod.ENGINE_PATH = path
+                return mod, older
+            older = older or path
+    if older is not None:
+        raise Refusal(f"{rel(older)}: predates cycle.py (no plan_graph or pack), and so does every "
+                      f"engine beside it; graft the plant")
     raise Refusal(f"{HERE / 'grill-lint.py'}: not found beside cycle.py")
 
 
@@ -123,7 +145,7 @@ class Cycle:
             self.top = next((d for d in self.plan.parents if (d / "docs" / "graph").is_dir()), self.plan.parent)
         self.unit_dir = self.plan.parent / unit
         self.record_path = self.unit_dir / "batch-record.txt"
-        self.gl = grill_lint()
+        self.gl, self.older_engine = grill_lint(self.rel)
         self._read_plan()
         self._read_record()
         self._read_spawns()
@@ -142,6 +164,12 @@ class Cycle:
         text = gl.strip_comments(self.plan.read_text(encoding="utf-8", errors="replace"))
         fails: list[str] = []
         incs = gl.increments(gl.sections(text).get(9, ""), fails, self.plan)
+        if not incs:
+            # SPEC-0011 CYCLE_DRIVER_NAMES_A_PLAN_WITHOUT_INCREMENTS: an empty
+            # cycle would read as "nothing to do"
+            raise Refusal(f"{self.rel(self.plan)}: §9 holds no increments, so there is no cycle to "
+                          f"drive; write the plan's §9 (protocol.grill), or name the plan that has "
+                          f"one with --plan")
         graph, efforts, defect, _libs, _refs = gl.plan_graph(incs, fails)
         numbers = [n for n, *_ in graph]
         if defect or len(set(numbers)) < len(numbers):
@@ -367,6 +395,9 @@ class Cycle:
         out = [f"cycle: {self.plan.name}, unit {self.unit_dir.name} — {len(self.order)} increment(s): "
                f"{len(self.committed)} committed, {len(self.recorded())} RED observed, "
                f"{len(flight)} in flight, {len(held)} held"]
+        if self.older_engine is not None:
+            out.append(f"engine: {self.rel(self.gl.ENGINE_PATH)}, because {self.rel(self.older_engine)} "
+                       f"predates cycle.py (no plan_graph or pack); graft the plant to reconcile its engine")
         worker = self.gl.WORKER
         for ph in ("RED", "prose", "GREEN"):
             if ready[ph]:

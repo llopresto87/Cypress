@@ -40,6 +40,18 @@ does not resolve stops the spawn, which reports it.
 High-effort steps run in the authoring class, so the map has no
 investigation-high row.
 
+## Billing and cache lifetime
+
+The owner's answers, asked with the plant facts (`grow.plant-facts`). Each
+line holds the value the owner gave; the settings themselves live in the
+host's configuration (`integrations/claude-code/README.md`, prompt caching),
+and this page records what was chosen and for which billing.
+
+- Billing: `<subscription | usage credits | API key | cloud provider>`
+- Lead cache lifetime: `<default | 1h>`, written by `install.sh claude-code --prompt-cache-ttl 1h`
+- Worker cache lifetime: `<5m | 1h>`, the `subagentPromptCacheTtl` setting the resume guard reads
+- Token usage: `<on a host other than Claude Code, where the lead reads each spawn's usage JSON for brief.py --tokens>`
+
 ## When a model changes
 
 Edit the row, then re-run `install.sh opencode` so the opencode agents pick it

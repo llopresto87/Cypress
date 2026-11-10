@@ -553,6 +553,31 @@ PY
     rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$G" 2>&1)" || rc=$?
     [[ $rc -eq 0 ]] || fail "CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT: --check over both guards present exited $rc: $out"
     echo "  M27 guard wiring: both PreToolUse guards pass their exit code through and fail open, one stderr line, when the script is absent, dangling or a directory; --check names each, runs neither — OK"
+    # X661 CHECK_SAYS_AN_UNGUARDED_WIRING_BLOCKS_THE_TOOL: an older seed wired the
+    # guard with no existence test, so a missing script blocks the tool, and the
+    # check says so instead of "the guard is off".
+    python3 - "$G/.claude/settings.json" <<'PY'
+import json, sys
+p = sys.argv[1]; s = json.load(open(p))
+for e in s["hooks"]["PreToolUse"]:
+    if e["matcher"] == "Bash":
+        e["hooks"][0]["command"] = 'python3 "${CLAUDE_PROJECT_DIR:-$PWD}/.claude/bound-hook.py"'
+json.dump(s, open(p, "w"), indent=2)
+PY
+    cmd="$(wired Bash)"
+    mv "$G/.claude/bound-hook.py" "$G/.claude/bound-hook.py.keep"
+    rc=0; printf '%s' '{"tool_name":"Bash","tool_input":{"command":"ls"}}' | CLAUDE_PROJECT_DIR="$G" sh -c "$cmd" >/dev/null 2>&1 || rc=$?
+    [[ $rc -eq 2 ]] || fail "X661 CHECK_SAYS_AN_UNGUARDED_WIRING_BLOCKS_THE_TOOL: setup: the unguarded wiring exited $rc on a missing script, not 2"
+    rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$G" 2>&1)" || rc=$?
+    [[ $rc -ne 0 ]] || fail "X661 CHECK_SAYS_AN_UNGUARDED_WIRING_BLOCKS_THE_TOOL: --check passed an unguarded wiring with its script missing: $out"
+    grep -qF "hook PreToolUse[Bash] .claude/bound-hook.py is wired without an existence test and the script is missing, so the host's interpreter exits 2 on it and every Bash call is blocked; re-run install.sh to restore the script and the guarded wiring" <<<"$out" \
+        || fail "X661 CHECK_SAYS_AN_UNGUARDED_WIRING_BLOCKS_THE_TOOL: the line does not say the tool is blocked: $out"
+    ! grep -q "PreToolUse\[Bash\] .*the guard is off" <<<"$out" \
+        || fail "X661 CHECK_SAYS_AN_UNGUARDED_WIRING_BLOCKS_THE_TOOL: the check still says the guard is off: $out"
+    grep -qF "hook PreToolUse[SendMessage] .claude/resume-hook.py is present" <<<"$out" \
+        || fail "X661 CHECK_SAYS_AN_UNGUARDED_WIRING_BLOCKS_THE_TOOL: the guarded SendMessage line changed: $out"
+    mv "$G/.claude/bound-hook.py.keep" "$G/.claude/bound-hook.py"
+    echo "  X661 CHECK_SAYS_AN_UNGUARDED_WIRING_BLOCKS_THE_TOOL: a missing script under the older, unguarded wiring is named as blocking the tool — OK"
 }
 
 # M28, SPEC-0001 CHECK_FLAGS_A_DRIFTED_SKILL_PROJECTION: a skill projection that

@@ -979,6 +979,29 @@ its own record, and that slug stays as written in §12's history.
   looks for the bound guard and never runs it, and needs no OpenCode 2
   installed
 
+### Contract: OPENCODE_CHECK_NAMES_BOTH_REMEDIES_FOR_THE_EARLIER_CONFIG
+- **Given:** an opencode plant whose `opencode.json` still carries the
+  top-level `subagent_depth`, which a graft keeps as the plant's file
+- **When:** `install.sh opencode --check --project-dir <target>` runs
+- **Then:** the warning names the remedy for each way the plant is upgraded:
+  outside a graft, re-run `install.sh opencode`, which replaces the file and
+  keeps the old one as a backup; inside a graft, merge the seed's
+  `integrations/opencode/opencode.json` into the plant's file in Phase 3
+  (Reconcile the machinery), where `graft.gate.kept-deltas` names the lines it
+  still lacks
+
+### Contract: OPENCODE_CHECK_HOLDS_THE_MUST_REACH_RULES
+- **Given:** an opencode plant, whose `.opencode/agents/` names each agent file
+  by its callable name (`tester.md`), and the `MUST_REACH` table of
+  `tools/delivery_rules.py`, whose roles are callable names
+- **When:** `install.sh opencode --check --project-dir <target>` runs
+- **Then:** it reads the table against `.opencode/agents/`, finding each role
+  by its callable name with or without an ordering prefix, as it does
+  against `.claude/agents/`; a fresh install prints `opencode agents carry
+  every must-reach rule.`
+- **And:** a role whose loaded prompt lacks a rule's sentence is named with the
+  rule on stderr, and the check exits non-zero
+
 ### Contract: OPENCODE_CONFIG_IS_OPENCODE_2
 - **Given:** the seed's `integrations/opencode/opencode.json`
 - **When:** `seed-lint` runs
@@ -1347,6 +1370,17 @@ its own record, and that slug stays as written in §12's history.
   stdout line saying it is present and not run
 - **And:** the checks of the context hooks, their lines and exit codes are
   unchanged (CHECK_EXECUTES_EACH_WIRED_HOOK)
+
+### Contract: CHECK_SAYS_AN_UNGUARDED_WIRING_BLOCKS_THE_TOOL
+- **Given:** a plant wired by an earlier seed, whose `PreToolUse` command runs
+  its script with no existence test (`python3 "<path>"`), and that script is
+  missing
+- **When:** `install.sh <host> --check --project-dir <target>` runs
+- **Then:** it exits non-zero and prints on stderr
+  `[seed] WARNING: --check: hook PreToolUse[<matcher>] <script> is wired without an existence test and the script is missing, so the host's interpreter exits 2 on it and every <matcher> call is blocked; re-run install.sh to restore the script and the guarded wiring`,
+  because the interpreter's exit 2 on a missing file is the host's block
+- **And:** a command that carries the existence test keeps the line of
+  CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT, which says the guard is off
 
 ### Contract: CHECK_FLAGS_A_DRIFTED_SKILL_PROJECTION
 - **Given:** a `claude-code` plant whose `.claude/skills/<name>/SKILL.md` is the
@@ -2229,6 +2263,8 @@ $ head -1 /p/docs/graph/libraries/rxjs.md
 | OPENCODE_LEAD_PLAYS_THE_ORCHESTRATOR | E23 in case_opencode: the placed `opencode.json` has `default_agent` `orchestrator`; `orchestrator.md` is `mode: primary` and carries an always-loaded section; the opencode-default-agent row of test-seed-lint fails a config without it; a live session started in the orchestrator on the host | tests/test-full-install.sh | integration | green |
 | OPENCODE_REINSTALL_RETIRES_OLD_SHAPE | E20 case_opencode_reinstall_old_shape arms (b) and (c): over a plant in the earlier shape the install exits 0, the numbered files are gone, a plant's edit is in a backup, `opencode.json` has `experimental.subagent_depth` and a backup, and `--check` is then green | tests/test-full-install.sh | integration | green |
 | OPENCODE_CHECK_NAMES_THE_EARLIER_SHAPE | E20 arms (a), (d) and (e): over the earlier shape `--check` exits non-zero naming the old file, the earlier-shape config and the missing plugin; with a core removed it names the core; with the plugin removed it names the plugin | tests/test-full-install.sh | integration | green |
+| OPENCODE_CHECK_NAMES_BOTH_REMEDIES_FOR_THE_EARLIER_CONFIG | X660 E20 arm (a): the earlier-shape warning names the plain re-install and graft's Phase 3 merge with `graft.gate.kept-deltas`; seen red first on the re-install-only wording | tests/test-full-install.sh | integration | green |
+| OPENCODE_CHECK_HOLDS_THE_MUST_REACH_RULES | X662 a fresh opencode plant passes `delivery_rules.py` and `--check` says it read the rules; with the sentence removed from `tester.md` `--check` names tester and the rule and no other role; seen red first (the table named `04-tester.md`, so every opencode role read as lacking the rule) | tests/test-delivery-rules.sh | integration | green |
 | OPENCODE_CONFIG_IS_OPENCODE_2 | E21 opencode-stale-schema, opencode-invalid-key, opencode-legacy-depth-key, opencode-double-load and opencode-depth-cap rows of test-seed-lint: each mutated config fails `check_opencode_config` with its message | tests/test-seed-lint.sh | integration | green |
 | OPENCODE_VERSION_HAS_ONE_HOME | E22 opencode-version-uncited row of test-seed-lint: a verified version the adapter README does not cite fails `check_opencode_version` | tests/test-seed-lint.sh | integration | green |
 | MODEL_MAP_UNREADABLE | E11 case_opencode_check_drift, its arm (f): a map row with class `premium` makes `install.sh opencode --check` exit non-zero with stderr naming `docs/graph/models.md` | tests/test-full-install.sh | integration | green |
@@ -2263,6 +2299,7 @@ $ head -1 /p/docs/graph/libraries/rxjs.md
 | CHECK_EXECUTES_EACH_WIRED_HOOK | M12 case_hook_check: over a copy of the every-host install, `claude-code --check` exits 0, keeps CHECK_WITHOUT_COPILOT_SAYS_SO's line, prints a ran line for the two Claude Code and the two Prime Agent hooks, and leaves the tree byte-identical; with `.claude/route-hook.py` removed it exits non-zero naming `UserPromptSubmit .claude/route-hook.py`; over a copy of the Copilot-only install with `.github/hooks/status-hook.py` removed, `github-copilot --check` exits non-zero naming `SessionStart .github/hooks/status-hook.py` | tests/test-install-placement.sh | integration; red on arrival (no ran line: `--check` ran no hook) | green |
 | BLOCKING_HOOK_WIRING_FAILS_OPEN_ON_A_MISSING_SCRIPT | M27 case_guard_wiring: the wired Bash and SendMessage commands of an installed plant, run with the script present on a blocked input (exit 2, the refusal) and with it absent, a dangling link or a directory (exit 0, the one stderr line naming the path) | tests/test-install-placement.sh | integration; red on arrival (python3 exited 2 on the missing script) | green |
 | CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT | M27 case_guard_wiring: `claude-code --check` with each blocking script removed in turn exits non-zero naming event, matcher, path and remedy, runs neither, and exits 0 with both present | tests/test-install-placement.sh | integration; red on arrival (exit 0, the path unnamed) | green |
+| CHECK_SAYS_AN_UNGUARDED_WIRING_BLOCKS_THE_TOOL | X661 case_guard_wiring: the Bash entry rewritten to the earlier seed's unguarded command exits 2 with its script missing, and `--check` exits non-zero saying every Bash call is blocked, never that the guard is off; the guarded SendMessage line is unchanged; seen red first ("the guard is off") | tests/test-install-placement.sh | integration | green |
 | CHECK_FLAGS_A_DRIFTED_SKILL_PROJECTION | M28 case_skill_projection_drift: after an edit of a graph-home skill, a hand edit of a projection and a deleted projection, `claude-code --check` exits non-zero naming each; `--recompose-agents` leaves the node byte-identical, backs up the differing projection, equals the node; `--check` then exits 0 | tests/test-install-placement.sh | integration; red on arrival (exit 0 on a drifted skill) | green |
 | CHECK_FLAGS_RETIRED_HARNESS_ENTRY | M13 case_retired_flag: over a copy of the every-host install carrying an `origin: seed` `docs/graph/skills/from-scratch-bootstrap.md` the seed does not ship and its `.claude/skills/` projection, plus an `origin: seed` `.claude/agents/legacy-steward.md` with no graph node (added at the tip), `graft-audit.py` keeps its clean-copy exit code and names the lone agent `RETIRED`, and `claude-code --check` exits 0, names all three `RETIRED` and leaves the tree byte-identical; after the projection gains a line and a re-install backs it up, `graft-audit.py` counts the backup `RETIRED`, reports no `UNMAPPED` backup and names the projection `RETIRED`; both entries are still on disk | tests/test-install-placement.sh | integration; red on arrival (`--check` printed no harness line, not even over the clean copy) | green |
 | CHECK_FLAGS_ORPHAN_HARNESS_ENTRY | M14 case_orphan_flag: over a copy of the every-host install, `claude-code --check` says every harness entry has a graph home (inside M13); with a skill in `.claude/skills/deploy-notes/` and an agent in `.prime/agent/agents/` and no graph node, it exits 0, names each `ORPHAN` with the graph home it lacks and leaves the tree byte-identical; `graft-audit.py` names the skill `ORPHAN` with its clean-copy exit code (asserted since the tip) | tests/test-install-placement.sh | integration; red on arrival (`--check` did not name the orphan skill) | green |
@@ -2997,3 +3034,10 @@ only version surface it has, and it moves with each entry here.
   seed places, verified on OpenCode 2.2.6 (a session started in the orchestrator,
   no configuration warning). OPENCODE_CONFIG_IS_OPENCODE_2 now also fails a
   config whose `default_agent` is not `orchestrator`.
+- 2026-11-10 — carried is not grown (the round's F3 and F4 findings). Added
+  CHECK_SAYS_AN_UNGUARDED_WIRING_BLOCKS_THE_TOOL (X661),
+  OPENCODE_CHECK_NAMES_BOTH_REMEDIES_FOR_THE_EARLIER_CONFIG (X660) and
+  OPENCODE_CHECK_HOLDS_THE_MUST_REACH_RULES (X662), each seen red first: `--check`
+  said the guard was off where an earlier seed's wiring blocks the tool, named only
+  the re-install as the remedy inside a graft that keeps the plant's file, and read
+  the must-reach rules on Claude Code alone.

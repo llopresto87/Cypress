@@ -40,7 +40,7 @@ All 17 protocols are tier 2 nodes with `origin: seed`, `kind: protocol`.
 | deliver | `protocol.deliver` | `rule.deliver`, `deliver.forms`, `deliver.attribution-assertion`, `deliver.numbered-decisions` | — | canonize, recover | 2795 |
 | ingest-library | `protocol.ingest-library` | `ingest-library.flow`, `ingest-library.refresh`, `ingest-library.corpus-first` | — | harvest, skill.library-wiki, skill.research-and-ingest | 2428 |
 | from-scratch | `protocol.from-scratch` | `from-scratch.phases`, `from-scratch.entry` | — | brainstorm, grill, ingest-library, canonize, initialize | 2532 |
-| grow | `protocol.grow` | `grow.worker-topology`, `grow.write-boundaries`, `grow.knowledge-shape`, `grow.growth-flow`, `grow.completeness-contract`, `grow.gate-table`, `grow.stack-inventory`, `grow.node-authoring`, `grow.librarian-pass`, `grow.plant-facts`, `grow.legal-corpus` | `method.delegation` | harvest, graft, initialize, ingest-library, canonize, deliver, recover, from-scratch, method.engineering-posture, method.design-posture | 13096 |
+| grow | `protocol.grow` | `grow.worker-topology`, `grow.write-boundaries`, `grow.knowledge-shape`, `grow.growth-flow`, `grow.completeness-contract`, `grow.gate-table`, `grow.stack-inventory`, `grow.node-authoring`, `grow.librarian-pass`, `grow.plant-facts`, `grow.plant-needs`, `grow.legal-corpus` | `method.delegation` | harvest, graft, initialize, ingest-library, canonize, deliver, recover, from-scratch, method.engineering-posture, method.design-posture | 13096 |
 | harvest | `protocol.harvest` | `harvest.fold-back-flow`, `harvest.agnosticism-gate`, `harvest.availability-gate`, `harvest.corpus-contracts` | `method.delegation` | method.minimum-sufficient-work, skill.humanizer, canonize, graft, grow, ingest-library, skill.toolcraft | 15890 |
 | graft | `protocol.graft` | `graft.reconcile-flow`, `graft.user-sovereignty`, `graft.pure-graph-mandate`, `graft.migration`, `graft.integrity-gates`, `graft.reversibility` | `method.delegation` | grow, harvest, deliver, method.engineering-posture | 22017 |
 | initialize | `protocol.initialize` | `initialize.entry-fork`, `initialize.adapter-edges` | — | grow, from-scratch, seed-installer | 994 |
@@ -1479,7 +1479,7 @@ specify phase only authors the spec; and ADR-0001 and SPEC-0001 are written.
 - **owns:** `grow.worker-topology`, `grow.write-boundaries`,
   `grow.knowledge-shape`, `grow.growth-flow`, `grow.completeness-contract`,
   `grow.gate-table`, `grow.stack-inventory`, `grow.node-authoring`,
-  `grow.librarian-pass`, `grow.plant-facts`, `grow.legal-corpus`
+  `grow.librarian-pass`, `grow.plant-facts`, `grow.plant-needs`, `grow.legal-corpus`
 - **requires:** `method.delegation`
 - **peers:** `protocol.harvest`, `protocol.graft`, `protocol.initialize`,
   `protocol.ingest-library`, `protocol.canonize`, `protocol.deliver`,
