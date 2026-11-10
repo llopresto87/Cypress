@@ -66,7 +66,7 @@ From the seed system directory:
              [--deliverable-language BCP47] [--comment-language BCP47]
              [--legal-corpus yes|no] [--legal-jurisdiction CC] [--print-config]
              [--expertise propose|<corpus-id>[,<corpus-id>...]]
-             [--kernel-mode replace|compose]
+             [--kernel-mode replace|compose] [--prompt-cache-ttl 1h|default]
 ```
 
 `<tool>` is one of the list below. Every tool gets the kernel under both

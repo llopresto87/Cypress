@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 8.3.0
+- Version documented: 8.3.1
 - Repository role: this repo is the seed, the product shipped into other
   projects; it holds no `docs/graph/` of its own.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -482,6 +482,11 @@ write one (it joins only the project's roster).
   mechanize it stays unwired until a plant's deliveries carry the attribution
   lines (`protocols/deliver.md`). A tier-down misclassification is therefore caught by
   a reader, not refused by a gate.
+- Token accounting is a record, not a budget: `brief.py --tokens <spawn_id>`
+  appends a spawn's host-reported token counts, or `not recorded` with its
+  reason, to `docs/graph/plans/tokens.jsonl`. `brief.py --log` sums them into
+  the delivery's optional Tokens line and prints the countable Session metrics
+  lines (`protocols/deliver.md`).
 
 ADR-0003 is the vocabulary for all of this: **hard** (the harness refuses),
 **soft** (a contract or a tool refuses — checked statically by `agent-lint.py
@@ -568,7 +573,20 @@ hardest increment, from a scale the owner set: a `tester` spawn writes five to
 seven or more REDs, an `implementer` spawn takes one to five GREENs, and
 security or concurrency code is always a GREEN batch of one. Dependent
 increments share a spawn only in dependency order, one commit each, and a RED
-and its own GREEN always go to separate spawns.
+and its own GREEN always go to separate spawns. `brief.py --increments N[,N]
+--unit <unit>` prints a notice when a batch is smaller than that scale
+allows, and `--alone <reason>` records a GREEN batched alone on purpose. The
+notice never refuses a brief.
+
+#### The cycle driver reads the cycle's state
+
+`docs/graph/cycle.py --unit <unit>` prints the state of a build cycle in one
+read: ready batches, held increments with their condition, the expected-red
+list, RED-hash mismatches, and whether a ruling pass is owed. It reads the
+plan, the spawn log, the batch record, the question files and git; an
+increment has landed when every contract slug its plan row names appears in a
+commit message on the branch. Its `record-red` and `record-tip` commands write
+the batch record. It spawns nothing and makes no ruling.
 
 #### GREEN runs its own tests
 
@@ -1015,9 +1033,14 @@ adapter to the same fork: `grow` when there is source to scout,
               [--deliverable-language <bcp47>] [--comment-language <bcp47>]
               [--legal-corpus yes|no] [--legal-jurisdiction <cc>]
               [--expertise propose|<corpus-id>[,<corpus-id>...]]
+              [--prompt-cache-ttl 1h|default]
 ```
 
-The first four flags after `--force` are the plant facts (`grow.plant-facts`;
+`--prompt-cache-ttl` is Claude Code's opt-in lead cache lifetime: `1h`
+writes the setting and records the choice, `default` removes it, and without
+it the install writes no cache setting
+([`integrations/claude-code/README.md`](integrations/claude-code/README.md),
+"Prompt cache lifetime"). The first four flags after `--force` are the plant facts (`grow.plant-facts`;
 INSTALL.md, "The plant facts are yours to state"): the owner's explicit answers, each filling its placeholder in `docs/graph/index.md`. The
 next two are the legal-corpus decision (§10). `--expertise` proposes or
 places library, tool and stack-keyed skill pages, one by one, on the owner's
@@ -1040,7 +1063,8 @@ claude-code, opencode and prime-agent. For each tool it:
 4. ensures `docs/graph/` has the schema, linter, router, nodes dir, and every
    missing leaf, while preserving existing files, and places the config-free
    tools beside them: `agnosticism-lint.py`, `prose-lint.py`,
-   `status-register.py`, `session-metrics.py`, `code-anchor.py`, which
+   `status-register.py`, `session-metrics.py`, `cycle.py` (the cycle
+   driver, §6.9), `code-anchor.py`, which
    writes no anchor at install, and `source-index.py`, whose cache under
    `.cypress/source-index/` the last step below builds and any query
    rebuilds when its key changes (ADR-0029; guide:
