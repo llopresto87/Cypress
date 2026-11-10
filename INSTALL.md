@@ -78,9 +78,14 @@ other is a symlink to it.
   `.claude/agents/` and `.claude/skills/` from the nodes on disk and no node. The hooks include `.claude/resume-hook.py`, and
   delegated work is logged to `docs/graph/plans/spawns.jsonl`
   ([Claude Code integration](integrations/claude-code/README.md#hooks)).
-- `opencode`: drops `AGENTS.md` + `.opencode/` + `opencode.json`, with each
-  agent's `model:` line written from the plant's model map,
-  `docs/graph/models.md`.
+- `opencode`: for OpenCode 2, run as `opencode2` (OpenCode 1 is not
+  supported). Drops `AGENTS.md` + `.opencode/` + `opencode.json`: each agent
+  rendered in the host's own fields, its permissions from its tools and
+  `delegates_to`, its `model:` line from the plant's model map,
+  `docs/graph/models.md`; the hook core in `.opencode/hooks/` and the plugin
+  that runs it, `.opencode/plugins/cypress.ts`
+  ([opencode integration](integrations/opencode/README.md)). A re-install over
+  an earlier opencode plant moves the old agent files and config to backups.
 - `codex`: deprecated, a frozen host
   ([ADR-0009](docs/decisions/adr-0009-host-support-tiers.md)); drops
   `AGENTS.md` + `.codex/`; prints `~/.codex/config.toml` hints.
@@ -143,8 +148,8 @@ For each tool:
 For `github-copilot` specifically, files are *transformed* (not
 symlinked) because Copilot expects different frontmatter shapes. Each
 generated file carries a "GENERATED — do not edit" banner. For `opencode`,
-each agent is rendered with its `model:` line from the model map; after you
-edit the map, re-run `install.sh opencode`. Re-run the installer after
+each agent is rendered in the host's own fields, with its `model:` line from
+the model map; after you edit the map, re-run `install.sh opencode`. Re-run the installer after
 editing any source file to regenerate these views, and use `--check` to
 detect drift without writing:
 
@@ -361,8 +366,8 @@ and everything under
 Installing multiple tools is supported and common. They share the
 same kernel (`AGENTS.md` / `CLAUDE.md`) and unified graph.
 
-**Claude Code + Prime Agent, interchangeably.** These two are the
-first-class harnesses, and one plant can run either. Install both:
+**Claude Code + Prime Agent, interchangeably.** Two of the three first-class
+harnesses (opencode is the third), and one plant can run either. Install both:
 
 ```sh
 ./install.sh claude-code prime-agent
@@ -413,13 +418,14 @@ Raise `project_doc_max_bytes` in `~/.codex/config.toml`. The
 provided snippet sets it to 64 KiB.
 
 **Agents not triggering in opencode**
-`opencode.json` has no key for the agent directory; opencode
-discovers `.opencode/agents/*.md` by convention. Confirm the files are there,
-then confirm the session started *after* they were placed
-(`docs/graph/method/delegation-bounds.md`, `delegation.harness-registration`). Note the
-known gap in `integrations/opencode/README.md`: the seed's `tools:` frontmatter
-is Claude-Code-shaped, so on opencode a leaf's tool bound is carried by the
-brief rather than held by the harness
-([tool allow-list](DOCUMENTATION.md#enf-tool-allowlist)). An agent whose
-`model:` line is missing runs on its caller's model, because the model map
-names no opencode model for its class and effort.
+Run the host as `opencode2`: the adapter targets OpenCode 2 only. OpenCode 2
+discovers `.opencode/agents/<name>.md` by convention and drops a file whose
+frontmatter it cannot read without a word, so run `install.sh opencode
+--check`: it names a file still in the earlier numbered shape, an
+`opencode.json` with the earlier top-level `subagent_depth`, and a missing
+plugin or hook core, and a re-install fixes each. `opencode2 debug agents`
+lists the agents the host registered. Then confirm the session started
+*after* the files were placed
+(`docs/graph/method/delegation-bounds.md`, `delegation.harness-registration`).
+An agent whose `model:` line is missing runs on its caller's model, because
+the model map names no opencode model for its class and effort.

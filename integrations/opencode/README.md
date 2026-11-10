@@ -1,135 +1,186 @@
 # opencode integration
 
-opencode is a `supported` host
-([ADR-0009](../../docs/decisions/adr-0009-host-support-tiers.md)):
-`install.sh all` installs it, with its install surfaces unchanged. A feature reaches
-opencode only where the host carries it natively; where it does not, the gap is
-recorded in `documentation/host-capability-matrix.md` and no workaround is
-built.
+This adapter targets **OpenCode 2**, the generation that runs as `opencode2`.
+It was last verified live against OpenCode 2.2.6; that version's one home is
+[`verified-version`](verified-version), and the seed lint holds this page and
+the [host capability matrix](../../documentation/host-capability-matrix.md) to
+it. OpenCode 1 (`opencode`) is not supported: nothing is built, tested or
+documented for it. The adapter name, the installer argument, the install stamp
+and the `.opencode/` paths keep the name `opencode`.
 
-opencode reads:
-1. `AGENTS.md` (project rules; its preferred filename) OR `CLAUDE.md` as fallback.
-2. `.opencode/agents/*.md` (agent definitions with YAML frontmatter).
-3. `.opencode/commands/*.md` (custom slash commands).
-4. `.opencode/skills/<name>/SKILL.md` (or `.claude/skills/`, `~/.claude/skills/`
-   as Claude-Code-compatible fallbacks).
-5. `opencode.json` (project config; can also define agents and commands
-   inline under the `agent` / `command` keys, which the seed does not do, because the
-   markdown files above are their single home). The seed ships only the
-   `.json` form, not a `.jsonc` twin; the reason is below.
+opencode is a `first-class` host, at parity with Claude Code
+([ADR-0033](../../docs/decisions/adr-0033-opencode-first-class-on-opencode-2.md)):
+a feature that ships on one first-class host is owed here, through the host's
+own mechanism where OpenCode 2 holds it, through a thin plugin envelope over the
+shared hook core where only its plugin API does, and otherwise as a defect to
+close, listed [below](#differences-from-claude-code-defects-to-close).
+`install.sh all` installs it.
 
-All four directory locations above are discovered **by convention**. No config
-key sets them, and the config schema allows no unknown key at all
-(`additionalProperties: false`), so a config that tries to declare them is invalid,
-not merely redundant.
+## What the host reads
 
-opencode is Claude-Code-compatible by default: if no opencode-native
-files exist, it reads `CLAUDE.md` and `~/.claude/skills/`. This means
-a project set up for Claude Code already works in opencode.
+OpenCode 2 reads, by convention and with no config key naming the location:
 
-This seed system maps to opencode as follows:
+1. `AGENTS.md`, the project rules file, as the host documents it. The seed
+   relies on no `CLAUDE.md` fallback, and none is verified live.
+2. `.opencode/agents/<name>.md`, one agent per file. The file name is the
+   agent's id. A frontmatter field the host cannot read voids the whole file
+   with no diagnostic: on 2.2.6 a `tools:` list did, which is why every agent
+   is rendered in the host's own fields (below).
+3. `.opencode/plugins/*.ts`, loaded on its own and run with Bun, with no build
+   step.
+4. `.opencode/commands/*.md` and `.opencode/skills/<name>/SKILL.md`. The seed
+   places both; that OpenCode 2 reads them is not verified live.
+5. `opencode.json`, the project config. The seed ships the `.json` form only:
+   with both `opencode.json` and `opencode.jsonc` at one tier the winner is
+   unspecified, so a project could edit one and have the other apply.
 
-| Seed file                | opencode path                                      |
-|--------------------------|----------------------------------------------------|
-| `core/AGENTS.md`         | `AGENTS.md` (copy by default; `--symlink` opt-in)  |
-| `agents/*.md`            | `.opencode/agents/*.md`                            |
-| `skills/*/SKILL.md`      | `.opencode/skills/*/SKILL.md`                      |
-| protocols → commands     | `.opencode/commands/*.md`                          |
-| `templates/`             | `docs/graph/templates/` (graph nodes)        |
-| `templates/docs/`        | `docs/graph/` (missing leaves added on install)    |
+## Seed to host
+
+| Seed source | opencode path |
+|---|---|
+| `core/AGENTS.md` | `AGENTS.md` (copy by default; `--symlink` opt-in) |
+| `agents/*.md` | `.opencode/agents/<callable name>.md`, rendered (below) |
+| `skills/*/SKILL.md` | `.opencode/skills/*/SKILL.md` |
+| protocols with `command: true` | `.opencode/commands/*.md`, generated |
+| `integrations/claude-code/{route,status,bound}-hook.py` | `.opencode/hooks/`, byte-identical |
+| `integrations/opencode/cypress-plugin.ts` | `.opencode/plugins/cypress.ts` |
+| `integrations/opencode/opencode.json` | `opencode.json` (copied, so the project can edit it) |
+| `templates/` | `docs/graph/templates/` (graph nodes) |
+| `templates/docs/` | `docs/graph/` (missing leaves added on install) |
 
 > **The projection is taken from the graph, not from the seed.** The rows
-> above are `seed → harness` for brevity; the real path is
-> `seed → docs/graph/{agents,skills}/ → harness`, and `install.sh`'s own
-> log lines say so ("harness projection of docs/graph/skills/"). The
-> distinction is not cosmetic: it is why a plant-commissioned expert that
-> a grow run writes into `docs/graph/agents/` gets projected here too, and
-> why `tools/growth-audit.py` reports one that reached the graph but not
-> the harness as `UNGROWN` — on disk and unspawnable.
+> above read `seed → host` for brevity; the real path is
+> `seed → docs/graph/{agents,skills}/ → host`, and `install.sh`'s own log
+> lines say so. That is why a plant-commissioned expert that a grow run writes
+> into `docs/graph/agents/` is projected here too, and why
+> `tools/growth-audit.py` reports one that reached the graph but not the host
+> as `UNGROWN`. When a newly placed agent becomes spawnable is
+> `delegation.harness-registration`
+> (`docs/graph/method/delegation-bounds.md`).
 
-### Known gap: the agent frontmatter is Claude-Code-shaped
+## The native agent file
 
-The seed's `agents/*.md` carry Claude Code's frontmatter, and opencode's
-markdown-agent contract is *not* a superset of it. Verified against
-`opencode.ai/docs/agents` and `opencode.ai/config.json`, opencode recognizes
-`description`, `mode`, `model`, `temperature`, `permission`, `disable`, `color`,
-`top_p`, `steps`, `hidden` — and reads two of the seed's fields differently:
+`install.sh opencode` transforms each graph agent into OpenCode 2's own shape
+(`render_opencode_agents` in `install.sh`; SPEC-0001, the `OPENCODE_*`
+contracts):
 
-| seed frontmatter | opencode expects | consequence today |
-|------------------|------------------|-------------------|
-| `model: opus` / `model: sonnet` | `provider/model` | the installer writes each agent's `provider/model` from the plant's model map; with no map row the projected agent has no `model:` line and runs on its caller's model |
-| `tools: [Read, Glob, Grep, Bash]` (list) | `permission: {edit: deny, bash: deny}` (`tools` object is deprecated) | the harness does not hold a read-only leaf's tool bound ([tool allow-list](../../DOCUMENTATION.md#enf-tool-allowlist)) |
+- **File name.** The agent's callable name, the graph file name without its
+  `<digits>-` prefix: `02-implementer.md` becomes `implementer.md`, and the
+  host lists it as `implementer`.
+- **Fields.** Only the host's own: `description`, `mode`, `model` where the
+  map names one, and `permissions`. `mode` is `subagent`, except the
+  orchestrator, which is `primary`: a selectable primary agent that no other
+  agent may launch. None of the seed's `tools:` list, `effort`,
+  `can_delegate`, `routing_triggers` or graph fields reaches the host, and no
+  OpenCode 1 field is written.
+- **Permissions.** The rules open with one that denies every action, then
+  allow each host action the charter's tools map to in
+  [`tool-permissions.json`](tool-permissions.json), the one home of that map,
+  with the host's guard on `.env` files restored after `read`. The host applies
+  the last matching rule, so the narrow rule wins. A tool name the table does
+  not carry stops the render, naming the charter and the tool, with every
+  projection as it was.
+- **Delegation.** A charter with `Task` gets a rule denying every `subagent`
+  launch, then one allow per agent in its `delegates_to:`. A charter without
+  `Task` launches nothing. The allowlist is the agent's own host rules, so it
+  holds without a brief.
+- **Body.** The charter's body, followed by each always-loaded section its
+  `always_loads:` names, composed by `tools/agent_compose.py`, the composer
+  Claude Code's projection uses: the two bodies are byte-identical. After an
+  edit to one of those nodes, `install.sh opencode --recompose-agents` rewrites
+  `.opencode/agents/` and `.opencode/skills/` only.
+- **Model.** The `model:` line comes from the plant's model map,
+  `docs/graph/models.md`, at the agent's class and effort
+  ([ADR-0022](../../docs/decisions/adr-0022-the-plant-model-map.md)): `opus`
+  reads the authoring row, `sonnet` the investigation row, `haiku` the
+  investigation-low row. A cell is a `provider/model` selector and may end in
+  `#<variant>` (`provider/model#high`), which the host registers as the
+  model's variant; that is how the map expresses an effort on a model that has
+  one, and the installer guesses no variant name. Where the map names no model
+  (a `-` or placeholder cell, a missing row, `inherit`), the line is left out
+  and the agent runs on its caller's model; the installer prints how many. A
+  map that breaks its grammar stops the run before any projection is placed.
+  After you edit the map, re-run `install.sh opencode`.
 
-Neither is fixable in `opencode.json`; the fix is a **transformed** projection,
-the way `install_github_copilot` rewrites frontmatter per agent for Copilot.
-The `model:` line has that transform (next section). The leaf tool bound is
-carried by the brief on opencode, exactly as
-`docs/graph/method/delegation-bounds.md` describes for role emulation
-(`delegation.harness-registration`); the
-[tool allow-list row](../../DOCUMENTATION.md#enf-tool-allowlist) records the gap.
-
-### Model choice comes from the plant's model map
-
-`install.sh opencode` rewrites one line of each projected agent: the class
-token in `model:` becomes the `provider/model` string that
-`docs/graph/models.md` lists for that class, at the agent's `effort:`. Any
-provider opencode carries works. The rest of the file stays verbatim, so the
-tool bound is still carried by the brief. After you edit the map, re-run
-`install.sh opencode`.
-
-## Slash commands
-
-Every protocol whose node declares `command: true` in its frontmatter is
-exposed as a slash command; `install.sh` **generates** one command file per
-such node into `.opencode/commands/`. Each is a short pointer into the
-corresponding `docs/graph/protocols/<name>.md` node (the single home). How
-the other hosts get the same roster is in the
-[host capability matrix](../../documentation/host-capability-matrix.md#slash-commands). The user-sovereign meta-loop protocols (`graft`, `grow`,
-`harvest`) carry no `command:` field and
-are commands on no harness.
+On OpenCode 2.2.6, `opencode2 debug agents` lists all 20 seed agents under
+their callable names with the mode, the model and variant, and the rules as
+rendered, and prints no configuration warning.
 
 ## opencode.json
 
-The bundled config is deliberately almost empty: it carries only keys that
-are valid and load-bearing.
+The bundled config carries only keys that are valid on OpenCode 2 and
+load-bearing:
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "subagent_depth": 3
+  "experimental": {
+    "subagent_depth": 3
+  }
 }
 ```
 
-- **`$schema`** — `https://opencode.ai/config.json`. The `config-schema.json`
-  URL returns **404**, so an editor pointed at it silently validates nothing.
-- **`subagent_depth: 3`** — this is the load-bearing key. opencode defaults it to
-  **1**, a depth at which subagents do not launch subagents of their own, and
-  that alone collapses the seed's bounded-delegation topology: the deepest legal
-  chain is depth 3 (`orchestrator` → `multi-agent-architect` → `architect` →
-  leaf), so every coordinator's `max_spawn_depth` is unreachable at the default.
-  The value must equal the highest `max_spawn_depth` in `agents/*.md`, and
-  `tests/seed-lint.py` checks that the two agree in the seed's own test run
+- **`$schema`** is `https://opencode.ai/config.json`. The `config-schema.json`
+  URL returns 404, so an editor pointed at it validates nothing.
+- **`experimental.subagent_depth: 3`** is the load-bearing key. The host's
+  default depth is 1, at which a subagent launches no subagent of its own, and
+  that collapses the seed's delegation topology: the deepest chain is
+  `orchestrator` → `multi-agent-architect` → `architect` → leaf. On 2.2.6 the
+  key is accepted, three nested launches ran, and a fourth was refused with the
+  host's message "Subagent depth limit reached (3)"; the top-level
+  `subagent_depth` an earlier seed shipped is reported as an unsupported legacy
+  setting and omitted. The value equals the highest `max_spawn_depth` in
+  `agents/*.md`, and `tests/seed-lint.py` holds the two together
   ([own-gate row](../../DOCUMENTATION.md#enf-seed-gate),
   [delegation fields](../../DOCUMENTATION.md#enf-delegation-frontmatter)).
-- **no `instructions`** — opencode auto-loads project `AGENTS.md` as its rules
-  file, so listing it again risks loading the kernel twice per session. The
-  budget check in `tests/seed-lint.py` accounts for the auto-loaded kernel plus
-  anything declared here.
-- **no `agents` / `commands` / `skills` directory keys** — `agents` and
-  `commands` are not config keys at all (the real ones are `agent` and
-  `command`, and they hold *inline definitions*, not directories); `skills` is a
-  real key but takes `{paths, urls}` for *additional* folders. All three
-  directories are found by convention, and since the schema sets
-  `additionalProperties: false`, a `{"directory": ...}` entry would be a key
-  the schema does not allow.
-- **MCP servers** use the `mcp` key (not `mcp_servers`), shaped
-  `{"<name>": {"type": "local", "command": [...], "environment": {...}}}`. The
-  seed declares none: a documentation MCP is a project choice, and
-  `research-scout` works from plain web fetch without one.
+- **No `instructions`.** The host accepts the key and loads none of its
+  entries, and `AGENTS.md` already reaches the session, so listing the kernel
+  would only risk loading it twice.
+- **No directory keys.** Agents, commands, skills and plugins are found by
+  convention.
+- **MCP servers** use the `mcp` key. The seed declares none: a documentation
+  MCP is a project choice, and `research-scout` works from plain web fetch.
 
-One config file ships, not two. opencode reads `opencode.json` **or**
-`opencode.jsonc`, and with both present at the same tier the winner is
-unspecified, so a project could edit one and have the other apply.
+## The plugin and the hook core
+
+`.opencode/plugins/cypress.ts` is a thin envelope over the three Python hook
+cores in `.opencode/hooks/`, the same files Claude Code runs
+([ADR-0024](../../docs/decisions/adr-0024-one-hook-core-per-session-residency.md);
+SPEC-0003, the `OPENCODE_*` contracts). It composes no text, writes no file and
+decides nothing; every decision is the core's.
+
+- **Route.** On each prompt it runs `route-hook.py` and adds the core's text to
+  the session as a synthetic message with `resume: false`, ahead of the user's
+  prompt, which it leaves unedited. Without `resume: false` a synthetic message
+  starts a model call of its own.
+- **Status.** On the first prompt this host process sees for a session it
+  first runs `status-hook.py` and adds its text the same way.
+- **Bounded execution.** On the permission hook, for a shell command, it runs
+  `bound-hook.py`. A command the core refuses is denied through the host with
+  the core's reason as the message, byte for byte, so the model reads the
+  reason and can re-issue the command in bounded form
+  (`toolcraft.bounded-execution`). Other actions keep the effect the host
+  decided.
+- **Child sessions.** The plugin counts the `parentID` links above a session
+  and passes that depth; the core gives a child session nothing. When the host
+  cannot say what the session is, the depth is left out and the core injects
+  in full.
+- **Failure.** A missing core, a timeout or an error injects nothing and
+  refuses nothing, and each hook is registered in its own guard, so a hook the
+  host lacks leaves the others working. `install.sh opencode --check` names a
+  missing core or plugin. The kernel's own FIRST MOVE is the route-first floor
+  without the plugin.
+
+The plugin imports only the host's bundled `@opencode/plugin` and `node:`
+built-ins. On OpenCode 2.2.6 it loaded with no install step and no network;
+the route and status texts arrived byte-identical to the cores' text, a child
+session got nothing, and a refused shell command was denied with the core's
+reason, which the model reported.
+
+Why the injection is a synthetic message: on 2.2.6, editing the prompt text in
+the prompt hook has no effect, and a keyed instruction entry reaches the model
+in the system section, where a changed value would change the cached prefix. A
+synthetic message is appended history and leaves the prefix alone.
 
 ## Install
 
@@ -137,38 +188,76 @@ unspecified, so a project could edit one and have the other apply.
 /path/to/cypress/install.sh opencode
 ```
 
-Creates copies by default (`--symlink` opts into live seed links) from the seed source to:
-- `AGENTS.md` → `core/AGENTS.md`
-- `.opencode/agents/*.md` → `agents/*.md`
-- `.opencode/skills/<name>/SKILL.md` → `skills/<name>/SKILL.md`
-- `.opencode/commands/*.md` → generated by install.sh, one per protocol node with `command: true`
-- `opencode.json` → `integrations/opencode/opencode.json` (copied,
-  not symlinked, so the project can edit it)
-- `docs/graph/` scaffolded; missing leaves populated from `templates/docs/`
+The installer places the files in the table above, scaffolds `docs/graph/`,
+and prints one line saying the adapter targets OpenCode 2 and runs as
+`opencode2`. It and every script it places need Python 3.14 or newer
+(SPEC-0005 §5); with none on `PATH` it refuses before writing anything. The
+plugin runs the cores on the interpreter the installer found.
 
-The installer and every script it places need Python 3.14 or newer
-(SPEC-0005 §5); with none on
-`PATH` it refuses before writing anything. opencode reads only `AGENTS.md`,
-so in compose mode (`--kernel-mode compose`, where a team's own `AGENTS.md`
-stays canonical and only `CLAUDE.md` carries the kernel) an opencode session
-never sees the seed kernel.
+### Re-installing over an earlier opencode plant
 
-## Bounded execution has no hook here
+A plant installed by an earlier seed holds agent files named
+`<digits>-<name>.md` with a `tools:` list, which OpenCode 2 drops without a
+diagnostic, a top-level `subagent_depth`, and no plugin. Re-running
+`install.sh opencode` moves each old agent file to a timestamped backup beside
+it, so a plant's edit survives there, writes the native agents, replaces
+`opencode.json` with a backup, and places the plugin and the cores. The
+installer neither detects nor branches on OpenCode 1. Observed on 2.2.6 over a
+plant installed by 8.3.2: the re-install succeeds, the host then lists every
+agent with no warning, and `--check` is green.
 
-The seed wires no pre-tool hook for opencode, so the bounded-execution clauses of
-`core/method/bounded-execution.md` (`toolcraft.bounded-execution`) are the agent's own discipline
-rather than a hook's check: every shell command that can hang (service
-control, process signalling, package managers, installers, builds, log
-followers) carries an explicit `timeout`, or is launched detached with its
-output in a durable log, its pid recorded, and a terminal result line. The
-worst offenders in practice are process-signalling commands issued from the
-exec tool, which can match the shell issuing them: end a process by its
-recorded pid, not by a name pattern. The
-[pre-Bash check row](../../DOCUMENTATION.md#enf-pre-bash-guard) records which
-hosts fire a hook for this.
+### `--check`
+
+`install.sh opencode --check` writes nothing and needs no OpenCode 2. It
+exits non-zero, naming the file and the remedy, for an agent or skill
+projection that differs from what the installer would place (a file in the
+earlier numbered shape included, and a model-map edit not yet re-run), an
+`opencode.json` in the earlier shape, a missing plugin, and a missing or
+unusable hook core.
+
+### Compose-kernel plants
+
+In compose mode (`--kernel-mode compose`, where a team's own `AGENTS.md` stays
+canonical and only `CLAUDE.md` carries the seed kernel), the host reads only
+`AGENTS.md`, so an opencode session there does not see the seed kernel. This
+is an open defect (below).
+
+## Slash commands
+
+Every protocol whose node declares `command: true` becomes one generated file
+in `.opencode/commands/`, a short pointer into its
+`docs/graph/protocols/<name>.md` node, the single home. The other hosts get
+the same roster ([host capability matrix](../../documentation/host-capability-matrix.md#slash-commands)).
+The user-sovereign meta-loop protocols (`graft`, `grow`, `harvest`) carry no
+`command:` field and are commands on no host. That OpenCode 2 lists the
+generated commands is not verified live.
 
 ## When both Claude Code and opencode are present
 
-opencode prefers `AGENTS.md` over `CLAUDE.md`. If the project has
-both, they should point at the same content — keep one as the
-canonical file and symlink the other to it. The installer does this.
+The installer keeps one kernel body for both: `CLAUDE.md` and `AGENTS.md` hold
+the same text, one the real file and the other a project-local symlink or an
+identical copy, so the two hosts cannot drift. OpenCode 2 reads `AGENTS.md`
+(documented), so the seed relies on no `CLAUDE.md` fallback, and outside
+compose mode the shared body makes the question moot. The orchestrator is the
+default on Claude Code (its output style); on opencode it is a selectable
+primary agent (below).
+
+## Differences from Claude Code (defects to close)
+
+The [host capability matrix](../../documentation/host-capability-matrix.md#defects-to-close)
+is the one home of each difference, its evidence and what would close it:
+
+1. The lead does not play the orchestrator; it is a selectable primary agent
+   (owner decisions D1 and D2).
+2. No worker-continuation guard.
+3. The seed kernel is absent in a compose-kernel plant.
+4. Per-session dedup is not verified live.
+5. Effort is not verified to reach the provider.
+6. No reset after a compaction.
+
+## Live verification
+
+The gate needs neither OpenCode 2 nor a network. What the adapter holds on a
+running release is re-verified by hand with the seed-only procedure
+[`opencode-live-verification.md`](../../docs/skills/opencode-live-verification.md);
+a matrix cell for opencode rises only on an observation recorded there.

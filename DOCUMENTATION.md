@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 8.3.2
+- Version documented: 8.4.0
 - Repository role: this repo is the seed, the product shipped into other
   projects; it holds no `docs/graph/` of its own.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -653,8 +653,10 @@ turns its findings into RED tests are the quality net for low-effort
 implementing. The role-and-kind table lives in the leaf.
 
 Claude Code reads `effort` from agent frontmatter. Whether it offers a
-per-spawn override is not recorded, and neither is whether opencode, Codex or
-GitHub Copilot read the key at all. Prime Agent takes the effort per spawn, as
+per-spawn override is not recorded, and neither is whether Codex or GitHub
+Copilot read the key at all. On opencode the effort travels as the model map
+cell's `#<variant>`, which the host registers; whether the provider applies it
+is not verified. Prime Agent takes the effort per spawn, as
 `rlm.spawn(..., thinking=<effort>)`, which its overlay tells the parent to pass
 (`integrations/prime-agent/APPEND_SYSTEM.md`). When the derived value differs from the
 definition's default on a host with no recorded per-spawn setting, the brief
@@ -952,9 +954,12 @@ own source, never read across from a neighbour's.
 ## 11. Tool integrations
 
 CYPRESS supports five AI coding tools in three support tiers
-([ADR-0009](docs/decisions/adr-0009-host-support-tiers.md)): Claude Code and
-Prime Agent are `first-class`, opencode is `supported`, and Codex and GitHub
-Copilot are `frozen` (installable by name, with a `DEPRECATED` notice).
+([ADR-0009](docs/decisions/adr-0009-host-support-tiers.md),
+[ADR-0033](docs/decisions/adr-0033-opencode-first-class-on-opencode-2.md)):
+Claude Code, opencode and Prime Agent are `first-class`, no host is
+`supported`, and Codex and GitHub Copilot are `frozen` (installable by name,
+with a `DEPRECATED` notice). opencode means OpenCode 2, run as `opencode2`;
+OpenCode 1 is not supported.
 "Parity" here is placement and method coverage, not enforcement:
 `documentation/host-capability-matrix.md` classifies, for each capability it
 tracks (kernel loading, delegation, recursion bound, tool allowlists, model
@@ -969,7 +974,7 @@ what each tool needs *beyond* plain placement.
 |------|-------------|-------------|------------------|------|
 | **Claude Code** | `CLAUDE.md` | `.claude/` | — | first-class |
 | **Prime Agent** | `AGENTS.md` | `.prime/agent/` | `route-extension.ts` + `status-extension.ts`, the hook core they run in `hooks/`, `settings.json` | first-class |
-| opencode | `AGENTS.md` | `.opencode/` + `opencode.json` | agents rendered with their `model:` line from the model map | supported |
+| **opencode** | `AGENTS.md` | `.opencode/` + `opencode.json` | agents rendered in the host's own fields (permissions from their tools and `delegates_to`, `model:` from the model map); `plugins/cypress.ts` and the hook core it runs in `hooks/` | first-class |
 | Codex | `AGENTS.md` | `.codex/` | manual `config.toml` merge | frozen |
 | GitHub Copilot | `.github/copilot-instructions.md` | `.github/` | transform (frontmatter rewrite), never a symlink | frozen |
 
@@ -986,14 +991,17 @@ what each tool needs *beyond* plain placement.
   discipline onto Prime Agent's primitives (recursive/parallel subagents, the
   continual harness, in-kernel gates). Its spawns read each class's model from
   the plant's model map, and it has no registration lag.
-- GitHub Copilot and opencode have their own integration READMEs
-  ([Copilot](integrations/github-copilot/README.md),
-  [opencode](integrations/opencode/README.md)). In short: Copilot files are
-  transformed, each carrying a "GENERATED — do not edit" banner; opencode
-  agents get their `model:` line from the plant's model map, and
-  `install.sh <tool> --check` re-renders either projection and reports drift
-  without writing a byte. The leaf tool bound stays brief-enforced on
-  opencode.
+- opencode runs the same three hook cores as Claude Code through one plugin,
+  and its agents are transformed into the host's own fields, so the host holds
+  each agent's tools and delegation list as its permissions
+  ([opencode](integrations/opencode/README.md); what still differs from
+  Claude Code is the matrix's
+  [defects to close](documentation/host-capability-matrix.md#defects-to-close)).
+- GitHub Copilot has its own integration README
+  ([Copilot](integrations/github-copilot/README.md)): its files are
+  transformed, each carrying a "GENERATED — do not edit" banner.
+  `install.sh <tool> --check` re-renders the Copilot or opencode projection
+  and reports drift without writing a byte.
 
 Each integration directory has its own `README.md` with the seed→tool mapping.
 
@@ -1091,8 +1099,9 @@ claude-code, opencode and prime-agent. For each tool it:
    that does not finish prints one line with the command to run by hand.
    A graft applies the seed with the installer, so it runs this step too.
 
-On opencode it also renders each agent's `model:` line from the model map
-before placing it.
+On opencode it also renders each agent in the host's own fields, with its
+`model:` line from the model map, before placing it, and places the plugin and
+the hook core it runs.
 
 ### 12.3 Copy vs symlink
 
@@ -1835,14 +1844,14 @@ This section answers which rules a tool holds and which the method only asks the
 |---|---|---|---|---|
 | <a id="enf-kernel-load"></a>The kernel is loaded at the start of every session | `core/AGENTS.md`, `install.sh` (`place_kernel`) | **hard** for loading the file, on a host that reads it; **judgment** for whether the model follows it (the session, then whoever reads its delivery) | The model can read the kernel and not act on it. Whether the text survives when a host compacts a long session is not recorded | [host capability matrix, Root kernel loading](documentation/host-capability-matrix.md) |
 | <a id="enf-kernel-budget"></a>The kernel stays within a byte budget | `tests/seed-lint.py`, `tests/ratchets.json` | **soft**, and only in the seed's own gate | Nothing re-measures a plant's kernel after install. A raised budget recorded in `tests/ratchets.json` in the same change passes | [§14 Tests and gates](#14-tests-and-gates) |
-| <a id="enf-tool-allowlist"></a>Each agent works with the tools its `tools:` line lists | `agents/*.md`, `install.sh` (`project_agents`) | **hard** where the host reads the `tools:` line and withholds a tool it does not list; **soft** where only the brief carries the list | A worker granted `Bash` can reach through the shell much of what its list leaves out. Role emulation: a session can do a worker's job itself, with its own tools, and no list is consulted. An agent file that omits its `tools:` line is outside this row, and what a host grants it then is host-dependent | [host capability matrix, Tool allowlists](documentation/host-capability-matrix.md) |
-| <a id="enf-leaf-cannot-spawn"></a>A leaf agent holds no spawn tool | `agents/*.md`, `integrations/claude-code/agent-lint.py` | **hard** where the host reads the `tools:` line and withholds a tool it does not list; **soft** where only the brief holds the split | The lint reads the spawn tool under the two names Claude Code accepts, `Agent` and `Task`, bare or parenthesized; how another host names or grants it is host-dependent. A leaf granted a shell can start a new model session from it through any command-line client on the machine, and no `tools:` line governs that. Role emulation: a leaf can do the coordinator's work itself instead of handing it back. An agent file with no `tools:` line inherits every tool on the host; the lint refuses such a file, and a file outside the lint's reach keeps the gap | [host capability matrix, Recursion bound](documentation/host-capability-matrix.md) |
-| <a id="enf-delegation-frontmatter"></a>The delegation fields `can_delegate`, `delegates_to` and `max_spawn_depth` | `agents/*.md`, `integrations/claude-code/agent-lint.py` | **soft**: `agent-lint.py --lint` checks their values, and beyond that only prose and briefs carry them | ADR-0003 records that the host's spawn tool does not read these fields, so a delegating agent can start one its list leaves out. How deep a host lets spawns nest is host-dependent. A plant runs the lint only when a session or the plant's own CI runs it | [host capability matrix, Recursion bound](documentation/host-capability-matrix.md) |
-| <a id="enf-route-hook"></a>A routing pointer is added to each prompt | `integrations/claude-code/route-hook.py`, `integrations/claude-code/settings.json`, `integrations/prime-agent/route-extension.ts` | **not a control**: the hook fires and adds text, and holds nothing. Following the pointer is **judgment** (the session) | It fails open, so a broken script adds nothing and the prompt goes on. The suggestion comes from `graph-lint.py --plan`, a keyword heuristic that exits 0 whatever it suggests. Which turns a host runs it on is host-dependent | [host capability matrix, Routing hook](documentation/host-capability-matrix.md) |
-| <a id="enf-status-hook"></a>A lifecycle status summary and the code-anchor line are added when a session starts | `integrations/claude-code/status-hook.py`, `integrations/prime-agent/status-extension.ts`, `tools/status-register.py`, `tools/code-anchor.py` | **not a control**: the hook fires and adds text, and holds nothing | It fails open and is silent on a register error. The anchor line fails toward checking instead: no anchor, an unreadable one, or a comparison that did not finish within 5 s gives a line saying code facts are unverified. Acting on either line is left to the session, and a worker sees neither unless its brief carries the anchor line. opencode has no hook and reads the line from the newest session record | [host capability matrix, Status hook](documentation/host-capability-matrix.md) |
-| <a id="enf-pre-bash-guard"></a>A shell command is checked for an unbounded blocking-prone call before it runs | `integrations/claude-code/bound-hook.py`, `integrations/claude-code/settings.json` | **hard** for a matched command on a host that fires the hook; **not a control** for any other command, and on a host that does not fire it | It fails open: an internal error, unreadable input or a missing command is allowed through, and so is a call when the hook script itself is missing (the settings command prints one line and exits 0; `install.sh --check` reports the script). It matches command words against a fixed list, so a call made by indirection, such as a script file whose name is on no list, passes; evasion takes no effort. It reads the shell tool's calls only. Which hosts fire it is host-dependent | [host capability matrix, Pre-tool guard](documentation/host-capability-matrix.md) |
+| <a id="enf-tool-allowlist"></a>Each agent works with the tools its `tools:` line lists | `agents/*.md`, `install.sh` (`project_agents`, `render_opencode_agents`), `integrations/opencode/tool-permissions.json` | **hard** where the host reads the `tools:` line, or the permissions the installer renders from it, and withholds a tool it does not list; **soft** where only the brief carries the list | A worker granted `Bash` can reach through the shell much of what its list leaves out. Role emulation: a session can do a worker's job itself, with its own tools, and no list is consulted. An agent file that omits its `tools:` line is outside this row, and what a host grants it then is host-dependent | [host capability matrix, Tool allowlists](documentation/host-capability-matrix.md) |
+| <a id="enf-leaf-cannot-spawn"></a>A leaf agent holds no spawn tool | `agents/*.md`, `integrations/claude-code/agent-lint.py`, `install.sh` (`render_opencode_agents`) | **hard** where the host reads the `tools:` line, or the permissions the installer renders from it, and withholds a tool it does not list; **soft** where only the brief holds the split | The lint reads the spawn tool under the two names Claude Code accepts, `Agent` and `Task`, bare or parenthesized; how another host names or grants it is host-dependent. A leaf granted a shell can start a new model session from it through any command-line client on the machine, and no `tools:` line governs that. Role emulation: a leaf can do the coordinator's work itself instead of handing it back. An agent file with no `tools:` line inherits every tool on the host; the lint refuses such a file, and a file outside the lint's reach keeps the gap | [host capability matrix, Recursion bound](documentation/host-capability-matrix.md) |
+| <a id="enf-delegation-frontmatter"></a>The delegation fields `can_delegate`, `delegates_to` and `max_spawn_depth` | `agents/*.md`, `integrations/claude-code/agent-lint.py`, `install.sh` (`render_opencode_agents`) | **hard** on opencode for `delegates_to`, which the installer renders as the agent's `subagent` rules and the host holds; **soft** elsewhere and for the other two fields: `agent-lint.py --lint` checks their values, and beyond that only prose and briefs carry them | ADR-0003 records that Claude Code's spawn tool does not read these fields, so a delegating agent there can start one its list leaves out. How deep a host lets spawns nest is host-dependent. A plant runs the lint only when a session or the plant's own CI runs it | [host capability matrix, Recursion bound](documentation/host-capability-matrix.md) |
+| <a id="enf-route-hook"></a>A routing pointer is added to each prompt | `integrations/claude-code/route-hook.py`, `integrations/claude-code/settings.json`, `integrations/prime-agent/route-extension.ts`, `integrations/opencode/cypress-plugin.ts` | **not a control**: the hook fires and adds text, and holds nothing. Following the pointer is **judgment** (the session) | It fails open, so a broken script adds nothing and the prompt goes on. The suggestion comes from `graph-lint.py --plan`, a keyword heuristic that exits 0 whatever it suggests. Which turns a host runs it on is host-dependent | [host capability matrix, Routing hook](documentation/host-capability-matrix.md) |
+| <a id="enf-status-hook"></a>A lifecycle status summary and the code-anchor line are added when a session starts | `integrations/claude-code/status-hook.py`, `integrations/prime-agent/status-extension.ts`, `integrations/opencode/cypress-plugin.ts`, `tools/status-register.py`, `tools/code-anchor.py` | **not a control**: the hook fires and adds text, and holds nothing | It fails open and is silent on a register error. The anchor line fails toward checking instead: no anchor, an unreadable one, or a comparison that did not finish within 5 s gives a line saying code facts are unverified. Acting on either line is left to the session, and a worker sees neither unless its brief carries the anchor line. On opencode the summary arrives with a session's first prompt in each host process, since no session-start event runs it | [host capability matrix, Status hook](documentation/host-capability-matrix.md) |
+| <a id="enf-pre-bash-guard"></a>A shell command is checked for an unbounded blocking-prone call before it runs | `integrations/claude-code/bound-hook.py`, `integrations/claude-code/settings.json`, `integrations/opencode/cypress-plugin.ts` | **hard** for a matched command on a host that fires the hook; **not a control** for any other command, and on a host that does not fire it | It fails open: an internal error, unreadable input or a missing command is allowed through, and so is a call when the hook script itself is missing (the settings command prints one line and exits 0, the opencode plugin allows the call; `install.sh --check` reports the script). It matches command words against a fixed list, so a call made by indirection, such as a script file whose name is on no list, passes; evasion takes no effort. It reads the shell tool's calls only. Which hosts fire it is host-dependent | [host capability matrix, Pre-tool guard](documentation/host-capability-matrix.md) |
 | <a id="enf-cold-resume-guard"></a>New work is not sent to a worker whose prompt cache has expired; a worker the host cut off is resumed | `integrations/claude-code/resume-hook.py`, `integrations/claude-code/settings.json` | **hard** on Claude Code for a `SendMessage` to a worker idle past five minutes whose last record is not a host API error; **not a control** on other hosts, where `delegation.continuation` is doctrine | It fails open: unreadable input, an unknown worker or a missing transcript is allowed, and so is a message when the hook script is missing (one line on stderr; `install.sh --check` reports it). A first line starting `continuation:` passes by the caller's own declaration, so it can be claimed falsely. A worker idle under five minutes is not checked | [host capability matrix, Pre-tool guard](documentation/host-capability-matrix.md) |
-| <a id="enf-injection-dedup"></a>Text already injected in a session is named by id, not repeated | `integrations/claude-code/route-hook.py`, `docs/specs/SPEC-0003-per-prompt-injection.md` | **not a control**: it saves repeated text and binds nothing | On any doubt about its ledger it injects in full. Whether a host sends the session id it keys on is host-dependent | [host capability matrix, Per-session injection dedup](documentation/host-capability-matrix.md) |
+| <a id="enf-injection-dedup"></a>Text already injected in a session is named by id, not repeated | `integrations/claude-code/route-hook.py`, `integrations/opencode/cypress-plugin.ts`, `docs/specs/SPEC-0003-per-prompt-injection.md` | **not a control**: it saves repeated text and binds nothing | On any doubt about its ledger it injects in full. Whether a host sends the session id it keys on is host-dependent | [host capability matrix, Per-session injection dedup](documentation/host-capability-matrix.md) |
 | <a id="enf-backup-before-replace"></a>A file the installer replaces is backed up first, and an identical rerun changes nothing | `install.sh` (`place_file`), `tests/test-install-placement.sh` | **soft**: the installer's own code, held by SPEC-0001's tests | `.cypress/seed.json` is replaced without a backup, by design (`place_state`) | [SPEC-0001](docs/specs/SPEC-0001-install-placement.md) |
 | <a id="enf-plant-files-kept"></a>A plant-owned file is placed only where it is missing | `install.sh` (`place_if_missing`) | **soft** | A kept file is not refreshed, so a plant's copy of a graph engine can fall behind the seed until a graft reconciles it | [SPEC-0001](docs/specs/SPEC-0001-install-placement.md) |
 | <a id="enf-install-preflight"></a>The installer checks its destinations before it writes | `install.sh` (`preflight_destinations`, `preflight_state_record`) | **soft** | It refuses only the conditions it models; any other fault shows up when a write fails, or not at all | [§12 Installation and growth](#12-installation-and-growth) |

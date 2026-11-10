@@ -98,8 +98,9 @@ per-spawn `effort` (v2.1.292+) overrides it, `CLAUDE_CODE_EFFORT_LEVEL`
 overrides both, and a subagent with neither runs at the session's level,
 `medium` by default on Opus 5.5 (code.claude.com/docs/en/sub-agents and
 /model-config, retrieved 2026-11-09). Prime Agent takes the spawn's effort as
-`thinking=`. opencode, Codex, GitHub Copilot: not recorded. No install
-transform drops the key.
+`thinking=`. opencode's projection leaves the key out and carries the effort
+as the model map cell's `#<variant>`, which OpenCode 2 registers; whether the
+provider applies it is not recorded. Codex, GitHub Copilot: not recorded.
 
 Each agent definition defaults to the effort of the step kind it mostly runs,
 from the table above, and to `medium` where the table has no row

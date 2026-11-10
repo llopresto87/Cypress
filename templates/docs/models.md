@@ -23,7 +23,8 @@ The providers this plant runs, one per line: `<provider>`.
 
 Write each selector as the host's catalog prints it: on Prime Agent, the
 `.selector` that `rlm.find_models("<name>")` returns; on opencode, the
-`provider/model` string. A `-` cell, or a row still holding its placeholder,
+`provider/model` string, optionally ending in `#<variant>` to name the
+model's variant for that row's effort, on a model that has one. A `-` cell, or a row still holding its placeholder,
 means "inherit the caller's model": the spawn omits the model and its routing
 evidence records `model: inherited (map row unfilled)`. A filled selector that
 does not resolve stops the spawn, which reports it.

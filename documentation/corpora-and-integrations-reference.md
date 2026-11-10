@@ -406,18 +406,22 @@ Source: [ADR-0009](../docs/decisions/adr-0009-host-support-tiers.md), the
 Support tiers table of `documentation/host-capability-matrix.md`,
 `integrations/prime-agent/README.md`, `tests/test-full-install.sh`.
 
-- Claude Code and Prime Agent are the two first-class citizens at full
-  parity: each ships a progressive-discovery enforcement hook/extension, and
-  the same `agent-lint.py` passes against either harness's installed roster.
+- Claude Code, opencode and Prime Agent are the three first-class hosts
+  ([ADR-0033](../docs/decisions/adr-0033-opencode-first-class-on-opencode-2.md)
+  for opencode, which means OpenCode 2). Each ships a progressive-discovery
+  hook, extension or plugin over the one hook core, and the same
+  `agent-lint.py` passes against the Claude Code and Prime Agent rosters.
+  What opencode still lacks against Claude Code is the host matrix's
+  [defects to close](host-capability-matrix.md#defects-to-close).
   What asserts that is `tests/test-full-install.sh`, a gate in the seed's own
   suite; `install.sh` places the linter into a plant but no workflow that runs
   it, so running it on every push is the plant's to wire (§B.8).
-- opencode is the one `supported` host; Codex and GitHub Copilot are
-  `frozen`: still installable by name, with a `DEPRECATED` notice, and no new
-  features. All three install the same kernel, roster, and skills; commands
-  reach opencode and Copilot but not Codex, which gets no command surface at
-  all (the Slash commands row of `documentation/host-capability-matrix.md`).
-  Each has stated gaps, documented per tool below.
+- No host is `supported`. Codex and GitHub Copilot are `frozen`: still
+  installable by name, with a `DEPRECATED` notice, and no new features. Both
+  install the same kernel, roster, and skills; commands reach Copilot but not
+  Codex, which gets no command surface at all (the Slash commands row of
+  `documentation/host-capability-matrix.md`). Each has stated gaps,
+  documented per tool below.
 
 ## B.1 Per-tool summary table
 
@@ -425,7 +429,7 @@ Support tiers table of `documentation/host-capability-matrix.md`,
 |---|---|---|---|---|---|
 | Claude Code | `CLAUDE.md` (copy of `core/AGENTS.md`; `--symlink` opt-in) | `.claude/{agents,skills,commands}` | copy by default; commands generated | **Yes** | `.claude/route-hook.py` on `UserPromptSubmit`; `.claude/status-hook.py` on `SessionStart` |
 | Prime Agent | `AGENTS.md` (copy of `core/AGENTS.md`; shared with CLAUDE.md when co-installed) | `.prime/agent/{agents,skills,prompts,extensions,hooks}` | copy by default; prompts generated | **Yes** | `.prime/agent/extensions/route-extension.ts` on `before_agent_start` and `status-extension.ts` on the session events, both running the hook core in `.prime/agent/hooks/` |
-| opencode | `AGENTS.md` (or `CLAUDE.md` fallback) | `.opencode/{agents,skills,commands}` | copy by default; agents rendered with their `model:` line from the model map; `opencode.json` copied | No | Kernel FIRST-MOVE mandate (no dedicated hook shipped) |
+| opencode (OpenCode 2) | `AGENTS.md` | `.opencode/{agents,skills,commands,plugins,hooks}` | copy by default; agents rendered in the host's own fields (permissions, `model:` from the model map); `opencode.json` copied | **Yes** | `.opencode/plugins/cypress.ts` on the prompt and permission hooks, running the hook core in `.opencode/hooks/` (route, status, bounded execution) |
 | Codex | `AGENTS.md` at repo root | `.codex/{agents,skills}` | copy by default; global `~/.codex/config.toml` edits are user-consented | No | Kernel FIRST-MOVE mandate; skills registered in global config |
 | GitHub Copilot | `.github/copilot-instructions.md` (copy) + `AGENTS.md` | `.github/{agents,prompts,instructions,hooks}` | **transform** (regenerate, not symlink) | No | `route-hook.py` + `status-hook.py` via VS Code Agent Hooks (Preview), installed only when `.claude/settings.json` is absent — VS Code reads both, and firing both would double-inject (`documentation/host-capability-matrix.md`) |
 
@@ -554,48 +558,48 @@ SKILL.md`), extensions (`.prime/agent/extensions/*.ts`), and settings
 
 ## B.4 opencode
 
-Source: `integrations/opencode/README.md`, `opencode.json`.
+Source: `integrations/opencode/README.md`, `opencode.json`,
+`tool-permissions.json`, `cypress-plugin.ts`.
 
-opencode reads `AGENTS.md` (its preferred filename) or `CLAUDE.md` as fallback,
-`.opencode/agents/*.md`, `.opencode/commands/*.md`,
-`.opencode/skills/<name>/SKILL.md` (with `.claude/skills/` fallbacks), and
-`opencode.json`. All directory locations are discovered by convention; the
-schema rejects unknown keys (`additionalProperties: false`). opencode is
-Claude-Code-compatible by default, so a Claude Code project already works in it.
+The adapter targets OpenCode 2, run as `opencode2`; OpenCode 1 is not
+supported, and the adapter, its installer argument and its `.opencode/` paths
+keep the name `opencode`
+([ADR-0033](../docs/decisions/adr-0033-opencode-first-class-on-opencode-2.md)).
+The host reads `AGENTS.md`, `.opencode/agents/<name>.md`,
+`.opencode/plugins/*.ts`, `.opencode/commands/*.md`,
+`.opencode/skills/<name>/SKILL.md` and `opencode.json`, each by convention.
 
 **Mapping:** `core/AGENTS.md` → `AGENTS.md`; `agents/*.md` →
-`.opencode/agents/*.md`; `skills/*/SKILL.md` → `.opencode/skills/*/SKILL.md`;
-protocols → `.opencode/commands/*.md`; `templates/docs/` → `docs/graph/`.
+`.opencode/agents/<callable name>.md`, rendered; `skills/*/SKILL.md` →
+`.opencode/skills/*/SKILL.md`; protocols → `.opencode/commands/*.md`; the
+three hook cores → `.opencode/hooks/`; `cypress-plugin.ts` →
+`.opencode/plugins/cypress.ts`; `templates/docs/` → `docs/graph/`.
 
-- **Install:** `install.sh opencode`. Symlinks (copies on Windows); commands
-  generated; `opencode.json` copied (not symlinked) so the project can edit
-  it; `docs/graph/` scaffolded.
-- **Enforcement:** no dedicated hook is shipped. The kernel's FIRST-MOVE
-  mandate is the route-first floor.
-- **`opencode.json`** is deliberately almost empty:
-  `{"$schema": "https://opencode.ai/config.json", "subagent_depth": 3}`.
-  `subagent_depth: 3` is the load-bearing key: opencode defaults it to 1
-  ("prevents subagents from launching subagents"), which collapses the seed's
-  depth-3 delegation chain. The value must equal the highest `max_spawn_depth`
-  in `agents/*.md`; `tests/seed-lint.py` enforces that the two agree. Only one
-  config file ships (`opencode.json`, never a `.jsonc` twin), because with both
-  present the winner is unspecified.
-- **Known gap (Claude-Code-shaped frontmatter):** opencode's markdown-agent
-  contract is not a superset of Claude Code's. Two seed fields are read
-  differently:
-
-  | seed frontmatter | opencode expects | consequence today |
-  |---|---|---|
-  | `model: opus` / `model: sonnet` | `provider/model` | the installer writes each agent's `provider/model` from the plant's model map, `docs/graph/models.md`; with no map row the projected agent has no `model:` line and runs on its caller's model |
-  | `tools: [Read, Glob, Grep, Bash]` (list) | `permission: {edit: deny, bash: deny}` (`tools` object deprecated) | a read-only leaf's tool bound is not enforced by the harness |
-
-  Neither is fixable in `opencode.json`. The `model:` line is a transformed
-  projection: `install.sh opencode` renders each agent with it, and
-  `install.sh opencode --check` compares the placed projections with a fresh
-  rendering ([ADR-0022](../docs/decisions/adr-0022-the-plant-model-map.md);
-  `integrations/opencode/README.md`, "Model choice comes from the plant's model
-  map"). The leaf tool bound stays brief-enforced on opencode, per
-  `delegation.harness-registration`.
+- **Install:** `install.sh opencode`. Copies by default; agents rendered;
+  commands generated; `opencode.json` copied so the project can edit it;
+  `docs/graph/` scaffolded. A re-install over an earlier opencode plant moves
+  the old agent files and config to backups; `--check` names drift, the
+  earlier shape and a missing plugin or core.
+- **Agents:** each carries only the host's fields (`description`, `mode`,
+  `model`, `permissions`). Its `tools:` become host permissions through
+  `tool-permissions.json`, its `delegates_to:` become `subagent` rules, its
+  body is composed from `always_loads:` as on Claude Code, and its `model:`
+  comes from the plant's model map, a cell optionally ending in `#<variant>`
+  ([ADR-0022](../docs/decisions/adr-0022-the-plant-model-map.md)).
+- **Enforcement:** the plugin runs the same route, status and bound cores as
+  Claude Code: the route and status texts arrive as synthetic messages, and a
+  shell command the bound core refuses is denied with the core's reason.
+- **`opencode.json`** carries `$schema` and `experimental.subagent_depth: 3`
+  only. The host's default depth is 1, which would collapse the seed's
+  depth-3 delegation chain; `tests/seed-lint.py` holds the value to the
+  highest `max_spawn_depth` in `agents/*.md`. Only one config file ships
+  (`opencode.json`, never a `.jsonc` twin), because with both present the
+  winner is unspecified.
+- **Verification:** the gate needs no OpenCode 2; the live procedure
+  (`docs/skills/opencode-live-verification.md`) re-verifies a release, and
+  the verified version's one home is `integrations/opencode/verified-version`.
+  What still differs from Claude Code is the host matrix's
+  [defects to close](host-capability-matrix.md#defects-to-close).
 
 ## B.5 Codex (OpenAI Codex CLI)
 
