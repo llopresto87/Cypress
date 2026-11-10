@@ -32,6 +32,10 @@ classifies:
               refreshes it only while its bytes equal the recorded hash, so a backup
               of it holds the corpus's earlier layer (SPEC-0001
               PLACED_PAGE_CARRIES_ITS_PROVENANCE)
+  SHAPE-MIGRATED  the backup tools/spec-convert.py left beside a plant spec when
+              the steward ratified its conversion to the kinds form: the live
+              spec is the backup plus the conversion's lines alone (SPEC-0010);
+              any other changed line makes it a knowledge overwrite
 
 A backup line counts as plant content only when the seed does not carry it. With
 `--base <rev>` the seed at that revision counts too, so a backup byte-identical
@@ -542,6 +546,35 @@ def corpus_placed(bak: Path, rel: str, plant: Path) -> bool:
     return False
 
 
+# The lines tools/spec-convert.py adds to a plant spec, its mechanical part
+# (SPEC-0010): the only writer that backs up a plant spec, on the steward's
+# ratification of the graft's shape migration.
+SPEC_CONVERT_LINES = {"- **Contract form:** kinds", "- **Trust path:** no", "- **Check:** test"}
+SPEC_PATH_RE = re.compile(r"^docs/graph/specs/SPEC-[^/]+\.md$")
+
+
+def shape_migrated(bak: Path, rel: str, plant: Path) -> bool:
+    """Whether a backup is the one tools/spec-convert.py left beside a plant
+    spec: the live spec is the backup with only the conversion's lines added.
+    Any other changed line makes it a knowledge overwrite again."""
+    if not SPEC_PATH_RE.match(rel):
+        return False
+    try:
+        old = bak.read_text(encoding="utf-8").splitlines()
+        new = (plant / rel).read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError):
+        return False
+    i = added = 0
+    for line in new:
+        if i < len(old) and line == old[i]:
+            i += 1
+        elif line in SPEC_CONVERT_LINES:
+            added += 1
+        else:
+            return False
+    return i == len(old) and added > 0
+
+
 # The harness entries (SPEC-0001 §6): what the roster and skill projections
 # write, in every harness directory the plant carries. An entry with no graph
 # home is invisible to the router and to every other harness, and an
@@ -969,7 +1002,7 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
             if p.is_file() and not p.is_symlink() and s.startswith(date)]
     counts = {"IDENTICAL": 0, "DELTA": 0, "CUSTOMIZED": 0,
               "GENERATED": 0, "PLANT-OWNED": 0, "RETIRED": 0, "ORPHAN": 0,
-              "CORPUS-PLACED": 0, "UNMAPPED": 0}
+              "CORPUS-PLACED": 0, "SHAPE-MIGRATED": 0, "UNMAPPED": 0}
     # the harness entries with no live graph home, read once: a backup of one
     # takes its verdict, and every one is named after the backup verdicts
     flags = harness_flags(plant, seed)
@@ -983,6 +1016,12 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
         # earlier layer, not a plant edit (SPEC-0001 PLACED_PAGE_CARRIES_ITS_PROVENANCE).
         if corpus_placed(b, rel, plant):
             counts["CORPUS-PLACED"] += 1
+            continue
+        # A ratified spec conversion (tools/spec-convert.py, SPEC-0010)
+        # added its mechanical lines and nothing else: reported, not a
+        # knowledge overwrite.
+        if shape_migrated(b, rel, plant):
+            counts["SHAPE-MIGRATED"] += 1
             continue
         src = seed_source_for(rel, seed)
         seed_backed = bool(src and src.exists())
@@ -1272,7 +1311,7 @@ def _kernel_currency(plant: Path, seed: Path) -> bool:
     return ok
 
 
-CONFIG_KEY_RE = re.compile(r"^(ROOT_ID|KINDS|KIND_PREFIX|TEST_GLOBS)\s*=")
+CONFIG_KEY_RE = re.compile(r"^(ROOT_ID|KINDS|KIND_PREFIX|TEST_GLOBS|SKIP_DIRS)\s*=")
 
 
 def _strip_config_assignments(text: str) -> str:

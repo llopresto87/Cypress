@@ -1802,6 +1802,177 @@ collect_case GA-K4 case_audit_record_zero_files_fails_closed "--record: an entry
 collect_case X499 case_run_recreated_excludes_seed_new "GRAFT_RUN_RECREATED_LEAVES_OUT_SEED_NEW: graft.gate.recreated-nodes leaves out the ledger's SEED-NEW nodes, which no plant ever carried"
 collect_case X500 case_run_keeps_diverged_machinery "INSTALL_KEEPS_DIVERGED_MACHINERY: a graft rehearsal leaves each KEEP-PLANT and MERGE file the plant's, composes from the kept node, and blocks on a MERGE that lacks the seed's lines"
 collect_case GL-f case_ledger_new_adapter_file_is_seed_new "an adapter file the seed added, in a directory the plant carries, is SEED-NEW; an adapter directory the plant lacks gets no row"
+
+# ---- round 8.5.0: engines arrive by graft; the first worth baseline (SPEC-0010)
+# X644 to X646 reconcile the engines v8.4.0 shipped onto a plant with its own
+# test layout (tests/fixtures/spec-convert/plant and configure.py there); X647
+# and X648 are two graft-run arms over the GR plant with a read-back suite.
+SC="$TMP/sc"; mkdir -p "$SC"
+SCFIX="$ROOT/tests/fixtures/spec-convert"
+old_engine() {  # old_engine <engine file name> <dst>: the engine as v8.4.0 shipped it
+  # v8.3.2 shipped the same spec-lint.py and grill-lint.py bytes, so a
+  # checkout whose tags stop there reads them from it
+  local rev
+  for rev in v8.4.0 v8.3.2; do
+    git -C "$ROOT" show "$rev:templates/knowledge-graph/$1" > "$2" 2>/dev/null && return 0
+  done
+  echo "harness: git show v8.4.0 (or v8.3.2):templates/knowledge-graph/$1 failed; the gate reads tags (gate.yml fetch-depth: 0)"
+  return 1
+}
+lint_both() {  # lint_both <plant> <out>: the plant's spec-lint and grill-lint, each with its exit
+  ( cd "$1" && { python3 docs/graph/spec-lint.py; echo "spec-lint exit $?"; \
+                 python3 docs/graph/grill-lint.py; echo "grill-lint exit $?"; } ) >"$2" 2>&1
+}
+
+case_engine_keeps_the_plant_test_layout() {
+  # X644 GRAFT_ENGINE_KEEPS_THE_PLANT_TEST_LAYOUT
+  local d="$SC/x644" rc out
+  mkdir -p "$d/plant/docs/graph" "$d/seed"
+  old_engine spec-lint.py "$d/old.py" || return 1
+  python3 "$SCFIX/configure.py" "$d/old.py" "$d/plant/docs/graph/spec-lint.py" || return 1
+  python3 "$ENGINE" "$d/plant/docs/graph/spec-lint.py" "$KG/spec-lint.py" >"$d/out" 2>&1 && rc=0 || rc=$?
+  [ "$rc" -eq 0 ] || { echo "reconciling the v8.4.0 spec-lint.py exited $rc: $(flat "$d/out")"; return 1; }
+  grep -qx 'TEST_GLOBS = \["tests/\*\*/\*\.py", "checks/\*\*/\*\.py", "\*\*/\*_test\.py"\]' "$d/plant/docs/graph/spec-lint.py" \
+    || { echo "the plant's TEST_GLOBS was not kept: $(grep -A2 '^TEST_GLOBS' "$d/plant/docs/graph/spec-lint.py" | tr '\n' ' ')"; return 1; }
+  python3 - "$d/plant/docs/graph/spec-lint.py" <<'PY' || return 1
+import ast, sys
+tree = ast.parse(open(sys.argv[1], encoding="utf-8").read())
+skip = next((ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.Assign)
+             for t in n.targets if isinstance(t, ast.Name) and t.id == "SKIP_DIRS"), None)
+want = {".git", "node_modules", ".venv", "__pycache__", "vendor"}
+if not isinstance(skip, set) or not want <= skip:
+    sys.exit(f"the plant's SKIP_DIRS was not kept: the reconciled engine skips {sorted(skip or [])}, want every one of {sorted(want)}")
+PY
+  grep -q '^FORM_RE = re.compile' "$d/plant/docs/graph/spec-lint.py" \
+    || { echo "the seed's new engine logic (FORM_RE) did not arrive"; return 1; }
+  out="$(python3 "$AUDIT" "$d/plant" "$d/seed" --engine="$d/plant/docs/graph/spec-lint.py:$KG/spec-lint.py" 2>&1)" || true
+  grep -q "graph engine: current: $d/plant/docs/graph/spec-lint.py" <<<"$out" \
+    || { echo "the audit does not read the reconciled engine as current: $(tr '\n' ' ' <<<"$out")"; return 1; }
+  # a plant whose engine is the seed's own, multi-line SKIP_DIRS included, is left as it is
+  mkdir -p "$d/fresh"; cp "$KG/spec-lint.py" "$d/fresh/spec-lint.py"
+  python3 "$ENGINE" "$d/fresh/spec-lint.py" "$KG/spec-lint.py" >"$d/fresh.out" 2>&1 \
+    && grep -q "already current" "$d/fresh.out" && cmp -s "$d/fresh/spec-lint.py" "$KG/spec-lint.py" \
+    && [ -z "$(ls "$d/fresh" | grep '\.bak-')" ] \
+    || { echo "reconciling the seed's own spec-lint.py rewrote it: $(flat "$d/fresh.out")"; return 1; }
+}
+
+case_grafted_engines_lint_as_a_fresh_install() {
+  # X645 GRAFTED_ENGINES_LINT_AS_A_FRESH_INSTALL
+  local f="$SC/x645/fresh" g="$SC/x645/grafted" e rc
+  rm -rf "$SC/x645"; mkdir -p "$f"
+  bash "$ROOT/install.sh" claude-code --project-dir "$f" >"$SC/x645.install" 2>&1 \
+    || { echo "harness: install.sh into the fresh plant failed: $(tail -3 "$SC/x645.install" | tr '\n' ' ')"; return 1; }
+  cp -R "$SCFIX/plant/." "$f/"
+  cp "$ROOT/tests/fixtures/spec-forms/SPEC-0401-kinds.md" "$f/docs/graph/specs/"
+  python3 "$SCFIX/configure.py" "$f/docs/graph/spec-lint.py" "$f/docs/graph/spec-lint.py" || return 1
+  cp -R "$f" "$g"
+  # the grafted plant carries the engines v8.4.0 shipped, configured as the plant set them
+  old_engine spec-lint.py "$SC/x645.old-spec" && old_engine grill-lint.py "$g/docs/graph/grill-lint.py" || return 1
+  python3 "$SCFIX/configure.py" "$SC/x645.old-spec" "$g/docs/graph/spec-lint.py" || return 1
+  for e in spec-lint.py grill-lint.py; do
+    python3 "$ENGINE" "$g/docs/graph/$e" "$KG/$e" >"$SC/x645.$e.out" 2>&1 && rc=0 || rc=$?
+    [ "$rc" -eq 0 ] || { echo "reconciling $e exited $rc: $(flat "$SC/x645.$e.out")"; return 1; }
+  done
+  lint_both "$f" "$SC/x645.fresh.out"; lint_both "$g" "$SC/x645.grafted.out"
+  cmp -s "$SC/x645.fresh.out" "$SC/x645.grafted.out" \
+    || { echo "the grafted plant lints differently from the fresh one: $(diff "$SC/x645.fresh.out" "$SC/x645.grafted.out" | tr '\n' ' ')"; return 1; }
+  grep -q '^contracts by kind: test 1, run 3, review 1, covered 1, legacy-test 4$' "$SC/x645.grafted.out" \
+    && grep -q 'SUBMIT_BUTTON_LABEL_IS_SEND has kind run but the increment has no `Run:` field' "$SC/x645.grafted.out" \
+    && grep -q '^  - ORDER_DISCOUNT_IS_CAPPED  (SPEC-0501-orders.md)$' "$SC/x645.grafted.out" \
+    || { echo "the grafted plant does not read the kinds form, or skips no vendored test: $(flat "$SC/x645.grafted.out")"; return 1; }
+}
+
+case_new_engines_lint_existing_records_unchanged() {
+  # X646 NEW_ENGINES_LINT_EXISTING_RECORDS_UNCHANGED (guard: the legacy records lint as v8.4.0 linted them)
+  local d="$SC/x646" v p n=0
+  rm -rf "$d"; mkdir -p "$d/old/docs/graph" "$d/new/docs/graph" "$d/specs"
+  old_engine spec-lint.py "$d/old/docs/graph/spec-lint.py" && old_engine grill-lint.py "$d/old/docs/graph/grill-lint.py" || return 1
+  cp "$KG/spec-lint.py" "$KG/grill-lint.py" "$d/new/docs/graph/"
+  # the seed's own specs in today's form: none carries a form or Check line
+  for p in "$ROOT"/docs/specs/SPEC-*.md; do
+    grep -Eq '^- \*\*(Contract form|Check):\*\*' "$p" || { cp "$p" "$d/specs/"; n=$((n + 1)); }
+  done
+  [ "$n" -ge 9 ] || { echo "fixture: only $n legacy specs in docs/specs"; return 1; }
+  for v in old new; do
+    { python3 "$d/$v/docs/graph/spec-lint.py" --specs "$d/specs" --root "$ROOT"; echo "exit $?"; } >"$d/$v.specs" 2>&1
+    for p in "$ROOT"/docs/plans/grill-*.md; do
+      { echo "== $(basename "$p")"; python3 "$d/$v/docs/graph/grill-lint.py" --plan "$p" --specs "$d/specs" \
+          --decisions "$ROOT/docs/decisions"; echo "exit $?"; } >>"$d/$v.plans" 2>&1
+    done
+  done
+  cmp -s "$d/old.specs" "$d/new.specs" \
+    || { echo "the seed's legacy specs lint differently under the new spec-lint.py: $(diff "$d/old.specs" "$d/new.specs" | head -8 | tr '\n' ' ')"; return 1; }
+  cmp -s "$d/old.plans" "$d/new.plans" \
+    || { echo "the seed's plans lint differently under the new grill-lint.py: $(diff "$d/old.plans" "$d/new.plans" | head -8 | tr '\n' ' ')"; return 1; }
+}
+
+wb_run() {  # wb_run <brings|present>: graft-run over a GR plant copy with a read-back suite
+  local d="$GR/wb-$1" p c
+  [ -f "$d/done" ] && return 0
+  rm -rf "$d"; p="$d/zephyrplant"; mkdir -p "$d" && cp -a "$GR_PLANT" "$p"
+  mkdir -p "$p/tests"
+  cp "$ROOT/tests/fixtures/worth/python/test_readback.py" "$ROOT/tests/fixtures/worth/python/test_logic.py" "$p/tests/"
+  case "$1" in
+    brings) rm -f "$p/docs/graph/worth-check.py" ;;   # a plant grown before the worth check
+    present) printf '# worth-check baseline: tests flagged when it was recorded.\ntests/test_readback.py::test_submit_button_label_is_send\n' \
+               > "$p/docs/graph/worth-baseline.txt" ;;
+  esac
+  sgit -C "$p" add -A && sgit -C "$p" commit -q -m "a suite with read-back tests ($1)" \
+    || { echo "fixture: the $1 plant could not be committed"; return 1; }
+  gr_sum "$p" > "$d/sum.before"
+  python3 "$RUN" "$p" "$ROOT" --stage "$d/stage" >"$d/run.out" 2>"$d/run.err" || true
+  gr_sum "$p" > "$d/sum.after"
+  c="$(find "$d/stage" -path '*/docs/graph/nodes/subsystem.quokka-ledger.md' 2>/dev/null | head -1 | sed 's#/docs/graph/nodes/subsystem.quokka-ledger.md$##')"
+  [ -n "$c" ] || { echo "fixture: no plant copy in the $1 stage: $(flat "$d/run.err")"; return 1; }
+  echo "$c" > "$d/copy"; touch "$d/done"
+}
+
+case_run_records_the_first_worth_baseline() {
+  # X647 GRAFT_RECORDS_THE_FIRST_WORTH_BASELINE
+  local d="$GR/wb-brings" c n f
+  gr_need || return 1; gr_fixture || return 1; wb_run brings || return 1
+  c="$(cat "$d/copy")"
+  [ -f "$c/docs/graph/worth-baseline.txt" ] \
+    || { echo "the graft that brings the worth check recorded no baseline: $(flat "$d/run.out")"; return 1; }
+  n="$(grep -vc '^#' "$c/docs/graph/worth-baseline.txt")" || true
+  [ "$n" -ge 1 ] || { echo "fixture: the baseline holds no test"; return 1; }
+  grep -Eq "^worth: baseline holds $n tests, recorded once in docs/graph/worth-baseline\.txt .*no test removed, none proposed for removal" "$d/run.out" \
+    || { echo "the run does not report 'baseline holds $n tests' and that nothing is removed: $(flat "$d/run.out")"; return 1; }
+  ( cd "$c" && python3 docs/graph/worth-check.py ) >"$d/check.out" 2>&1 \
+    || { echo "the stage copy's worth check fails over the baseline it was given: $(flat "$d/check.out")"; return 1; }
+  for f in test_readback.py test_logic.py; do
+    cmp -s "$c/tests/$f" "$ROOT/tests/fixtures/worth/python/$f" || { echo "the graft changed tests/$f"; return 1; }
+  done
+  [ "$(cat "$d/sum.before")" = "$(cat "$d/sum.after")" ] || { echo "the run wrote into the plant"; return 1; }
+  grep -q '^  worth:' "$d/run.out" && { echo "a judgment item about the worth check was raised: $(grep '^  worth:' "$d/run.out")"; return 1; }
+  printf 'from app.settings import NEXT_LABEL\n\n\ndef test_next_label():\n    assert NEXT_LABEL == "Next"\n' > "$c/tests/test_next.py"
+  ( cd "$c" && python3 docs/graph/worth-check.py ) >"$d/check2.out" 2>&1 && return 1 || true
+  grep -q '^tests/test_next.py::test_next_label  reads back' "$d/check2.out" \
+    || { echo "a new read-back test after the graft does not fail the check by name: $(flat "$d/check2.out")"; return 1; }
+}
+
+case_run_leaves_a_present_baseline() {
+  # X648 GRAFT_RECORDS_THE_FIRST_WORTH_BASELINE (a plant whose baseline is present is left alone)
+  local d="$GR/wb-present" c
+  gr_need || return 1; gr_fixture || return 1; wb_run present || return 1
+  c="$(cat "$d/copy")"
+  cmp -s "$c/docs/graph/worth-baseline.txt" "$d/zephyrplant/docs/graph/worth-baseline.txt" \
+    || { echo "the graft rewrote a baseline the plant already had"; return 1; }
+  grep -q '^worth: baseline holds' "$d/run.out" && { echo "the run recorded a baseline over the plant's own"; return 1; }
+  grep -q '^worth: baseline present, holds 1 tests; left as it is' "$d/run.out" \
+    || { echo "the run does not say the present baseline is left as it is: $(flat "$d/run.out")"; return 1; }
+  grep -q '^  worth: the plant.s worth check flags 4 test(s) its baseline does not hold' "$d/run.out" \
+    || { echo "the flagged tests outside the baseline are not one judgment item: $(flat "$d/run.out")"; return 1; }
+  grep '^  worth:' "$d/run.out" | grep -q -e '--write-baseline' -e 'remove it' \
+    && { echo "the judgment item proposes a baseline write or a removal: $(grep '^  worth:' "$d/run.out")"; return 1; }
+  return 0
+}
+
+collect_case X644 case_engine_keeps_the_plant_test_layout "GRAFT_ENGINE_KEEPS_THE_PLANT_TEST_LAYOUT: the v8.4.0 spec-lint.py reconciles with its TEST_GLOBS and SKIP_DIRS kept, the new logic arrived, the audit reads it current"
+collect_case X645 case_grafted_engines_lint_as_a_fresh_install "GRAFTED_ENGINES_LINT_AS_A_FRESH_INSTALL: a plant grafted from the v8.4.0 engines and a fresh install lint a kinds spec, legacy specs and a plan identically"
+collect_case X646 case_new_engines_lint_existing_records_unchanged "NEW_ENGINES_LINT_EXISTING_RECORDS_UNCHANGED: the seed's legacy specs and every grill plan lint under the new engines as under v8.4.0's"
+collect_case X647 case_run_records_the_first_worth_baseline "GRAFT_RECORDS_THE_FIRST_WORTH_BASELINE: the graft that brings the worth check records the baseline once, reports its size, removes no test; a new read-back test then fails"
+collect_case X648 case_run_leaves_a_present_baseline "GRAFT_RECORDS_THE_FIRST_WORTH_BASELINE: a plant whose baseline is present keeps it byte for byte, and its new flags are one judgment item proposing nothing"
 [ "$CASE_FAILED" -eq 0 ] \
   || { echo "test-graft-tools: FAIL — failing cases (above)" >&2; exit 1; }
 

@@ -35,13 +35,16 @@ WHAT IT DOES, IN ORDER
      install.sh <host> --check once per adapter, which runs each wired context
      hook and names each harness entry with no graph home (RETIRED, ORPHAN)
      and each retired seed graph node; the routes row ties the graph-lint
-     errors a RETIRED node causes to it, and still blocks on them
+     errors a RETIRED node causes to it, and still blocks on them; then, in the
+     graft that brings the worth check to a plant with no baseline, the copy's
+     worth-check.py --write-baseline once, printed as `worth: baseline holds N
+     tests` (a baseline the plant has is left as it is)
   8. prints the judgment items before the table, each for the steward to settle
      and put to the owner as a numbered decision in Phase 8: the copy's own
      graph-lint.py --trust-unsettled names each crosscut node with no `trust:`
-     field and each `trust: true` crosscut that claims no path, and the copy's
-     own worth-check.py --json names the tests it flags that no baseline holds,
-     for the owner to decide per plant whether to record a baseline
+     field and each `trust: true` crosscut that claims no path, and, where the
+     plant already had the check, its worth-check.py --json names the tests it
+     flags that the baseline does not hold
   9. prints the gate table: one line per row of the Phase 7 table in
      protocols/graft.md, in its order, as the graft record's integrity-gate
      block gives it: `<gate id>: PASS / BLOCK / N-A — <evidence>`. A judgment
@@ -58,7 +61,8 @@ and so is a stage that holds the plant or sits inside the seed. It runs no Git
 command in the plant (the copy's status is read from the copy's own .git), and
 the seed is only read. A symlink in the plant that resolves into the plant
 itself would let a write in the copy land in the plant, so the run stops at
-the copy when it finds one.
+the copy when it finds one. It removes no test, and it converts no plant spec:
+tools/spec-convert.py runs only when the steward starts it.
 
 Usage:
   graft-run.py <plant-root> <seed-root> --stage <dir> [--tools <a,b,...>]
@@ -108,6 +112,7 @@ PLAN_TASK = "graft the new seed onto this plant and run its integrity gates"
 # graft-ledger.py's row: `  <CLASS>  <plant path>  <- <seed path>`
 LEDGER_ROW = re.compile(r"^  ([A-Z-]+) +(\S+)  <- (\S+)$", re.M)
 DIVERGED = ("KEEP-PLANT", "MERGE")
+WORTH_BASELINE = "worth-baseline.txt"   # plant state beside docs/graph/worth-check.py
 
 
 def parse_args(argv):
@@ -454,6 +459,10 @@ def main() -> int:
     agents_before = {p.name for p in agents_dir.glob("*.md")} if agents_dir.is_dir() else set()
     prior_install = (copy / STAMP_REL).is_file()
     tokens = derive_tokens(copy, seed, stamp)
+    # whether this graft brings the worth check, and whether a baseline is
+    # already the plant's (SPEC-0010 GRAFT_RECORDS_THE_FIRST_WORTH_BASELINE)
+    worth_before = ((copy / GRAPH_HOME / "worth-check.py").is_file(),
+                    os.path.lexists(copy / GRAPH_HOME / WORTH_BASELINE))
 
     plans_before = plan_defects(run, "before")    # the plant's own engines
 
@@ -545,8 +554,12 @@ def main() -> int:
     if (g / "status-register.py").is_file():
         reg = run.sh("status-register.txt", [sys.executable, g / "status-register.py", "--root", "docs/graph"])
 
+    worth_line, worth_judgment = worth_baseline(run, g, *worth_before)
+    if worth_line:
+        print(worth_line)
+
     plans_after = plan_defects(run, "after")      # the seed's engines, after step 4
-    judgment = trust_items(run, g) + worth_items(run, g)
+    judgment = trust_items(run, g) + worth_judgment
     after = porcelain(run)
     evidence = {
         "plans_before": plans_before, "plans_after": plans_after,
@@ -603,15 +616,46 @@ def trust_items(run, g: Path) -> list:
     return [f"trust: {i['settle']}" for i in items]
 
 
-def worth_items(run, g: Path) -> list:
-    """The tests the copy's own worth check flags that no baseline holds
-    (SPEC-0009), as one judgment item. Graft records no baseline and removes no
-    test: the owner decides per plant, after seeing them, whether the plant
-    records a baseline (docs/graph/worth-check.py --write-baseline) or keeps
-    each test with a reason. A plant whose check is not configured, or that
-    flags nothing new, adds no item."""
+def worth_baseline(run, g: Path, had_check: bool, had_baseline: bool):
+    """(a line to print or None, judgment items) for the worth check (SPEC-0010
+    GRAFT_RECORDS_THE_FIRST_WORTH_BASELINE). The graft that brings the check
+    to a plant with no baseline runs the copy's worth-check.py --write-baseline
+    once and reports how many tests the baseline holds. A plant that already
+    had the check, or a baseline, keeps its baseline as it is, and the tests
+    the check flags outside it are one judgment item. Graft removes no test
+    and proposes no removal."""
     if not (g / "worth-check.py").is_file():
-        return []
+        return None, []
+    rel = f"{GRAPH_HOME}/{WORTH_BASELINE}"
+    if not had_check and not had_baseline:
+        rc, out = run.sh("worth-check.txt", [sys.executable, g / "worth-check.py", "--write-baseline"])
+        m = re.search(r"baseline written: \S+ holds (\d+) test", out)
+        if rc == 0 and m:
+            return (f"worth: baseline holds {m.group(1)} tests, recorded once in {rel} by "
+                    f"docs/graph/worth-check.py --write-baseline, in the graft that brings the "
+                    f"worth check; no test removed, none proposed for removal"), []
+        if rc == 0 and "not configured" in out:
+            return ("worth: the worth check is not configured for this plant (no TEST_GLOBS in "
+                    "docs/graph/spec-lint.py), so no baseline was recorded"), []
+        return None, [f"worth: worth-check.py --write-baseline recorded no baseline (exit {rc}, "
+                      f"{run.logs / 'worth-check.txt'}): run python3 docs/graph/worth-check.py by hand"]
+    line = None
+    if had_baseline:
+        try:
+            n = sum(1 for l in (g / WORTH_BASELINE).read_text(encoding="utf-8").splitlines()
+                    if l.strip() and not l.startswith("#"))
+            line = f"worth: baseline present, holds {n} tests; left as it is ({rel})"
+        except (OSError, UnicodeDecodeError):
+            line = f"worth: baseline present and unreadable; left as it is ({rel})"
+    return line, worth_items(run, g)
+
+
+def worth_items(run, g: Path) -> list:
+    """The tests the copy's own worth check flags that no baseline holds, as
+    one judgment item. The plant's own check fails on them until the plant's
+    own work settles each; graft writes no baseline over one the plant has and
+    removes no test. A plant whose check is not configured, or that flags
+    nothing new, adds no item."""
     rc, out = run.sh("worth-check.txt", [sys.executable, g / "worth-check.py", "--json"])
     try:
         report = json.loads(out)
@@ -623,10 +667,10 @@ def worth_items(run, g: Path) -> list:
     if not report.get("configured") or not new:
         return []
     shown = ", ".join(new[:5]) + (f" and {len(new) - 5} more" if len(new) > 5 else "")
-    return [f"worth: the plant's worth check flags {len(new)} test(s) no baseline holds ({shown}; "
-            f"{run.logs / 'worth-check.txt'}): the owner decides per plant whether to record them "
-            f"as the baseline with docs/graph/worth-check.py --write-baseline, keep each with a "
-            f"reason, or leave them flagged; graft removes no test"]
+    return [f"worth: the plant's worth check flags {len(new)} test(s) its baseline does not hold "
+            f"({shown}; {run.logs / 'worth-check.txt'}): the plant's own check fails on them "
+            f"until the plant's own work settles each; graft leaves them and the baseline as "
+            f"they are"]
 
 
 # -- one check per mechanical row: (verdict, evidence) -------------------------

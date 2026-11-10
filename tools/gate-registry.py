@@ -287,6 +287,14 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "holds a plant changelog, so the lint role has no real-tree partner"),
     "test-status-migrate.sh": (
         "status migration is exact and idempotent", FIXTURES, "scope", ""),
+    "test-spec-convert.sh": (
+        "SPEC-0010 spec conversion: the dry run reports the mechanical part and writes "
+        "nothing, --write needs the steward's flag and the path, writes only the form, "
+        "trust and Check lines with one backup, names an unrecognised shape, and the "
+        "backup is audited as a shape migration",
+        FIXTURES, "scope",
+        "a fixture plant with hand-written specs, not a real plant's; it proves the "
+        "mechanical edit, not that the converted spec then passes the plant's gate"),
     "test-seed-lint.sh": (
         "the seed linter's own contract, and that every check_* in it is either "
         "exercised by a planted violation or declared unprotected", REAL, "scope",
