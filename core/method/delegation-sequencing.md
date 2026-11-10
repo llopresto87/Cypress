@@ -102,6 +102,10 @@ ready, in flight, held and why, the expected-red list) is one read, `python3 doc
 of the plan, the spawn log, the batch record, the question files and the commits, each naming its increments. A RED and
 its GREEN are separate §9 increments, and the GREEN names the RED in `Depends
 on:`, so the RED falls in an earlier wave with no rule needed to put it there.
+On the merged path (`tiers.execution-paths`) a low-band RED off trust paths and
+its own GREEN go to one implementer spawn together, once the RED is ready and
+the GREEN's other dependencies are satisfied; the RED counts as observed when
+the hand-back records it failing for the right reason before the code.
 
 **Work runs in cycles.** A RED wave writes every ready RED, spread over as many
 parallel tester spawns as `delegation.effort-scale` requires, each sized
@@ -134,8 +138,9 @@ files as a live lane (`delegation.lanes`), because its hashes are recorded and
 any other writer would break them. Two REDs that must write one test file go
 to one tester spawn, or the second waits for the first's GREEN to commit.
 
-**Readiness.** A RED goes to a tester as soon as every increment it depends on
-is satisfied, its files are disjoint from every live lane, and it is not held.
+**Readiness.** A RED goes to its writer (a tester, or one implementer on the
+merged path) as soon as every increment it depends on is satisfied, its
+files are disjoint from every live lane, and it is not held.
 It does not wait for an unrelated batch's GREEN, tip or ruling pass. An
 increment is clean when its RED was observed for the right reason and hashed,
 and it is not held. Only clean increments enter a GREEN wave: the work that

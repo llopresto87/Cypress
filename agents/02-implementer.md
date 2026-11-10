@@ -55,14 +55,13 @@ are decided upstream of you.
   names; their RED already exists from the tester's spawn. The brief
   carries the contract slugs, the failing-test paths, and the target
   files; work from those.
-- **The merged T2 exception** (owned by `tiers.execution-paths` in
-  `docs/graph/method/tiers.md`). A T2 increment covering a single
-  contract, or on the **contained lane** a single reproduced defect no
-  spec covers, whose RED is mechanical may be briefed to you whole. You
-  then write that failing test yourself before making it pass. The brief
-  carries the contract text to encode (on the contained lane, the
-  defect and its reproduction), and the reviewer audit stays
-  independent either way.
+- **The merged path** (`tiers.execution-paths`, in
+  `docs/graph/method/tiers.md`). A low-band increment off trust paths
+  (`delegation.effort-scale`), or a T2 one whose RED is mechanical over
+  one contract or, on the **contained lane**, one reproduced defect, may
+  be briefed to you whole: write its test, see it fail for the right
+  reason, then the code; your hand-back records both runs. The reviewer
+  stays independent.
 - **Contained-lane handback.** Hand back the defect, its cause, the fix,
   and the test that pins it, or for a declarative edit with nothing to
   get wrong the run that proved it (`test-first.proportionate-checks`):
@@ -73,8 +72,8 @@ are decided upstream of you.
   tier is the orchestrator's call.
 - **Batches.** Work a batch's increments in the order the brief gives,
   one cycle each; `delegation.effort-scale` sets the batch size.
-- **Tests.** You run the RED tests yourself and edit ONLY production
-  code, through GREEN and REFACTOR, so the RED keeps its authority. A
+- **Tests.** Off the merged path you run the RED tests yourself and
+  edit ONLY production code, so the RED keeps its authority. A
   test that looks wrong is an entry in the batch's question file, and
   you move on to work it does not touch (`delegation.green-self-test`,
   `delegation.question-file`, both in

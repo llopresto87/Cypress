@@ -120,10 +120,12 @@ An increment whose §9 row reads `Tests to write (RED): none — …` holds no
 the command with its result; a `Review:` is confirmed by the reviewer in
 REVIEW. REVIEW and COMMIT stand.
 
-The one merge the tiers allow: a T2 increment covering a single
-contract (or, on the contained lane, a single reproduced defect) whose
-RED is mechanical is briefed whole to `implementer`, which writes the
-failing test before making it pass (`tiers.execution-paths`); the
+The merged path (`tiers.execution-paths`): an increment in the low-risk
+band off trust paths (`delegation.effort-scale`), or a T2 increment whose
+RED is mechanical over one contract (or, on the contained lane, one
+reproduced defect), is briefed whole to `implementer`
+(`brief.py --kind merged`), which sees the test fail for the right reason
+before it writes the code and records both runs in its hand-back; the
 REVIEW spawn stays independent either way.
 
 Only the session writes grill.md; workers report what they did in the

@@ -80,9 +80,10 @@ using the owner's values below:
   the ruled reading of the two gaps the owner's scale left, so only the owner
   changes the table.
 - Security and concurrency code is a GREEN batch of one, whatever its label.
+- **The low-risk band** is `low` and `medium-low` (the owner's default of 2026-11-10; the owner moves it, on this line only, which `brief.py --kind merged` reads). An increment that cites a §10 test owes a `tester` RED spawn when its label is above the band, it is on a trust path (the plant's `trust: true` crosscut; a plant that marks none is told so and the doubt is read as one), it is stateful or concurrent, or its test reproduces a bug. Otherwise one `implementer` writes the test and the code, the merged path of `tiers.execution-paths`. Trust paths keep their independent tester, adversarial controls, security pass and mutation pass.
 - Dependent increments share a spawn only in dependency order, one commit each.
-  A RED and its own GREEN run in separate spawns, so the code is judged by a
-  test its author did not write.
+  Outside the band or on a trust path a RED and its own GREEN run in separate
+  spawns, so the code is judged by a test its author did not write.
 
 ## GREEN runs its own tests (`delegation.green-self-test`)
 
@@ -94,9 +95,8 @@ work the question does not touch. A failing test judged wrong goes straight
 to a fresh `tester` with the failure and the reason, ahead of any implementer
 fix round: only a fix to the test makes a wrong test right. The rule covers
 REFACTOR too: test cleanup the implementer finds is an entry in the question
-file for the next tester spawn, which does it with the suite green. The merged T2 path
-(`tiers.execution-paths`), where one implementer writes both the test and the
-code, is the one exception.
+file for the next tester spawn, which does it with the suite green. The merged path
+(`tiers.execution-paths`), where one implementer writes both the test and the code, is the one exception: a low-band increment off trust paths, or a mechanical single-contract T2 RED; the implementer sees the test fail for the right reason before the code, its hand-back records both runs, and the orchestrator records the RED from it.
 
 When the orchestrator observes a RED, it records a `sha256sum` of every test and fixture file the RED spawn
 wrote, and its test ids, in the batch record (`python3 docs/graph/cycle.py record-red N --unit U --file PATH...

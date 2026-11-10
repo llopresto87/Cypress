@@ -67,6 +67,18 @@ hand-back owes` section after the handback block: the run command with its
 result, or the review confirmation (`grill.increment-shape`). Without the
 flags nothing changes.
 
+`--role implementer --kind merged --increments N[,N] --unit U` composes the one
+implementer brief of the merged path (`tiers.execution-paths`): the briefed
+increments, with each cited RED's own GREEN, must sit inside the low-risk band
+the `delegation.effort-scale` line names, off every trust path the plant marks,
+not stateful or concurrent (`--alone`), and reproduce no bug (a §10 row of
+origin `bug`). Otherwise exit 2 with one line naming every reason a tester RED
+spawn is owed; a plant that marks no trust path reads the doubt as one. The
+brief gains a section asking for the test seen failing before the code and
+both runs recorded, the effort is the `increment` row's, and the spawn record
+gains `merged`. A tester brief for an increment that qualifies names the
+merged path on stderr and composes as before.
+
 `--tokens SPAWN_ID --usage FILE|-` appends the spawn's host-reported token
 counts to `tokens.jsonl` beside the spawn log, one record per logged spawn_id
 (keys: spawn_id, model, input, cache_write, cache_write_5m, cache_write_1h,
@@ -492,6 +504,98 @@ def evidence_owed(plan: Path, increments: str) -> list[str]:
         return []
 
 
+def low_band() -> list[str]:
+    """The effort labels of the low-risk band, from its one home: the
+    `**The low-risk band** is ...` line of `delegation.effort-scale`."""
+    node = GRAPH / "method" / "delegation-cycle-economy.md"
+    text = node.read_text(encoding="utf-8") if node.is_file() else ""
+    m = re.search(r"\*\*The low-risk band\*\* is ([^(]*)\(", text)
+    return re.findall(r"`([\w-]+)`", m.group(1)) if m else []
+
+
+def trust_marked() -> bool:
+    """Whether the plant marks any trust path: a crosscut node with `trust: true`."""
+    for p in (GRAPH / "nodes").rglob("*.md") if (GRAPH / "nodes").is_dir() else []:
+        head = p.read_text(encoding="utf-8", errors="replace").split("---", 2)
+        fm = head[1] if len(head) == 3 else ""
+        if re.search(r"^kind:\s*crosscut\s*$", fm, re.M) and re.search(r"^trust:\s*true\s*$", fm, re.M | re.I):
+            return True
+    return False
+
+
+def bug_origins(slugs: list[str]) -> list[str]:
+    """`SPEC-NNNN §10 origin bug` for each contract a §10 risk row of origin
+    `bug` covers, read through spec-lint.py's own row reader."""
+    try:
+        sys.dont_write_bytecode = True
+        spec = importlib.util.spec_from_file_location("cypress_spec_lint", GRAPH / "spec-lint.py")
+        sl = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(sl)
+    except Exception:
+        return []
+    out = []
+    for ref in slugs:
+        sid, _, slug = ref.partition("/")
+        for f in sorted((GRAPH / "specs").glob(f"{sid}-*.md")):
+            rows = sl.risk_rows(sl.section_lines(f.read_text(encoding="utf-8", errors="replace"), 10))
+            if any(r["origin"].lower() == "bug" and slug in re.findall(r"[A-Z][A-Z0-9_]+", r["covers"])
+                   for r in rows):
+                out.append(f"{sid} §10 origin bug")
+    return sorted(set(out))
+
+
+def who_writes_the_test(plan: Path, increments: str, alone: str, security_path: bool):
+    """(reasons a tester RED spawn is owed, hardest label, increments citing a §10 test)
+    for the briefed increments (`delegation.effort-scale`); no reasons means one
+    implementer writes the test and the code (`tiers.execution-paths`)."""
+    sys.dont_write_bytecode = True
+    spec = importlib.util.spec_from_file_location("cypress_grill_lint", GRAPH / "grill-lint.py")
+    gl = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gl)
+    text = gl.strip_comments(plan.read_text(encoding="utf-8", errors="replace"))
+    wanted = [int(x) for x in increments.split(",") if x.strip()]
+    rows = {n: (title, {k.split("(")[0].strip(): v.strip() for k, v in gl.fields(block).items()})
+            for n, title, block in gl.increments(gl.sections(text).get(9, ""), None, plan.resolve())}
+    unknown = [n for n in wanted if n not in rows]
+    if unknown:
+        raise SystemExit(f"brief: increment {', '.join(map(str, unknown))} is not in §9 of {plan}")
+    cites = [n for n in wanted if rows[n][1].get("Tests to write") and
+             not rows[n][1]["Tests to write"].lower().startswith("none")]
+    slugs = lambda n: set(re.findall(r"SPEC-\d+/[A-Z][A-Z0-9_]+", rows[n][1].get("Spec contracts", "")))
+    # each cited RED's own GREEN joins the reading: its code is what the test judges
+    wanted += [g for g in rows for n in cites if g not in wanted and slugs(g) & slugs(n)
+               and re.search(rf"\bincrement {n}\b", rows[g][1].get("Depends on", ""))]
+    band = low_band()
+    order = list(LABELS)
+    labels = [rows[n][1].get("Effort", "").split()[0] if rows[n][1].get("Effort") else "" for n in wanted]
+    hardest = max(labels, key=lambda x: order.index(x) if x in order else len(order))
+    owed = []
+    above = [x for x in labels if x not in band]
+    if above:
+        owed.append(f"label {above[0] or 'none'} is above the low-risk band ({', '.join(band) or 'none recorded'})")
+    if security_path:
+        owed.append("on a trust path (--security-path)")
+    elif not trust_marked():
+        owed.append("the plant marks no trust path, so the doubt is read as one")
+    else:
+        files = [p for n in wanted for p in re.findall(r"`([^`]+)`", rows[n][1].get("Files touched", ""))]
+        try:
+            r = subprocess.run([sys.executable, str(GRAPH / "graph-lint.py"), "--trust-claims", *files],
+                               capture_output=True, text=True, timeout=60)
+            claims = json.loads(r.stdout)["claims"] if files else {}
+        except (OSError, ValueError, KeyError, subprocess.SubprocessError):
+            claims = {"(unread)": ["graph-lint.py --trust-claims did not answer"]}
+        if claims:
+            owed.append("on a trust path (" + "; ".join(f"{p}: {', '.join(i)}" for p, i in sorted(claims.items())) + ")")
+    words = " ".join(rows[n][0] + " " + " ".join(rows[n][1].values()) for n in wanted)
+    if alone or re.search(r"\b(stateful|concurren\w*)\b", words, re.I):
+        owed.append(f"stateful or concurrent ({alone or 'the increment says so'})")
+    bugs = bug_origins(sorted({s for n in cites for s in slugs(n)}))
+    if bugs or re.search(r"\b(bug|regression|reproduc\w*)\b", " ".join(rows[n][0] for n in cites), re.I):
+        owed.append(f"its test reproduces a bug ({', '.join(bugs) or 'the increment says so'})")
+    return owed, hardest, cites
+
+
 def main() -> int:
     if "--tokens" in sys.argv[1:]:
         return record_tokens(sys.argv[1:])
@@ -570,12 +674,42 @@ def main() -> int:
     trust = trust_claims(changed_paths(plant, part)) if a.role == "reviewer" else []
     if trust:
         print(f"brief: SECURITY PASS REQUIRED after this review: {', '.join(trust)}", file=sys.stderr)
-    if not a.effort:
-        try:
+    merged = []
+    try:
+        if a.kind == "merged":
+            if a.role != "implementer" or not a.increments:
+                raise SystemExit("brief: --kind merged reads --increments and --unit, for --role implementer "
+                                 "(tiers.execution-paths)")
+            try:
+                owed, hardest, cites = who_writes_the_test(Path(a.plan), a.increments, a.alone, a.security_path)
+            except (OSError, ValueError, ImportError) as e:
+                raise SystemExit(f"brief: --kind merged cannot read the plan {a.plan}: {e}")
+            if owed:
+                s = "s" if "," in a.increments else ""
+                raise SystemExit(f"brief: increment{s} {a.increments} owe{'' if s else 's'} a tester RED spawn: "
+                                 f"{'; '.join(owed)}; compose --role tester (delegation.effort-scale)")
+            if not cites:
+                raise SystemExit(f"brief: increments {a.increments} cite no §10 test; brief the GREEN "
+                                 f"with --kind increment")
+            merged = [int(x) for x in a.increments.split(",") if x.strip()]
+            if not a.effort:
+                a.effort = derive_effort(a.role, "increment", a.label or hardest, False, []) \
+                    .replace(f"{a.role} increment", f"{a.role} merged", 1)
+        elif a.role == "tester" and a.increments:
+            try:
+                owed, _h, cites = who_writes_the_test(Path(a.plan), a.increments, a.alone, a.security_path)
+            except (Exception, SystemExit):  # a notice never blocks a tester brief
+                owed, cites = ["unread"], []
+            if cites and not owed:
+                s = "s" if "," in a.increments else ""
+                print(f"brief: increment{s} {a.increments} {'are' if s else 'is'} in the low-risk band off trust "
+                      f"paths: one implementer spawn writes its test and code (--role implementer --kind merged; "
+                      f"tiers.execution-paths)", file=sys.stderr)
+        if not a.effort:
             a.effort = derive_effort(a.role, a.kind, a.label, a.security_path, trust)
-        except SystemExit as e:
-            print(e, file=sys.stderr)
-            return 2
+    except SystemExit as e:
+        print(e, file=sys.stderr)
+        return 2
     if a.effort:
         print(f"effort: {a.effort} — pass it as this spawn's effort", file=sys.stderr)
     model = derive_class(a.role, PICKED[0]) if PICKED[0] else ""
@@ -595,6 +729,12 @@ def main() -> int:
     out += ["", "## Task", "", part.rstrip("\n"), "",
             "## Handback (fill these fields; the rules are in docs/graph/templates/prompts/handback-payload.md)",
             "", "```", payload.rstrip("\n"), "```"]
+    if merged:
+        out += ["", "## One spawn: the test first, then the code", "",
+                f"- write the test increment {', '.join(map(str, cites))} cites and see it fail for the right "
+                f"reason before any code (tiers.execution-paths)",
+                "- then write the code that turns it green; the reviewer stays a separate spawn",
+                "- in the report body, record both observations: the failing run and the passing run"]
     owed = evidence_owed(Path(a.plan), a.increments) if a.increments else []
     if owed:
         out += ["", "## Evidence this hand-back owes (its run and review contracts)", ""] + owed
@@ -616,6 +756,8 @@ def main() -> int:
            "brief": a.out, "at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
     if notice:
         rec["notice"] = notice
+    if merged:
+        rec["merged"] = merged
     with open(log, "a", encoding="utf-8") as fh:
         fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
     if a.out:

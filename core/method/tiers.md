@@ -40,18 +40,22 @@ normal and cheap.
 |------|------------------------------------------------------------------|--------------------------------------------------------------------------------------------------|
 | **T0** | a question: nothing changes                                    | Resolve minimal nodes, read, answer with citations. No spawn. Compact delivery (`protocol.deliver`). |
 | **T1** | a trivial edit with **no behavior, contract, or spec surface**: typo, comment, doc wording, formatting | The session edits directly, the one in-session authoring exception. One focused gate. Compact delivery with a one-line canonize self-record. |
-| **T2** | a contained change (bounded, local, reversible) reached by either lane: the *covered lane*, already authorized by an active spec contract and plan line; or the *contained lane*, small enough that a regression test plus a why-record are the proportional authorization (`tiers.contained-lane`) | Spawn the minimal worker set. One implementer spawn, briefed with the contract text (covered lane) or the defect and its reproduction (contained lane), may own RED→GREEN in a single context when the increment covers a single contract and the RED is mechanical; split tester/implementer when it spans contracts or the RED is judgment-heavy. The reviewer audit stays independent either way. Close-out spawn (`protocol.canonize`) + full delivery. No brainstorm, no specify pass, no grill refutation. |
+| **T2** | a contained change (bounded, local, reversible) reached by either lane: the *covered lane*, already authorized by an active spec contract and plan line; or the *contained lane*, small enough that a regression test plus a why-record are the proportional authorization (`tiers.contained-lane`) | Spawn the minimal worker set. One implementer, briefed with the contract text (covered lane) or the defect and its reproduction (contained lane), may own RED→GREEN when the increment covers one contract and the RED is mechanical; else split tester/implementer. The reviewer stays independent. Close-out spawn (`protocol.canonize`) + full delivery. No brainstorm, no specify pass, no grill refutation. |
 | **T3** | anything that creates or changes behavior at a scale the contained lane cannot hold, or changes architecture, contracts, dependencies, or is ambiguous, **and anything no other row clearly covers** | Full funnel: brainstorm* → specify → grill → test-first → verify → close-out → deliver. All doing delegated to clean-context specialists. |
+
+**The merged path** (`tiers.execution-paths`) also takes a low-band
+increment off trust paths at any tier (`delegation.effort-scale`): one
+implementer sees its tests fail for the right reason, then writes the
+code; its hand-back records both runs.
 
 ## T2's contained lane — a small change no spec covers
 
-Most maintenance is a defect fix or a small behavioral correction in
-code that has no spec yet. Routing all of it to T3 buys a specify pass
-and a grill pass to authorize three lines, and the cost is paid so
-often that the funnel stops being believed. The contained lane is the
-proportional answer: the authorization for a small change is **the
-failing test that pins the new behavior** plus **a recorded why**, not
-a spec document. A declarative edit with nothing a test could get wrong
+Most maintenance is a small fix to code with no spec. Routing it all
+to T3 buys a specify and a grill pass for three lines, so often that the
+funnel stops being believed. The contained lane is the proportional
+answer: the authorization for a small change is **the failing test
+that pins the new behavior** plus **a recorded why**, not a spec
+document. A declarative edit with nothing a test could get wrong
 (a selector, a pipeline stage, a flag) swaps the test for the recorded
 run that shows it working (`test-first.proportionate-checks`).
 
@@ -113,19 +117,18 @@ target the project opens only to reading is not made, and a change the
 project permits at its lowest level is still T3 when it touches a
 contract.
 
-Never infer one axis from the other, and never translate between the
+Never infer one axis from the other or translate between their
 vocabularies: a project level is not a tier, and no table maps one onto
-the other, because a mapping turns one axis into a copy of the other and
-drops whichever boundary was stricter. When the two cannot both be
-satisfied, or it is unclear which is stricter, stop before any mutation
-and put the conflict to the owner (`deliver.numbered-decisions`).
+the other, because a mapping drops whichever boundary was stricter. When
+the two cannot both be satisfied, or it is unclear which is stricter,
+stop before any mutation and put the conflict to the owner (`deliver.numbered-decisions`).
 
 The project keeps its own vocabulary on its own axis, even where it
 reuses a word this node uses. A project that calls its levels "lanes"
 means its own levels; the covered and contained lanes here are T2's two
 entry paths, and a write set is a third meaning (`delegation.lanes`).
-Where a word could carry more than one of these in a brief or a record,
-qualify it: "the project's change lane", "T2's contained lane".
+Where a word could carry more than one of these, qualify it: "the
+project's change lane", "T2's contained lane".
 
 ## What every session produces
 

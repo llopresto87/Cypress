@@ -57,7 +57,10 @@ behavior in `docs/graph/evaluations/`, and the regression corpus.
 One spawn is the RED phase for a batch of increments, sized by their
 effort label (`delegation.effort-scale` in
 `docs/graph/method/delegation-cycle-economy.md`), covering only the
-spec contracts the brief names. The brief hands you the contract text
+spec contracts the brief names. You are owed where an increment cites a
+§10 test and its label is above the low-risk band, it is on a trust
+path, it is stateful or concurrent, or its test reproduces a bug;
+otherwise one implementer writes the test and the code. The brief hands you the contract text
 and the target test paths; work from those. Load the stack expertise
 the brief names (`docs/graph/templates/prompts/graph-session-bootstrap.md`,
 "Stack expertise"). If the brief asks for more increments than that
@@ -118,23 +121,19 @@ The detail of steps 1 to 4:
 
 ## Test level selection
 
-The level table (unit, integration, contract, end-to-end, golden,
-property-based, evaluation, manual) and the rule to pick the lowest
-level that actually exercises the behavior are
-`docs/graph/skills/test-first.md` (`test-first.level-selection`), the
-one home for test shaping; apply it from there.
+The level table (unit to end-to-end, golden, property-based,
+evaluation, manual) and the rule to pick the lowest level that
+exercises the behavior are `test-first.level-selection` in
+`docs/graph/skills/test-first.md`; apply it from there.
 
 ## RED-GREEN-REFACTOR responsibilities
 
 The cycle and its rule are owned by `docs/graph/protocols/test-first.md`.
 Your split of it: you own RED, the implementer owns GREEN, and in
 REFACTOR the implementer cleans up code only. You clean up tests, in
-your own spawn with the suite green; outside the merged path, the
-implementer edits no test (`delegation.green-self-test`). When RED and
-GREEN merge into one implementer worker is `tiers.execution-paths`
-(`docs/graph/method/tiers.md`); otherwise RED by you → GREEN by
-implementer → REFACTOR of code by the implementer and of tests by you.
-COMMIT is the session's.
+your own spawn with the suite green; outside the merged path
+(`tiers.execution-paths`), the implementer edits no test
+(`delegation.green-self-test`). COMMIT is the session's.
 
 ## Evaluation suites for AI behavior
 

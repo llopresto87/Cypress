@@ -364,6 +364,90 @@ err="$(cd "$T2" && "$PY" docs/graph/brief.py --role implementer --kind fix --spa
 cp "$T2/node.bak" "$N"
 [[ $x517 == 0 ]] && ok "X517 BRIEF_DERIVES_THE_MODEL_CLASS: every role and kind composes its prior brief byte for byte; a changed class row adds one Model line" \
   || bad "X517 BRIEF_DERIVES_THE_MODEL_CLASS" "see above"
+# X570 to X575 (SPEC-0008): who writes the test. A low-band increment off trust
+# paths composes one implementer brief (`--kind merged`); a trust path, a label
+# above the band, stateful or concurrent code and a bug reproduction owe a tester
+d="$T/docs/graph/plans/e8"; mkdir -p "$d" "$T/docs/graph/specs"
+"$PY" - "$FC/grill.md" "$d/grill.md" <<'PY'
+import sys
+t = open(sys.argv[1]).read()
+t = t.replace("- Files touched: `tests/test_delta.sh`\n- Tests to write (RED): delta.case_one\n- Rollback path: delete the test\n- Effort: low",
+              "- Files touched: `tests/test_delta.sh`\n- Tests to write (RED): delta.case_one\n- Rollback path: delete the test\n- Effort: medium-low", 1)
+inc = lambda n, title, slug, files, tests, effort, phase, dep: (
+    f"### Increment {n} — {title}\n- Spec contracts: {slug}\n- Files touched: `{files}`\n- Tests to write (RED): {tests}\n"
+    f"- Rollback path: revert\n- Effort: {effort}\n- Phase: {phase}\n- Depends on: {dep}\n\n")
+extra = (inc(9, "RED vault", "SPEC-0001/VAULT", "tests/test_vault.sh", "vault.case_one", "low", "RED", "none")
+         + inc(10, "GREEN vault", "SPEC-0001/VAULT", "app/vault/lock.py", "none — increment 9 wrote them", "low", "GREEN", "increment 9")
+         + inc(11, "RED retry", "SPEC-0009/RETRY_IS_IDEMPOTENT", "tests/test_retry.sh",
+               'SPEC-0009 §10 rows: "Retry after timeout double-charges"', "medium-low", "RED", "none"))
+assert "### Increment 8" in t
+open(sys.argv[2], "w").write(t.replace("## 15. Changelog", extra + "## 15. Changelog"))
+PY
+printf '# SPEC-0009\n\n## 10. Test mapping\n\n| Risk (what breaks, for whom) | Test (file::name, lowest level) | Covers | Origin | Status |\n|---|---|---|---|---|\n| Retry after timeout double-charges | tests/test_retry.sh::retry_is_idempotent | RETRY_IS_IDEMPOTENT | bug | pending |\n' \
+  > "$T/docs/graph/specs/SPEC-0009-retry.md"
+mg() {  # mg ID ROLE KIND INCREMENTS [extra] -> "rc|stderr" and the brief in $T/mg.out
+  local rc=0 err
+  err="$(cd "$T" && "$PY" docs/graph/brief.py --role "$2" --kind "$3" --spawn-id "e8.$1" --task t --route r \
+         --part part.txt --plan "$d/grill.md" --unit u --increments "$4" "${@:5}" 2>&1 >"$T/mg.out")" || rc=$?
+  printf '%s|%s' "$rc" "$err"
+}
+rc_of() { local g; g="$(mg "$@")"; printf '%s' "${g%%|*}"; }
+WV="$T/docs/graph/nodes/crosscut.vault.md"
+x571=0; got="$(mg 1 implementer merged 1,3)"
+[[ "${got%%|*}" == 2 ]] && grep -q "increments 1,3 owe a tester RED spawn: the plant marks no trust path, so the doubt is read as one" <<<"$got" \
+  || { bad "X571 TRUST_PATH_INCREMENT_OWES_A_TESTER" "no marking: $got"; x571=1; }
+printf -- '---\nid: crosscut.vault\ntier: 2\ntrust: true\nkind: crosscut\norigin: project\ntitle: vault\nowns:\n  - vault.menu\nload_when:\n  - "app/vault/**"\nest_tokens: 100\n---\n\nVault.\n' > "$WV"
+x570=0; got="$(mg 2 implementer merged 1,3)"
+[[ "${got%%|*}" == 0 ]] && grep -qF "effort: low (implementer merged, label low)" <<<"$got" \
+  && grep -q '^## One spawn: the test first, then the code' "$T/mg.out" \
+  && grep -qF "write the test increment 1 cites and see it fail for the right reason before any code" "$T/mg.out" \
+  && grep -qF "record both observations" "$T/mg.out" \
+  || { bad "X570 LOW_BAND_INCREMENT_COMPOSES_ONE_IMPLEMENTER_BRIEF" "eligible: $got"; x570=1; }
+"$PY" - "$d/spawns.jsonl" <<'PY' || { bad "X570 LOW_BAND_INCREMENT_COMPOSES_ONE_IMPLEMENTER_BRIEF" "merged not logged"; x570=1; }
+import json, sys
+r = [json.loads(l) for l in open(sys.argv[1])][-1]
+assert r["spawn_id"] == "e8.2" and r["merged"] == [1, 3], r
+PY
+got="$(cd "$T" && "$PY" docs/graph/brief.py --role implementer --kind merged --spawn-id e8.2b --task t --route r --part part.txt 2>&1 >/dev/null)" && rc=0 || rc=$?
+[[ $rc == 2 ]] && grep -q "merged reads --increments" <<<"$got" || { bad "X570 LOW_BAND_INCREMENT_COMPOSES_ONE_IMPLEMENTER_BRIEF" "no increments: $rc $got"; x570=1; }
+[[ $x570 == 0 ]] && ok "X570 LOW_BAND_INCREMENT_COMPOSES_ONE_IMPLEMENTER_BRIEF: a low-band increment off trust paths composes one implementer brief, RED seen first and both observations recorded, logged as merged"
+got="$(mg 3 implementer merged 9,10)"
+[[ "${got%%|*}" == 2 ]] && grep -q "increments 9,10 owe a tester RED spawn: on a trust path (app/vault/lock.py: crosscut.vault)" <<<"$got" \
+  || { bad "X571 TRUST_PATH_INCREMENT_OWES_A_TESTER" "trust path: $got"; x571=1; }
+got="$(mg 4 tester red 9 --label low)"
+[[ "${got%%|*}" == 0 ]] && ! grep -q "one implementer spawn" <<<"$got" || { bad "X571 TRUST_PATH_INCREMENT_OWES_A_TESTER" "tester brief: $got"; x571=1; }
+[[ $x571 == 0 ]] && ok "X571 TRUST_PATH_INCREMENT_OWES_A_TESTER: a trust-path increment, or any in a plant that marks no trust path, is refused the merged brief and composes a tester RED brief"
+x572=0; got="$(mg 5 implementer merged 5,6)"
+[[ "${got%%|*}" == 2 ]] && grep -q "increments 5,6 owe a tester RED spawn: label medium is above the low-risk band (low, medium-low)" <<<"$got" \
+  || { bad "X572 ABOVE_BAND_INCREMENT_OWES_A_TESTER" "medium: $got"; x572=1; }
+[[ "$(rc_of 6 tester red 5 --label medium)" == 0 ]] || { bad "X572 ABOVE_BAND_INCREMENT_OWES_A_TESTER" "tester brief refused"; x572=1; }
+[[ $x572 == 0 ]] && ok "X572 ABOVE_BAND_INCREMENT_OWES_A_TESTER: an increment above the low-risk band is refused the merged brief and composes a tester RED brief"
+x573=0; got="$(mg 7 implementer merged 11)"
+[[ "${got%%|*}" == 2 ]] && grep -q "increment 11 owes a tester RED spawn: its test reproduces a bug (SPEC-0009 §10 origin bug)" <<<"$got" \
+  || { bad "X573 STATEFUL_CONCURRENT_OR_BUG_REPRODUCTION_OWES_A_TESTER" "bug: $got"; x573=1; }
+got="$(mg 8 implementer merged 1,3 --alone "a shared counter")"
+[[ "${got%%|*}" == 2 ]] && grep -q "increments 1,3 owe a tester RED spawn: stateful or concurrent (a shared counter)" <<<"$got" \
+  || { bad "X573 STATEFUL_CONCURRENT_OR_BUG_REPRODUCTION_OWES_A_TESTER" "concurrent: $got"; x573=1; }
+[[ "$(rc_of 9 tester red 11 --label medium-low)" == 0 ]] || { bad "X573 STATEFUL_CONCURRENT_OR_BUG_REPRODUCTION_OWES_A_TESTER" "tester brief refused"; x573=1; }
+[[ $x573 == 0 ]] && ok "X573 STATEFUL_CONCURRENT_OR_BUG_REPRODUCTION_OWES_A_TESTER: a bug reproduction or a stateful or concurrent increment is refused the merged brief and composes a tester RED brief"
+x574=0; EN="$T/docs/graph/method/delegation-cycle-economy.md"; cp "$EN" "$T/economy.bak"
+[[ "$(rc_of 10 implementer merged 8)" == 0 ]] || { bad "X574 LOW_BAND_IS_READ_FROM_THE_EFFORT_SCALE_NODE" "medium-low refused under the default"; x574=1; }
+"$PY" - "$EN" <<'PY' || { bad "X574 LOW_BAND_IS_READ_FROM_THE_EFFORT_SCALE_NODE" "no band line in the node"; x574=1; }
+import sys
+p = sys.argv[1]; t = open(p).read(); old = "**The low-risk band** is `low` and `medium-low` ("
+assert t.count(old) == 1, "band line"
+open(p, "w").write(t.replace(old, "**The low-risk band** is `low` ("))
+PY
+got="$(mg 11 implementer merged 8)"
+[[ "${got%%|*}" == 2 ]] && grep -q "increment 8 owes a tester RED spawn: label medium-low is above the low-risk band (low)" <<<"$got" \
+  || { bad "X574 LOW_BAND_IS_READ_FROM_THE_EFFORT_SCALE_NODE" "moved band: $got"; x574=1; }
+cp "$T/economy.bak" "$EN"
+[[ $x574 == 0 ]] && ok "X574 LOW_BAND_IS_READ_FROM_THE_EFFORT_SCALE_NODE: the band is the effort-scale node's line; moving it there moves the brief"
+x575=0; got="$(mg 12 tester red 1 --label low)"
+[[ "${got%%|*}" == 0 ]] && grep -qF "brief: increment 1 is in the low-risk band off trust paths: one implementer spawn writes its test and code (--role implementer --kind merged; tiers.execution-paths)" <<<"$got" \
+  || { bad "X575 TESTER_BRIEF_NAMES_THE_MERGED_PATH" "eligible: $got"; x575=1; }
+[[ $x575 == 0 ]] && ok "X575 TESTER_BRIEF_NAMES_THE_MERGED_PATH: a tester brief for a low-band increment off trust paths names the merged path to the caller; a trust-path one does not"
+rm -f "$WV"
 rc=0; (cd "$T" && "$PY" docs/graph/brief.py --role nobody --spawn-id s --task t --route r --part part.txt) >/dev/null 2>&1 || rc=$?
 [[ $rc -ne 0 ]] && ok "unknown role refused" || bad "unknown role" "exit 0"
 [[ "$fail" == 0 ]] && echo "test-brief: PASS" || { echo "test-brief: FAIL"; exit 1; }
