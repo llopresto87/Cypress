@@ -193,4 +193,5 @@ session owns the plan. Every amendment names its question id in the spec's
 changelog and bumps the spec's version. A ruling that relaxes or removes a
 contract, or amends one on a security, data-integrity or money surface, goes to
 the owner (and to `security` for a security surface) before the held work is
-re-briefed.
+re-briefed. After a ruling pass, one `tester` spawn (`--kind amend`, low) carries
+every test amendment and held test question, then one `implementer` (`--kind fix`, low).

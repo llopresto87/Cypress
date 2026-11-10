@@ -491,6 +491,12 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   one implementer greening them (low), and the light `security` re-check.
   The security charter leaves its probe files in the tree and the tester
   charter starts from them (SPEC-0005, TRUST_PATH_TAKES_THE_SECURITY_PASS).
+- **One low tester spawn after a ruling pass.** A measured run spent two
+  tester spawns and medium effort around one ruling pass. A test change that
+  follows a ruling is a tester `amend` (low); after the pass, one tester spawn
+  carries all of its test amendments and the test questions held while it
+  ran, and the implementer's follow-up is a `fix` (low)
+  (`delegation.ruling-amendment`, SPEC-0005).
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 

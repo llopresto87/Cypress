@@ -516,7 +516,7 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   writes a test
 
 ### Contract: BRIEF_DERIVES_THE_SPAWN_EFFORT
-- **Test file:** `tests/test-brief.sh`
+- **Test file:** `tests/test-brief.sh`, `tests/seed-lint.py`
 - **Given:** a plant with `docs/graph/brief.py` and the role and task kind
   table of `method/delegation-model-classes.md` (`delegation.effort`)
 - **When:** `brief.py` composes a brief with `--kind` (and `--label` for a
@@ -534,6 +534,9 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   and a tester `red-trust,amend` is low; the spawn log records the same value
 - **And:** a kind the role has no row for is refused (exit 2) naming the
   role's kinds
+- **And:** `delegation.ruling-amendment` gives a ruling pass's test
+  amendments to one tester `amend` spawn and its code follow-up to one
+  implementer `fix`, both low
 
 ### Contract: REVIEW_BRIEF_NAMES_THE_SECURITY_PASS
 - **Test file:** `tests/test-brief.sh`
@@ -1058,7 +1061,7 @@ is outside the set: the map names the model.
 | `delegation.tip-cadence` | per increment: its targeted tests plus every cross-cutting gate its files hit (named in its `Gate:`). The full suite runs once, at the batch tip, and must pass before anything leaves the branch. Failures are compared by test id. Until the tip passes, a landed increment is "landed, tip pending". (7.31.0, R0.15:) under waves the tip runs once per cycle, after its GREEN wave. (R0.1, R0.12:) a failure whose test id is on the batch's expected-red list does not fail the tip; the list, its test-id grain, the `not run` ids of an aborted step, and the rule that nothing leaves the branch until a tip with neither are `delegation.waves` (§6 "Waves") |
 | `delegation.mutation-at-end` | one batched mutation pass per spec, after its last increment, on the investigation class, effort by the derivation rule. Mandatory for security, data-integrity and money contracts: the mutant plan is drawn from the commit log and every increment in those classes gets at least one mutant. Sampled elsewhere; the owner may widen the sample, or skip it outside the mandatory classes, and the choice is recorded |
 | `delegation.question-file` | the shared question file and the ruling pass (shapes below) |
-| `delegation.ruling-amendment` | the architect writes its own spec amendment from a ruling when no other live lane holds the spec. Plan rows it lists for the session, which owns the plan. Every amendment names its question id in the spec's changelog and bumps the spec's version. A ruling that relaxes or removes a contract, or amends one on a security, data-integrity or money surface, is not self-amended: it goes to the owner, and to `security` for a security surface, before the held work is re-briefed |
+| `delegation.ruling-amendment` | the architect writes its own spec amendment from a ruling when no other live lane holds the spec. Plan rows it lists for the session, which owns the plan. Every amendment names its question id in the spec's changelog and bumps the spec's version. A ruling that relaxes or removes a contract, or amends one on a security, data-integrity or money surface, is not self-amended: it goes to the owner, and to `security` for a security surface, before the held work is re-briefed. After a ruling pass, one tester `amend` spawn (low) carries all its test amendments and the test questions held meanwhile, then one implementer `fix` (low) |
 
 Question file. Path: `docs/graph/plans/<unit of work>/questions/batch-<N>.md`,
 beside the overflow notes. `<N>` is the batch number the brief names. Append
@@ -3005,3 +3008,9 @@ kept outside the seed.
   and control files), then one implementer (GREEN, low), then the light
   re-check. TRUST_PATH_TAKES_THE_SECURITY_PASS gains the route, held by
   seed-lint (seen red first).
+- 2026-11-10 — a measured run spent two tester spawns and a medium tester
+  and implementer around one ruling pass. A ruling's test amendments are now a
+  tester `amend` (low) in one spawn after the pass, carrying the test
+  questions held meanwhile, and the code follow-up an implementer `fix`
+  (low). BRIEF_DERIVES_THE_SPAWN_EFFORT gains the rule, held by seed-lint
+  (seen red first).
