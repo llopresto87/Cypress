@@ -80,8 +80,9 @@ cached rate instead of paying for it again. The facts below come from the
 Claude Code documentation (prompt caching, settings, subagents and
 environment variables), read on 2026-11-10.
 
-- **Defaults.** The main conversation, the lead, gets the default lifetime.
-  Everything else, subagents above all, gets five minutes, except the helper
+- **Defaults.** The main conversation, the lead, gets one hour on a
+  subscription within its included usage and five minutes on usage credits,
+  an API key or a cloud provider. Everything else, subagents above all, gets five minutes, except the helper
   requests the server controls, which get one hour on a subscription.
 - **Controls.** `promptCacheTtl` (the lead) and `subagentPromptCacheTtl`
   (workers) in any settings file, `5m` or `1h`; the matching variables
@@ -89,9 +90,9 @@ environment variables), read on 2026-11-10.
   all four need Claude Code v2.1.242 or later. A subagent definition can set
   `cacheTtl` nested under `experimental:` in its frontmatter (v2.1.248 or
   later); Claude Code ignores a frontmatter `1h` while a subscription draws on
-  usage credits. `FORCE_PROMPT_CACHING_5M` forces five minutes for both and
-  `ENABLE_PROMPT_CACHING_1H` requests an hour for both; the pages read did not
-  document these two.
+  usage credits. `FORCE_PROMPT_CACHING_5M`, set to `1`, forces five minutes
+  over every other control, and `ENABLE_PROMPT_CACHING_1H`, set to `1`,
+  requests an hour for both (environment variables and prompt caching pages).
 - **Precedence**, first match wins: the force-five-minutes variable; the
   bucket's variable; the bucket's setting; the subagent's frontmatter; the
   enable-one-hour variable; the default.
