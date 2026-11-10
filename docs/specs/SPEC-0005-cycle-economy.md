@@ -566,8 +566,8 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   `tokens: <spawn_id> — <model> — input N, cache write N (5m N, 1h N), cache read N, output N — source: <source>`
   (exit 0)
 - **And:** a spawn_id the spawn log does not hold, one the ledger already
-  holds, a count that is not a whole number, or a key outside the schema is
-  refused (exit 2, one stderr line naming it), and the ledger is unchanged;
+  holds, a count that is not a whole number, a key outside the schema, or a
+  ledger line that is not a JSON record is refused (exit 2, one stderr line naming it), and the ledger is unchanged;
   the spawn log is never rewritten, and no price is stored
 
 ### Contract: TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT
@@ -3397,3 +3397,9 @@ kept outside the seed.
   inferred and on what basis, and `protocols/deliver.md` has a lead that knows
   the handback order replace the value
   (BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS, X515, seen red first).
+- 2026-11-10 — corrected in place after an independent review: three inputs
+  crashed with a traceback. A batch record or spawn log that is not UTF-8 now
+  gets the driver's exit 2 and one `cycle:` line (X511); a ledger line that is
+  not a JSON record refuses `brief.py --tokens` with exit 2 and one line, now
+  named in TOKEN_LEDGER_RECORDS_HOST_USAGE; a transcript line that is not a
+  JSON object is skipped. Each seen red first.

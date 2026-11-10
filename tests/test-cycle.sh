@@ -129,6 +129,10 @@ P5="$T/p5"; cp -R "$P" "$P5"; echo "bogus line" >> "$P5/$REC"
 refused "an unknown record kind" "$P5" "$REC:10: " --unit u
 P5="$T/p6"; cp -R "$P" "$P5"; echo "not json" >> "$P5/docs/graph/plans/spawns.jsonl"
 refused "a spawn log line that is not JSON" "$P5" "docs/graph/plans/spawns.jsonl:1: " --unit u
+P5="$T/p11"; cp -R "$P" "$P5"; printf 'test 1 \377\n' >> "$P5/$REC"
+refused "a batch record that is not UTF-8" "$P5" "$REC: " --unit u
+P5="$T/p12"; cp -R "$P" "$P5"; printf '{"a": "\377"}\n' >> "$P5/docs/graph/plans/spawns.jsonl"
+refused "a spawn log that is not UTF-8" "$P5" "docs/graph/plans/spawns.jsonl: " --unit u
 P5="$T/p7"; cp -R "$P" "$P5"
 "$PY" - "$P5/docs/graph/plans/grill.md" <<'PY'
 import sys

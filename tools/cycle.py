@@ -98,6 +98,15 @@ def git(top: Path, *args: str) -> subprocess.CompletedProcess:
     return subprocess.run(["git", "-C", str(top), *args], capture_output=True, text=True, errors="replace")
 
 
+def read_utf8(path: Path, shown: str) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as e:
+        raise Refusal(f"{shown}: not valid UTF-8 (byte {e.start})")
+    except OSError as e:
+        raise Refusal(f"{shown}: {e.strerror or e}")
+
+
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -165,7 +174,7 @@ class Cycle:
         if not self.record_path.is_file():
             return
         shown = self.rel(self.record_path)
-        for i, raw in enumerate(self.record_path.read_text(encoding="utf-8").splitlines(), 1):
+        for i, raw in enumerate(read_utf8(self.record_path, shown).splitlines(), 1):
             line = raw.strip()
             if not line or line.startswith("#"):
                 continue
@@ -208,7 +217,7 @@ class Cycle:
         self.spawns: list[dict] = []
         if not log.is_file():
             return
-        for i, raw in enumerate(log.read_text(encoding="utf-8").splitlines(), 1):
+        for i, raw in enumerate(read_utf8(log, self.rel(log)).splitlines(), 1):
             if not raw.strip():
                 continue
             try:

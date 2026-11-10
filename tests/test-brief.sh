@@ -217,6 +217,20 @@ out="$(tok --tokens o.9.tester.7 --transcript agent-a2.jsonl 2>&1)" || { bad "X5
 [[ "$out" == "tokens: o.9.tester.7 — not recorded — input not recorded, cache write not recorded (5m not recorded, 1h not recorded), cache read not recorded, output not recorded — source: claude-code transcript" ]] \
   || { bad "X506 TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT" "no usage: $out"; x506=1; }
 [[ $x506 == 0 ]] && ok "X506 TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT: one count per message id, 5m and 1h apart, no usage is not recorded"
+# X505/X506 malformed input: a transcript line that is not an object is
+# skipped; a ledger line that is not JSON refuses --tokens with one line, exit 2
+x507=0
+for i in 8 9; do (cd "$T" && "$PY" docs/graph/brief.py --role tester --spawn-id o.9.tester.$i --task t --route r --effort "low (x)" --part part.txt >/dev/null 2>&1) || true; done
+{ echo '5'; echo '[1]'; u m3 claude-x 2 0 0 1 0 0; } > "$T/agent-a3.jsonl"
+rc=0; out="$(tok --tokens o.9.tester.8 --transcript agent-a3.jsonl 2>&1)" || rc=$?
+[[ $rc -eq 0 ]] && grep -q '^tokens: o.9.tester.8 — claude-x — input 2,' <<<"$out" \
+  || { bad "X506 TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT" "non-object line: rc $rc: $out"; x507=1; }
+held="$(cat "$TL")"; printf '{"spawn_id": "o.9.x"\n' >> "$TL"
+rc=0; out="$(echo '{}' | tok --tokens o.9.tester.9 --usage - 2>"$T/err")" || rc=$?
+[[ $rc -eq 2 && -z "$out" && $(wc -l <"$T/err") -eq 1 ]] && grep -q '^brief: .*tokens.jsonl.* line ' "$T/err" \
+  || { bad "X505 TOKEN_LEDGER_RECORDS_HOST_USAGE" "malformed ledger: rc $rc: $(cat "$T/err")"; x507=1; }
+printf '%s\n' "$held" > "$TL"
+[[ $x507 == 0 ]] && ok "X505/X506 malformed input: a non-object transcript line is skipped; a malformed ledger line refuses with one line, exit 2"
 # X515 BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS: the Spawns, Serial waits and
 # Tokens lines from a hand spawn log and ledger, byte for byte, and they pass
 # session-metrics.py unchanged beside the lead's own lines
