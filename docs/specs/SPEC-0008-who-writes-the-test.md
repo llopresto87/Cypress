@@ -2,7 +2,7 @@
 status: back-written
 status_date: 2026-11-10
 owner: architect
-status_evidence: tests/test-brief.sh (X570 to X575, wired into tests/run.sh through the brief step), each case seen failing against the composer without the merged kind and against an effort-scale node without the band line before the code and the line landed
+status_evidence: tests/test-brief.sh (X570 to X575, wired into tests/run.sh through the brief step) and tests/test-worth-check.sh (X603, X604), each case seen failing against the composer without the merged kind and against an effort-scale node without the band line before the code and the line landed
 ---
 
 # SPEC-0008: who writes the test
@@ -47,8 +47,9 @@ inside the band names the merged path to the caller and is composed anyway.
 ## 2. Scope
 
 In scope: the brief composer's merged kind, the reading of the band, the
-trust-path marking, the stateful or concurrent mark, and the bug origin of a
-§10 row. Out of scope: how the orchestrator records the RED of a merged spawn
+trust-path marking, the stateful or concurrent mark, the bug origin of a
+§10 row, and who removes a test that catches nothing (ADR-0034 OD3): the
+writer's charter and the mutation pass's per-test result. Out of scope: how the orchestrator records the RED of a merged spawn
 in the batch record (`delegation.green-self-test` says it records it from the
 hand-back), and the prose of the charters and nodes, which the reviewer judges.
 
@@ -112,6 +113,26 @@ names it and which shares a contract with it) is read with it.
 - **Then:** the first composition exits 0 and the second exits 2 with
   `label medium-low is above the low-risk band (low)`
 
+### Contract: WRITER_REMOVES_A_TEST_THAT_CATCHES_NOTHING
+- **Given:** a test written inside a unit of work that the worth check flags
+  or the spec's mutation pass reports `survived-all`
+- **When:** the worker that wrote it reads its installed charter
+- **Then:** the tester's and the implementer's charters send it to
+  `protocol.test-first`, Removing a test that catches nothing, which has the
+  class of worker that wrote the test remove it before delivery with
+  `removed: <reason>` in its §10 row, lists an older test for the owner's
+  confirmation by name, holds back a bug reproduction, a security control and
+  a test with no §10 row, and leaves graft and grow removing nothing
+
+### Contract: MUTATION_PASS_REPORTS_EACH_TEST
+- **Given:** a spec's end-of-spec mutation pass (`delegation.mutation-at-end`),
+  mandatory where it was before and nowhere else
+- **When:** the pass hands back its result
+- **Then:** the installed node asks for one line per test of the spec it
+  covers, `killed <path::name>` or `survived-all <path::name>`, and still
+  makes the pass mandatory for security, data-integrity and money contracts
+  only
+
 ### Contract: TESTER_BRIEF_NAMES_THE_MERGED_PATH
 - **Given:** a low-band RED off trust paths
 - **When:** a tester brief is composed for it
@@ -161,6 +182,9 @@ low-risk band (low, medium-low); compose --role tester (delegation.effort-scale)
   STATEFUL_CONCURRENT_OR_BUG_REPRODUCTION_OWES_A_TESTER
 - [x] AC-3: the band has one home the owner can move; maps to
   LOW_BAND_IS_READ_FROM_THE_EFFORT_SCALE_NODE
+- [x] AC-4: the worker that wrote a test that catches nothing removes it, and
+  the mutation pass names each test it killed nothing with; maps to
+  WRITER_REMOVES_A_TEST_THAT_CATCHES_NOTHING, MUTATION_PASS_REPORTS_EACH_TEST
 
 ## 10. Test mapping
 
@@ -174,6 +198,8 @@ Each case carries its label and the slug it asserts in its `ok`/`bad` line.
 | STATEFUL_CONCURRENT_OR_BUG_REPRODUCTION_OWES_A_TESTER | X573 a bug-origin §10 row; `--alone` | tests/test-brief.sh | integration (fresh install) | green |
 | LOW_BAND_IS_READ_FROM_THE_EFFORT_SCALE_NODE | X574 the band line moved in the installed node | tests/test-brief.sh | integration (fresh install) | green |
 | TESTER_BRIEF_NAMES_THE_MERGED_PATH | X575 the notice on a tester brief | tests/test-brief.sh | integration (fresh install) | green |
+| WRITER_REMOVES_A_TEST_THAT_CATCHES_NOTHING | X603 the installed charters' pointer resolves to a section holding each removal rule | tests/test-worth-check.sh | integration (fresh install) | green |
+| MUTATION_PASS_REPORTS_EACH_TEST | X604 the installed mutation-at-end section: a line per test, mandatory classes unchanged | tests/test-worth-check.sh | integration (fresh install) | green |
 | BAND_LINE_MISSING | none: the empty band refuses every merged brief, the safe side | none | residual | residual |
 | TRUST_CLAIMS_UNREADABLE | none: read as a trust path by construction | none | residual | residual |
 
@@ -188,3 +214,8 @@ Each case carries its label and the slug it asserts in its `ok`/`bad` line.
 - 2026-11-10 — created `back-written` from the owner's words of 2026-11-10
   (ADR-0034 OD2, decision D1 option a) with the RED of X570 to X575 in
   `tests/test-brief.sh`, each seen failing first; six contracts, unsigned.
+- 2026-11-10 — two contracts added by the implementer of step T11 (ADR-0034
+  OD3): WRITER_REMOVES_A_TEST_THAT_CATCHES_NOTHING and
+  MUTATION_PASS_REPORTS_EACH_TEST, with X603 and X604 in
+  `tests/test-worth-check.sh`, each seen failing against the charters and
+  nodes without the text, then green.

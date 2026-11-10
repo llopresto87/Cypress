@@ -6,6 +6,7 @@ Placed in a plant as docs/graph/worth-check.py and run from the plant root:
 
     python3 docs/graph/worth-check.py [--root DIR] [--baseline FILE]
                                       [--write-baseline] [--json] [PATH...]
+    python3 docs/graph/worth-check.py --removal-list [--spec SPEC-NNNN]
 
 A read-back test is red while a line is absent and green once it is present,
 so it catches nothing the change itself does not already show (ADR-0034). The
@@ -48,6 +49,15 @@ is reported and does not fail; a baseline entry that no longer flags is
 reported as shrinkable. --write-baseline records today's flags; the first
 write is free, and every later write may only shrink the file, so it refuses
 to add a test. No baseline file is an empty baseline.
+
+--removal-list prints the flagged tests as one numbered batch for the owner's
+confirmation: each test, why it is flagged, its §10 row and origin read from
+docs/graph/specs/, and the contract it would leave without evidence. A test of
+origin `bug`, a security control, and a test no §10 row maps print NOT
+REMOVABLE AUTOMATICALLY. --spec SPEC-NNNN narrows the batch to the tests that
+spec's §10 maps, its baseline tests included: the listing a reopened spec owes.
+The list is read-only and exits 0; a test leaves the suite only when the owner
+names it in the chat (protocol.test-first, Removing a test that catches nothing).
 
 In the gate: a newly written test the check flags fails the plant's gate
 unless it is kept. A plant puts the check in its verification runbook
@@ -1135,6 +1145,10 @@ def run(args) -> int:
         return 0
     if args.write_baseline and args.paths:
         raise Unreadable("--write-baseline records the whole suite; run it without a PATH")
+    if args.removal_list and (args.write_baseline or args.json):
+        raise Unreadable("--removal-list prints the batch alone; run it without --write-baseline or --json")
+    if args.spec and not args.removal_list:
+        raise Unreadable("--spec narrows --removal-list; pass both")
     skip = set(declared.get("SKIP_DIRS", DEFAULT_SKIP_DIRS))
     base_path = root / (args.baseline or BASELINE)
     baseline = read_baseline(base_path)
@@ -1165,6 +1179,8 @@ def run(args) -> int:
                         if not args.paths or e.split("::", 1)[0] in read_set)
     languages = sorted({n["language"] for n in not_checked})
 
+    if args.removal_list:
+        return removal_list(root, flagged, args.spec)
     rc = 1 if new else 0
     messages = []
     if args.write_baseline:
@@ -1229,6 +1245,126 @@ def run(args) -> int:
     return rc
 
 
+# --- the removal list (ADR-0034 OD3; protocol.test-first, Removing a test) ----
+SPECS = "docs/graph/specs"
+SECTION_RE = re.compile(r"^##\s+(\d+)\.", re.M)
+CONTRACT_RE = re.compile(r"^###\s+Contract:\s*([A-Z][A-Z0-9_]{2,})\s*$", re.M)
+CHECK_RE = re.compile(r"^- \*\*Check:\*\*[ \t]*(\w+)", re.M)
+SLUG_RE = re.compile(r"\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b")
+CELL_RE = re.compile(r"(?<!\\)\|")
+HELD = {"bug": "a bug reproduction stays",
+        "security control": "a security control; one that kills no mutant is a finding "
+                            "for the security agent",
+        "": "origin not recorded; the architect records it on the row first"}
+
+
+def cells(line: str) -> list[str]:
+    s = line.strip()
+    s = s[1:] if s.startswith("|") else s
+    s = s[:-1] if s.endswith("|") and not s.endswith("\\|") else s
+    return [c.strip().strip("`").strip() for c in CELL_RE.split(s)]
+
+
+def spec_rows(path: Path) -> list[dict]:
+    """Every §10 row of one spec that names a test: the risk-based table
+    (`| Risk ... | Test ... | Covers | Origin | Status |`) or the legacy one
+    (`| Contract / Failure | Test name | Test file | Level | Status |`)."""
+    text = path.read_text(encoding="utf-8", errors="replace")
+    sid = (re.match(r"SPEC-\d+", path.name) or [path.stem])[0]
+    kinds = {}
+    for m in CONTRACT_RE.finditer(text):
+        nxt = re.search(r"^#{1,3}\s", text[m.end():], re.M)
+        c = CHECK_RE.search(text[m.end():m.end() + (nxt.start() if nxt else len(text))])
+        kinds[m.group(1)] = c.group(1).lower() if c else "test"
+    heads = list(SECTION_RE.finditer(text))
+    body = next((text[h.end():heads[i + 1].start() if i + 1 < len(heads) else len(text)]
+                 for i, h in enumerate(heads) if h.group(1) == "10"), "")
+    rows, head = [], None
+    for line in body.splitlines():
+        if "|" not in line:
+            head = None
+            continue
+        c = cells(line)
+        if head is None:
+            head = [x.lower() for x in c]
+            continue
+        if all(set(x) <= set("-: ") for x in c):
+            continue
+        get = lambda key: next((c[j] for j, h in enumerate(head) if h.startswith(key) and j < len(c)), "")
+        if head[0].startswith("risk"):
+            test, status = get("test"), get("status")
+            if "::" not in test or re.search(r"\b(?:dropped:|merged into|removed:)", status):
+                continue
+            path_, name = test.split("::", 1)
+            rows.append({"spec": sid, "text": c[0], "path": path_, "name": name,
+                         "covers": SLUG_RE.findall(get("covers")), "origin": get("origin").lower()})
+        elif head[0].startswith("contract"):
+            rows.append({"spec": sid, "text": c[0], "path": get("test file"), "name": get("test name"),
+                         "covers": SLUG_RE.findall(c[0]), "origin": ""})
+    for r in rows:
+        r["kinds"] = kinds
+    return rows
+
+
+def row_matches(row: dict, rec: dict) -> bool:
+    return row["path"] == rec["path"] and (row["name"] == rec["name"]
+                                           or row["name"] == rec["name"].rsplit("::", 1)[-1])
+
+
+def removal_list(root: Path, flagged: list[dict], spec: str | None) -> int:
+    """Print the batch of flagged tests for the owner's confirmation. Read-only:
+    it removes no file and edits no test."""
+    specs = sorted((root / SPECS).glob("SPEC-*.md")) if (root / SPECS).is_dir() else []
+    if spec and not any(p.name == spec or p.name.startswith(spec + "-") for p in specs):
+        raise Unreadable(f"--spec {spec}: no {SPECS}/{spec}-*.md in this plant; name a spec it holds")
+    rows = [r for p in specs for r in spec_rows(p)]
+    batch = []
+    for rec in flagged:
+        mine = [r for r in rows if row_matches(r, rec)]
+        if spec and not any(r["spec"] == spec for r in mine):
+            continue
+        batch.append((rec, mine))
+    in_batch = {(rec["path"], rec["name"]) for rec, _ in batch}
+    where = f" for {spec}" if spec else ""
+    print(f"removal batch{where} — {len(batch)} test(s) for the owner's confirmation "
+          f"(nothing is removed by this list)")
+    for n, (rec, mine) in enumerate(batch, 1):
+        lits = ", ".join(rec["literals"][:3])
+        one = rec["assertions"] == 1
+        print(f" {n}. {rec['test']}")
+        print(f"    flagged: {'only assertion reads' if one else 'all %d assertions read' % rec['assertions']} "
+              f"back {lits} that the same change adds "
+              f"(worth-check{'; in the baseline' if rec.get('in_baseline') else ''})")
+        if not mine:
+            print("    no §10 row -> NOT REMOVABLE AUTOMATICALLY (no spec maps it; the architect "
+                  "maps it to a contract, or records why it has none, first)")
+            continue
+        held = next((HELD[r["origin"]] for r in mine if r["origin"] in HELD), None)
+        for k, r in enumerate(mine):
+            verdict = "" if k < len(mine) - 1 else (
+                f"  -> NOT REMOVABLE AUTOMATICALLY ({held})" if held else "  -> removable on confirmation")
+            text = r["text"] if len(r["text"]) <= 60 else r["text"][:57] + "..."
+            print(f"    §10 row: {r['spec']} \"{text}\" origin: {r['origin'] or 'not recorded'}{verdict}")
+        if held:
+            continue                       # it stays, so it leaves no contract
+        left = []
+        for r in mine:
+            for slug in r["covers"]:
+                kind = r["kinds"].get(slug, "test")
+                other = [o for o in rows if o["spec"] == r["spec"] and slug in o["covers"]
+                         and (o["path"], o["name"]) not in in_batch
+                         and not any(row_matches(o, b) for b, _ in batch)]
+                if kind == "test" and not other and slug not in [s for s, _ in left]:
+                    left.append((slug, kind))
+        print("    leaves without evidence: " + (", ".join(
+            f"{s} (kind {k}; the architect re-settles its kind)" for s, k in left)
+            if left else "none (each contract it covers has other evidence)"))
+    if batch:
+        print('To confirm, reply in the chat naming the tests to remove, e.g. '
+              '"remove tests 1 and 4 of the batch".')
+    return 0
+
+
 class Parser(argparse.ArgumentParser):
     def error(self, message):
         self.print_usage(sys.stderr)
@@ -1244,9 +1380,18 @@ def main(argv=None) -> int:
     ap.add_argument("--write-baseline", action="store_true",
                     help="record today's flagged tests; the first write is free, later ones only shrink")
     ap.add_argument("--json", action="store_true", help="print the report as JSON")
+    ap.add_argument("--removal-list", action="store_true",
+                    help="print the flagged tests as a batch for the owner's confirmation, each with "
+                         "its §10 row, origin and the contract it would leave without evidence; "
+                         "read-only, it removes nothing")
+    ap.add_argument("--spec", metavar="SPEC-NNNN",
+                    help="with --removal-list: only the tests a §10 row of this spec maps, its "
+                         "baseline tests included (a reopened spec, clean as you touch)")
     ap.add_argument("paths", nargs="*", metavar="PATH",
                     help="test files or directories to read instead of the whole TEST_GLOBS layout")
     args = ap.parse_args(argv)
+    if args.spec and (m := re.match(r"SPEC-\d+", args.spec)):
+        args.spec = m.group(0)
     try:
         return run(args)
     except Unreadable as e:
