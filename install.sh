@@ -2122,6 +2122,12 @@ place_graph_scaffold() {
     # loads source_paths.py and plant_walk.py by path, beside it.
     place_file "$SEED_ROOT/tools/source-index.py" "$g/source-index.py"
     place_file "$SEED_ROOT/tools/plant_walk.py" "$g/plant_walk.py"
+    # the worth check (SPEC-0009): flags a test whose only assertions read back
+    # a literal the same change adds. Config-free (it reads TEST_GLOBS from the
+    # plant's spec-lint.py, as source-index.py does; its baseline,
+    # docs/graph/worth-baseline.txt, is the plant's own and never placed), so it
+    # fast-forwards like the router.
+    place_file "$SEED_ROOT/tools/worth-check.py" "$g/worth-check.py"
     place_if_missing "$SEED_ROOT/templates/knowledge-graph/index.md" "$g/index.md"
     fill_plant_facts "$g/index.md"
     log "  run /initialize — it forks on whether this target has source to scout:"

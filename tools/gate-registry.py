@@ -169,6 +169,14 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "and writes the batch record only through its two subcommands",
         TEMP, "representation",
         "runs on a hand-written plan in a fresh install with synthetic commits, not a real round's history"),
+    "test-worth-check.sh": (
+        "SPEC-0009 worth check: the placed worth-check.py flags each fixture read-back test in "
+        "Python, TypeScript and JavaScript and spares the logic, regression and security "
+        "fixtures, lists an unread language as not checked, honours a keep line with a reason, "
+        "and holds a baseline that only shrinks",
+        TEMP, "representation",
+        "a heuristic judged against a hand-written fixture suite in a fresh install, not a real "
+        "plant's tests; it never runs over this repository's own suite"),
     "test-resume-hook.sh": (
         "the cold-resume guard refuses new work to an idle worker and fails open",
         FIXTURES, "representation",

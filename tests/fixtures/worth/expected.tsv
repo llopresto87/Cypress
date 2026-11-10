@@ -1,0 +1,37 @@
+# The verdict worth-check.py owes each fixture test, written by hand before the
+# tool existed. Paths are as the test plant holds them (the fixture tree copied
+# under tests/). Columns: test, verdict (flagged | spared), what the test is.
+tests/python/test_readback.py::test_submit_button_label_is_send	flagged	read-back of a declared constant
+tests/python/test_readback.py::test_page_carries_the_label	flagged	read-back of a literal in a file
+tests/python/test_readback.py::test_checkout_total_is_computed	flagged	read-back under a name that promises logic
+tests/python/test_readback.py::test_route_and_limit_declared	flagged	six read-back assertions: length is no criterion
+tests/python/test_readback.py::TestFooterCopy::test_footer_text	flagged	read-back through unittest's assertIn
+tests/python/test_logic.py::test_submit_button_label_is_send	spared	renders the label: same name as a read-back
+tests/python/test_logic.py::test_email_pattern_accepts_plus_addresses	spared	a pattern
+tests/python/test_logic.py::test_eligibility_boundary	spared	a condition
+tests/python/test_logic.py::test_route_precedence	spared	an order of precedence
+tests/python/test_logic.py::test_total_with_discount	spared	a computed value
+tests/python/test_logic.py::test_built_page_carries_the_label	spared	reads a file the code under test wrote
+tests/python/test_logic.py::test_template_uses_the_declared_label	spared	two homes held equal, no literal
+tests/python/test_regression.py::test_retry_after_timeout_charges_once	spared	a bug regression
+tests/python/test_regression.py::test_default_currency_stays_eur	spared	a bug regression with the read-back shape
+tests/python/test_security.py::test_upload_name_with_traversal_is_refused	spared	a security control: refused input
+tests/python/test_security.py::test_debug_is_off_in_production_settings	spared	a security control: a setting held off
+tests/python/test_security.py::test_admin_page_not_linked_from_public_nav	spared	a security control: an absence
+tests/python/test_security.py::test_session_cookie_flag	spared	a security setting read back
+tests/ts/readback.test.ts::submit label is Send	flagged	read-back of an imported constant
+tests/ts/readback.test.ts::carries the label	flagged	read-back of a literal in a file
+tests/ts/readback.test.ts::names the route	flagged	two read-back assertions
+tests/ts/logic.test.ts::submit label is Send	spared	renders the label: same title as a read-back
+tests/ts/logic.test.ts::email pattern accepts plus addresses	spared	a pattern
+tests/ts/logic.test.ts::eligibility boundary	spared	a condition
+tests/ts/logic.test.ts::route precedence	spared	an order of precedence
+tests/ts/logic.test.ts::total with discount	spared	a computed value
+tests/ts/logic.test.ts::rendered page carries the label	spared	a page the code under test rendered
+tests/ts/regression.test.ts::retry after timeout charges once	spared	a bug regression
+tests/ts/regression.test.ts::default currency stays EUR	spared	a bug regression with the read-back shape
+tests/ts/security.test.ts::upload name with traversal is refused	spared	a security control: refused input
+tests/ts/security.test.ts::admin page is not linked from the public nav	spared	a security control: an absence
+tests/ts/security.test.ts::debug is off in production	spared	a security control: a setting held off
+tests/js/footer.test.js::footer text	flagged	read-back under node:assert
+tests/js/footer.test.js::footer year	spared	a computed value
