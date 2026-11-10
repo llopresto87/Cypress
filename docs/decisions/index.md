@@ -41,6 +41,7 @@ which is the installed *application* knowledge graph. ADR bodies use
 | [0031](adr-0031-donor-tokens-recast-generically.md) | A donor-identifying token is recast as a generic reference that keeps every fact, in every record, an ADR body included (amends ADR-0011 limit (a) and its ADR-body bar) | accepted | 2026-10-14 | the owner's decision of 2026-10-14 | unreleased |
 | [0032](adr-0032-one-home-per-close-out-fact.md) | Each close-out fact has one home: the delivery in the plant changelog, progress in grill §15/§14, and the session record keeps only what no other file holds (amends ADR-0013's resume state) | accepted | 2026-11-03 | the owner's decision of 2026-11-03 | unreleased |
 | [0033](adr-0033-opencode-first-class-on-opencode-2.md) | opencode is a first-class host and the seed targets OpenCode 2 only; supersedes ADR-0009's opencode row | accepted | 2026-11-10 | grill-8.4.0-opencode-2 | all |
+| [0034](adr-0034-a-test-is-owed-only-where-it-can-catch-something.md) | a test is owed only where it can catch something; the architect sets how each contract is checked; amends ADR-0023 in part | accepted | 2026-11-10 | grill-8.5.0-tester-surfaces | all |
 
 ADRs **0001–0003** were decided inline in the plan-of-record
 [`../plans/agent-routing-and-delegation.md`](../plans/agent-routing-and-delegation.md)
