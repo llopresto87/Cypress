@@ -50,13 +50,16 @@ def composed(body, wanted):
     """A node body as a role composes it: the text before its first `## `
     section, then each section except `## Neighbours` and one whose next line
     is `<!-- reference-only -->`; with `wanted`, only the `## <n>.` sections
-    it names. Returns (text, the wanted numbers no section carries)."""
+    it names; a selector is a section number or the slug a heading
+    carries in backticks (`## Title (`rule.slug`)`). Returns (text, the wanted numbers no section carries)."""
     chunks = re.split(r"(?m)^(?=## )", body.strip("\n"))
     pre = [] if chunks[0].startswith("## ") else [chunks.pop(0)]
     keep, seen = [], set()
     for c in chunks:
         num = re.match(r"## (\d+)\.", c)
-        seen.add(num.group(1) if num else None)
+        slug = re.match(r"## .*\(`([\w.-]+)`\)\s*$", c.split("\n")[0])
+        key = num.group(1) if num else (slug.group(1) if slug else None)
+        seen.add(key)
         lines = c.split("\n")
         if lines[0].strip() == "## Neighbours" or (len(lines) > 1 and lines[1].strip() == "<!-- reference-only -->"):
             # the heading and its list go; text after the list (a plant's own line) stays
@@ -68,9 +71,11 @@ def composed(body, wanted):
             if rest.strip():
                 keep.append("\n" + rest)
             continue
-        if wanted and not (num and num.group(1) in wanted):
+        if wanted and key not in wanted:
             continue
         keep.append(c)
+    if wanted and not any(w.isdigit() for w in wanted):
+        pre = []   # a section picked by its slug travels alone, without the node's preamble
     text = "".join(pre + keep).strip("\n")
     return text, [n for n in wanted if n not in seen]
 

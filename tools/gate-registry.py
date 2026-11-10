@@ -158,6 +158,11 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "the brief composer carries both bootstrap blocks verbatim with slots filled, and the handback block",
         TEMP, "representation",
         "a brief is checked against the templates it was built from, not against what a worker then does"),
+    "test-delivery-rules.sh": (
+        "a rule that must reach a role is in that role's loaded prompt after an install, a prompt "
+        "without it is named by role and rule, and install.sh --check says so",
+        TEMP, "representation",
+        "reads the composed agent files, not what a worker then does with the rule"),
     "test-cycle.sh": (
         "the cycle driver prints the ready batches, the held increments with their condition, "
         "the expected-red list, RED-hash mismatches and whether a ruling pass is owed, "

@@ -26,6 +26,7 @@ owns:
 requires:
   - skill.holistic-editing
 always_loads:
+  - skill.test-first#test-first.proportionate-checks
   - method.engineering-posture
   - method.design-posture
   - method.contract-posture

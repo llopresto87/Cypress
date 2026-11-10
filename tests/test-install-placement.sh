@@ -1081,7 +1081,9 @@ if not body.lstrip("\n").startswith(charter):
     sys.exit("  the style body does not begin with the charter body")
 ids = re.search(r"^always_loads:\n((?:  - .*\n)+)", (p / "docs/graph/agents/00-orchestrator.md").read_text(), re.M).group(1)
 for i in re.findall(r"- (\S+)", ids):
-    if body.count(f"## Always loaded: {i}\n") != 1:
+    node, _, sel = i.partition("#")
+    head = f"## Always loaded: {node}" + (f" (sections {sel})" if sel else "") + "\n"
+    if body.count(head) != 1:
         sys.exit(f"  {i}: not composed exactly once")
 if "routing_triggers:" in body:
     sys.exit("  the charter frontmatter reached the style")

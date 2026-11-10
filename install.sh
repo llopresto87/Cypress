@@ -1417,6 +1417,14 @@ check_claude_projections() {
             rc=1
         fi
     fi
+    if [[ -d "$dest" ]]; then
+        # DELIVERY_LINT: a rule that must reach a role is in that role's loaded prompt
+        if out="$(run_python "$SEED_ROOT/tools/delivery_rules.py" "$dest" 2>&1)"; then
+            log "claude-code agents carry every must-reach rule."
+        else
+            warn "$out"; rc=1
+        fi
+    fi
     check_claude_skill_projections || rc=1
     return $rc
 }

@@ -10,7 +10,7 @@ status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-
 ## 0. Metadata
 
 - **Identifier:** SPEC-0005-cycle-economy
-- **Version:** 0.20 (the security path: TRUST_PATH_TAKES_THE_SECURITY_PASS, TRUST_MARKER_IS_SETTLED, SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS, ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES, AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK, MAIN_SESSION_PLAYS_THE_ORCHESTRATOR, 2026-11-09; every amendment is dated in §12)
+- **Version:** 0.21 (the security path: TRUST_PATH_TAKES_THE_SECURITY_PASS, TRUST_MARKER_IS_SETTLED, SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS, ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES, AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK, MAIN_SESSION_PLAYS_THE_ORCHESTRATOR, 2026-11-09; every amendment is dated in §12)
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-09-28
@@ -729,6 +729,28 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 - **And:** graft's `graft.gate.projection-drift` row checks the Claude Code
   agents with `install.sh claude-code --check`, not a `diff` against the
   charter, which reads every composed agent as drift
+
+### Contract: COMPOSER_SELECTS_A_SECTION_BY_SLUG
+- **Test file:** `tests/test-delivery-rules.sh`
+- **Given:** a node with sections whose headings end in a backticked slug
+  (`## Title (`rule.slug`)`), and an `always_loads:` entry `<node id>#<slug>`
+- **When:** `tools/agent_compose.py` composes the role
+- **Then:** only the section carrying that slug is composed, without the
+  node's preamble, under the same `## Always loaded:` heading form
+- **And:** a slug no section carries is a named `ComposeError`
+
+### Contract: MUST_REACH_RULE_IS_IN_EACH_NAMED_ROLE_PROMPT
+- **Test file:** `tests/test-delivery-rules.sh`
+- **Given:** `MUST_REACH` in `tools/delivery_rules.py`, a table of rules, the
+  sentence that proves each is present, and the roles that must carry it
+  (the restraint rule `test-first.proportionate-checks`: architect, tester,
+  reviewer, orchestrator, the role that slices the plan)
+- **When:** the projected agent files of an install are read, by the seed's
+  lint or by `install.sh <host> --check` in a plant
+- **Then:** a role whose loaded prompt lacks a rule's sentence is named with
+  the rule, and the run exits non-zero
+- **And:** a plant that edits or recomposes an agent is held to the same
+  table, because the check reads the plant's projected files
 
 ### Contract: AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK
 - **Test file:** `tests/test-install-placement.sh`
@@ -2823,6 +2845,8 @@ gives.
 | CHARTER_FLAG_ONLY_FOR_PRIME_AGENT | X501 refused on a Claude Code plant; X502 refused on an opencode plant (seen red on the 8.3.2 tree); composed once `.prime/agent/` exists | tests/test-brief.sh | fixture | green |
 | ALWAYS_LOADS_COMPOSES_ONLY_WHAT_THE_ROLE_NEEDS | M25 case_agents_sections: `engineering-posture#1,4` composes sections 1 and 4 only, no Neighbours or reference-only section; `#1,99` stops the recompose naming section 99; seen red first | tests/test-install-placement.sh | integration | green |
 | MAIN_SESSION_PLAYS_THE_ORCHESTRATOR | M24 case_orchestrator_style: settings select the style; the style carries the charter body and each always-loaded body once, no charter frontmatter, `keep-coding-instructions: true`; a hand edit is STALE and recomposed; seen red first. A `claude -p` probe in a fresh plant quoted the charter's second sentence and an always-loaded heading, and quoted neither with the setting removed | tests/test-install-placement.sh | integration | green |
+| COMPOSER_SELECTS_A_SECTION_BY_SLUG | X523 a slug picks one section with no preamble; an unknown slug is a named ComposeError | tests/test-delivery-rules.sh | integration | green |
+| MUST_REACH_RULE_IS_IN_EACH_NAMED_ROLE_PROMPT | X524 installed prompts carry the rule; removing it from each of four roles fails naming role and rule; `--check` in a plant reports it; seen red first by that removal | tests/test-delivery-rules.sh | integration | green |
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | M22 case_agents_compose: the implementer's six always-loaded bodies once each with no frontmatter; `11-pentest.md` byte for byte; a hand edit is STALE to `--check` | tests/test-install-placement.sh | integration | green |
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | (none) the `ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES` row of seed-lint's `TEXT_RULES`: the `graft.gate.projection-drift` row holds `install.sh claude-code --check`; red id: `ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES: protocols/graft.md graft.gate.projection-drift does not hold 'install.sh claude-code --check'` | tests/seed-lint.py | real-tree | green |
 | TRUST_MARKER_IS_SETTLED | X496 TrustMarkerTests: `--trust-unsettled` names the unset and the pathless crosscut only; the lint warns on the pathless one and exits 0 | tests/test_graph_lint.py | fixture | green |
@@ -3414,3 +3438,9 @@ kept outside the seed.
   like Claude Code's, carries the charter, so CHARTER_FLAG_ONLY_FOR_PRIME_AGENT
   now refuses `brief.py --charter` on an opencode plant too (X502, seen red
   first).
+- 2026-11-10 — version 0.21, the restraint rule reaches the roles that decide.
+  The owner decided on 2026-11-10 that a test is owed only where it can catch
+  something. `test-first.proportionate-checks` is now the first section of
+  its node and the architect, tester, reviewer and orchestrator carry it
+  through `always_loads:`. Added COMPOSER_SELECTS_A_SECTION_BY_SLUG and
+  MUST_REACH_RULE_IS_IN_EACH_NAMED_ROLE_PROMPT (seen red first).

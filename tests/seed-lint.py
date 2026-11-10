@@ -85,9 +85,9 @@ EAGER_BUDGET = 41_600
 COPILOT_POINTER_OVERHEAD = 5_644
 # Harness -> (recorded bytes, reason). A debt that may only shrink.
 EAGER_EXEMPTIONS: dict[str, tuple[int, str]] = {
-    "claude-code": (67_131, "the main session plays the orchestrator: its charter and always_loads "
+    "claude-code": (67_006, "the main session plays the orchestrator: its charter and always_loads "
                             "ride in the output style (owner decision, 2026-11-09)"),
-    "opencode": (67_131, "the orchestrator is the default agent, so its charter and always_loads "
+    "opencode": (67_006, "the orchestrator is the default agent, so its charter and always_loads "
                          "are the main session's system prompt (owner decision, 2026-11-10)"),
 }
 
@@ -1237,14 +1237,10 @@ def orchestrator_style_bytes() -> int:
     nodes = {fm.get("id"): (fm, body) for _l, fm, body in machinery_nodes()}
     fm, body = nodes["agent.orchestrator"]
 
-    def composed(text: str) -> str:   # no selector, Neighbours and reference-only dropped
-        chunks = re.split(r"(?m)^(?=## )", text.strip("\n"))
-        return "".join(re.sub(r"^## [^\n]*\n(?:(?:\s*|- .*|  .*|<!-- reference-only -->)\n)*", "\n", c + "\n")
-                       .rstrip("\n") if c.startswith("## Neighbours\n")
-                       or c.split("\n")[1:2] == ["<!-- reference-only -->"] else c
-                       for c in chunks).strip("\n")
-    parts = [body.strip("\n")] + [f"## Always loaded: {i}\n\n" + composed(nodes[i][1])
-                                  for i in fm.get("always_loads") or []]
+    sys.path.insert(0, str(ROOT / "tools"))
+    import agent_compose   # the one composer: selectors, Neighbours and reference-only handled there
+    home = {i: body for i, (_fm, body) in nodes.items() if isinstance(i, str)}
+    parts = [body.strip("\n")] + agent_compose.sections(fm, "00-orchestrator.md", home)
     return len("\n\n".join(parts).encode("utf-8"))
 
 

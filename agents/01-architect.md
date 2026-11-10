@@ -26,6 +26,7 @@ owns:
   - architect.legal-checkpoint
 requires:
 always_loads:
+  - skill.test-first#test-first.proportionate-checks
   - method.design-posture
   - method.design-governance
   - method.engineering-posture
@@ -95,11 +96,14 @@ Each contract is a single Given/When/Then. Contracts are:
 - **Observable from outside**: the test can verify the outcome
   without inspecting internals, so the tester can encode it as a test.
 - **Single-outcome**: one Given/When/Then per contract. Multiple
-  outcomes split into multiple contracts.
-- **Named**: contracts have short stable slugs the tester uses as
-  test names.
-- **Complete**: the set of contracts covers every behavior in
-  scope.
+  behavioral outcomes split into multiple contracts.
+- **Named**: contracts have short stable slugs the tests that cover
+  them carry.
+- **Complete for behavior**: the contracts cover every behavior in
+  scope that holds logic. A declared or presentational detail with
+  nothing to get wrong (a label, a flag, a route, a key) is not a
+  contract; it is proved by a run or a review
+  (`test-first.proportionate-checks`).
 
 Example:
 ```markdown

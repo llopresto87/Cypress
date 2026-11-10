@@ -1,11 +1,11 @@
 ---
 name: test-first
-description: The test-shaping technique applied inside the test-first protocol — pick the lowest test level that exercises the behavior (unit, integration, contract, e2e, golden, property-based, evaluation), name the test after the spec contract, and assert one outcome per test. The workflow itself (entry conditions, RED-GREEN-REFACTOR-COMMIT gates, variants, exceptions) is the test-first protocol.
+description: Decide whether a test is owed (a named victim; logic that can be wrong while the code is present) and shape the tests that are, at the lowest level that exercises the behavior, one outcome each. The workflow itself (entry conditions, RED-GREEN-REFACTOR-COMMIT gates, variants, exceptions) is the test-first protocol.
 id: skill.test-first
 tier: 2
 kind: skill
 origin: seed
-title: 'test-first — shape each test: lowest level, contract-named, one outcome'
+title: 'test-first — decide whether a test is owed, then shape it: lowest level, one outcome'
 owns:
   - test-first.shaping
   - test-first.level-selection
@@ -16,6 +16,8 @@ peers:
   - protocol.test-first
   - skill.spec-author
 load_when:
+  - "is a test owed for this contract, increment or change"
+  - "does this test earn its place, or only read back what was just written"
   - "shape a new test"
   - "pick a test level"
   - "name a test after a spec contract"
@@ -33,13 +35,39 @@ prevents: Tests written at the highest level that happens to work, named after t
 est_tokens: 1719
 ---
 
-# test-first (the test-shaping technique)
+# test-first (whether a test is owed, and its shape)
 
 The cycle (RED → GREEN → REFACTOR → COMMIT, its per-phase gates, the
 characterize-first rule, the bug-fix and refactor variants, the
 migration safety gate, and the recorded exceptions) lives in
 `docs/graph/protocols/test-first.md`, the one home for the workflow.
-This skill owns the craft of shaping each test the cycle asks for.
+This skill decides whether a test is owed, then shapes each one the
+cycle asks for.
+
+## A test is owed only where it can catch something (`test-first.proportionate-checks`)
+
+The one home for when a check exists (a test, a gate, a guard in
+delivered code) and what it may cost. Other nodes link here.
+
+- **Name the victim.** A check exists for what breaks, and for whom, if
+  it is absent. No name, no check. Spec size does not set test count:
+  one test may cover several contracts, and a failure mode with no
+  victim gets none.
+- **Nothing to get wrong, no new test.** A declarative edit (a selector,
+  route, flag, config key, mapping entry, label) has a test that reads
+  back the value just written: red because the line is absent, green
+  because it is present, so it proves only the diff. Prove it by an
+  existing test or gate that exercises it, or the cheapest real run
+  (against live infrastructure a dry run is structural evidence only,
+  `method.host-parity`), named with its result in the handback. It earns
+  a test when it holds logic that can be wrong while present: a pattern,
+  a condition, an order or precedence that changes the output, or a
+  computed value; that test feeds inputs and asserts what is selected.
+- **A test is cheaper than its subject.** It asserts one behavior and
+  never re-implements the code under test. A long setup, a helper of its
+  own, or a comment naming the load-bearing line marks it over budget:
+  write a smaller test or none, and hand back what would need more code
+  than its subject, unwritten, as a level or design finding.
 
 ## Test level selection
 
@@ -57,11 +85,11 @@ Pick the lowest level that exercises the behavior.
 
 ## Test shape
 
-- **The name names the contract.** The spec §4 contract slug,
-  transformed for the language's convention
-  (`test_submit_valid_form_returns_2xx`, `submitValidFormReturns2xx`,
-  …). The reviewer should be able to read the test names and reconstruct
-  the spec. A name that claims more than its body asserts is worse than
+- **The name serves the reader of a failure.** It says what broke, in
+  the language's convention (`test_submit_valid_form_returns_2xx`,
+  `submitValidFormReturns2xx`), and carries the spec §4 contract slug of
+  each contract it covers where the slug is the link from test to
+  contract. A name that claims more than its body asserts is worse than
   an empty assertion: the standard way to ask "is this covered?" is to
   search test names, and a false name answers yes.
 - **The body is Given/When/Then.** Set up Given, perform When, assert
@@ -96,22 +124,19 @@ Pick the lowest level that exercises the behavior.
 
 ## Answer a coverage lint with a real test (`test-first.no-lint-only-tests`)
 
-A coverage lint can report a contract that no test names. Answer it in
-one of two ways: cite the contract's slug in the existing test that
-already asserts the contract, or, when none does, write the test the
-contract needs, because the gap is real. A test that asserts nothing new
-only turns the lint green.
+A coverage lint can report a contract that no test names. Answer it
+by what the contract holds. A contract that holds logic is covered by the
+existing test that already asserts it (cite the slug there) or, when none
+does, by the test it needs, because the gap is real. A declarative
+contract (the first section's test) is answered by the run or the review
+that proves it, named in the spec, and gets no test. A test that asserts
+nothing new only turns the lint green.
 
-## Proportionate checks (`test-first.proportionate-checks`)
+## Designing the set, rigor and shrinking
 
-The one home for when a check exists and what it may cost. A check is a
-test, a gate, or a check inside delivered code (validation, a guard, a
-fail-closed path). Other nodes link here; they do not restate it.
+The rule for whether a test exists at all is the first section of this
+node; this section is how the set is designed once it does.
 
-- **A check exists only for a named, real blast radius.** Name what
-  breaks, and for whom, if the check is absent. No name, no check. Spec
-  size does not set test count: one test may cover several failure
-  modes, and a failure mode with no real blast radius gets none.
 - **Tests are defined once, in the spec's test design, and never by an
   increment.** The tester designs a spec's whole test set in §10 while
   the spec is specified (`protocol.specify` phase 4), before any test
@@ -140,28 +165,6 @@ fail-closed path). Other nodes link here; they do not restate it.
   increment at a time; a RED that cannot fail for the right reason until
   another increment's behaviour exists is the exception, named with its
   reason in the plan. Mutation follows `delegation.mutation-at-end`.
-- **A change with nothing to get wrong earns no new test.** Before RED,
-  name what the test could catch that the edit being present does not
-  already guarantee. A declarative edit (a selector, a pipeline stage, a
-  route, a flag, a config key, a mapping entry, a label) usually has
-  nothing: its only test reads back the value just written, goes red
-  because the line is absent and green because it is present, and so
-  proves only the diff. Prove such a change by the run that shows its
-  effect: an existing test or gate that already exercises the surface,
-  or the cheapest real run (a dry-run where it exercises the surface, a
-  validate command, one pipeline run; against live infrastructure a dry
-  run is structural evidence only, `method.host-parity`), named with its
-  result in the handback. The declaration earns a
-  test when it holds logic that can be wrong while present: a pattern
-  (regex, glob, wildcard), a condition, an order or precedence that
-  changes the output, or a computed value. That test feeds it inputs
-  and asserts what it selects.
-- **A test is cheaper than its subject.** It asserts one behavior and
-  never re-implements the code under test. A long setup, a helper of its
-  own, or a comment naming the load-bearing line marks it over budget,
-  and the answer is a smaller test or none; one that would need more
-  code than its subject means the level or the design is wrong: hand it
-  back unwritten, with that finding.
 - **Assert one mechanism, by its behavior.** A test that passes on
   either of two implementations asserts nothing: assert the one
   mechanism, and escalate a contract that permits two shapes as a spec
