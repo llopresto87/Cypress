@@ -82,7 +82,8 @@ receives is held by SPEC-0001 `SESSION_RECORD_FORM_IS_PLACED`. The doctrine text
   - the router index row for delegation in `templates/knowledge-graph/index.md`
   - the cycle-economy doctrine (§6 "Cycle-economy rules") in
     `core/method/delegation-cycle-economy.md`, and light variants and effort in
-    `core/method/delegation-model-classes.md`, reworded from "pending the owner"
+    `core/method/delegation-model-classes.md` (light variants since in
+    `core/method/delegation-light-variants.md`, §6 "Delegation leaves"), reworded from "pending the owner"
     to adopted
   - per-agent `effort:` defaults in `agents/*.md` and `templates/agent.template.md`,
     the per-spawn derivation, the brief and handback record, the agent-lint rule,
@@ -1550,11 +1551,20 @@ unchanged; a `###` under a moved `##` moves with it unless listed separately.
 | Sibling file | id | Sections moved verbatim (pre-split lines) | Keys owned | New text | `requires:` | `peers:` | Representative phrase |
 |---|---|---|---|---|---|---|---|
 | `core/method/delegation.md` | `method.delegation` | intro (47-53); The roster (55-78); Route mechanically first (80-114); Spec authoring is shared (533-537) | `delegation.roster`, `delegation.routing`, `delegation.spec-authoring` | the `## Neighbours` section lists the five siblings, each `- \`<id>\`: load when <text>`, and `method.tiers` as now | none | the five siblings, `method.tiers` | "who should do this, which specialist, which agent" |
-| `core/method/delegation-model-classes.md` | `method.delegation-model-classes` | Route by model class (116-162); Light variants (164-211) | `delegation.model-classes`, `delegation.light-variants`, `delegation.effort` | the `delegation.effort` section (§6 "Effort"); the adopted rewording of 121-123 and 166-167; the `engineering-posture §5` pointer repointed to `method.minimum-sufficient-work` (later increments) | none | `method.delegation`, `method.delegation-cycle-economy` | "sonnet or opus, which model class" |
+| `core/method/delegation-model-classes.md` | `method.delegation-model-classes` | Route by model class (116-162); Light variants (164-211), since moved on to `core/method/delegation-light-variants.md` (below) | `delegation.model-classes`, `delegation.effort` | the `delegation.effort` section (§6 "Effort"); the adopted rewording of 121-123 and 166-167; the `engineering-posture §5` pointer repointed to `method.minimum-sufficient-work` (later increments) | none | `method.delegation`, `method.delegation-cycle-economy` | "sonnet or opus, which model class" |
 | `core/method/delegation-cycle-economy.md` | `method.delegation-cycle-economy` | One step per spawn (430-447) | `delegation.step-scope`, `delegation.effort-scale`, `delegation.green-self-test`, `delegation.tip-cadence`, `delegation.mutation-at-end`, `delegation.question-file`, `delegation.ruling-amendment` | every row of §6 "Cycle-economy rules" except the moved section | none | `method.delegation-model-classes`, `method.delegation-sequencing` | "how many increments per spawn, batch size" |
 | `core/method/delegation-briefs.md` | `method.delegation-briefs` | Every brief carries the graph discipline (341-429, without its `### One step per spawn`) | `delegation.briefs` | none | none | `method.delegation`, `method.delegation-cycle-economy` | "spawn a worker, write a delegation brief" |
 | `core/method/delegation-sequencing.md` | `method.delegation-sequencing` | Spawns are sequenced by dependency (449-486); Lanes (488-510) | `delegation.sequencing`, `delegation.lanes` | none | none | `method.delegation`, `method.delegation-cycle-economy` | "spawn order, parallel or sequential, which spawn waits for which" |
 | `core/method/delegation-bounds.md` | `method.delegation-bounds` | Delegation is bounded (213-237); A specialist is spawnable only once the host registered it (239-307); What a "turn" is (309-339); Every spawn is traced (512-531) | `delegation.bounds`, `delegation.harness-registration`, `delegation.turn`, `delegation.tracing` | none | none | `method.delegation`, `method.delegation-briefs` | "delegation depth, allowlist, can this agent spawn" |
+
+The Light variants section later moved verbatim from the model-classes leaf
+to its own leaf, `core/method/delegation-light-variants.md`
+(`method.delegation-light-variants`), which owns `delegation.light-variants`
+and names `method.delegation` and `method.delegation-model-classes` as peers;
+the move kept the model-classes leaf under `LEAF_BODY_CEILING` once the class
+table joined it (2026-11-10). It is a peer leaf and not one of the six split
+siblings, so `DELEGATION_LEAVES_ROUTE` holds the six rows above, and
+`ADOPTED_RULE_HOMES` names its file for `delegation.light-variants`.
 
 Frontmatter per sibling: `id`, `tier: 2`, `kind: method`, `origin: seed`,
 `title`, `owns`, `requires`, `peers`, `artifacts` (`method.delegation-briefs`
@@ -3362,3 +3372,10 @@ kept outside the seed.
   table beside the effort table, read by the same loader, reproduces each
   role's `model:`; `brief.py` prints a class only where a row differs
   (BRIEF_DERIVES_THE_MODEL_CLASS, X517, seen red first).
+- 2026-11-10 — corrected in place: §6 "Delegation leaves" still gave
+  `delegation.light-variants` to `core/method/delegation-model-classes.md`
+  after the light-variants section moved verbatim to
+  `core/method/delegation-light-variants.md` with the model-class table. The
+  model-classes row no longer lists the key, a note under the table names the
+  new leaf, and §2 points to it. No contract and no test changed;
+  `ADOPTED_RULE_HOMES` in `tests/seed-lint.py` already held the new home.
