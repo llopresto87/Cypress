@@ -87,6 +87,8 @@ COPILOT_POINTER_OVERHEAD = 5_644
 EAGER_EXEMPTIONS: dict[str, tuple[int, str]] = {
     "claude-code": (67_131, "the main session plays the orchestrator: its charter and always_loads "
                             "ride in the output style (owner decision, 2026-11-09)"),
+    "opencode": (67_131, "the orchestrator is the default agent, so its charter and always_loads "
+                         "are the main session's system prompt (owner decision, 2026-11-10)"),
 }
 
 # SPEC-0003 HOOK_TEXT_RESTATES_NO_KERNEL_RULE: bytes of the fixed text
@@ -1220,7 +1222,7 @@ def eager_surfaces(kernel_bytes: int) -> dict:
 
     surfaces = {
         "claude-code": kernel_bytes + agent_desc + skill_desc + orchestrator_style_bytes(),
-        "opencode": kernel_bytes + agent_desc + skill_desc,
+        "opencode": kernel_bytes + agent_desc + skill_desc + orchestrator_style_bytes(),
         "codex": kernel_bytes + agent_desc + skill_desc,
         "prime-agent": kernel_bytes + skill_desc + overlay_bytes,
         "github-copilot": kernel_bytes + agent_desc + skill_desc + COPILOT_POINTER_OVERHEAD,
@@ -1337,7 +1339,7 @@ def check_opencode_config() -> None:
              f"(got {cfg.get('$schema')!r}; the old config-schema.json URL 404s)")
     # The keys the seed places. Adding one means verifying it on OpenCode 2 first
     # and recording that in the live procedure, not extending this set on trust.
-    placed = {"$schema", "experimental"}
+    placed = {"$schema", "default_agent", "experimental"}
     for key in sorted(set(cfg) - placed):
         if key == "subagent_depth":
             fail("opencode.json: top-level 'subagent_depth' is an unsupported legacy "
@@ -1350,6 +1352,10 @@ def check_opencode_config() -> None:
             fail(f"opencode.json: {key!r} is not a key the seed places on OpenCode 2 "
                  f"(placed keys: {sorted(placed)}); a deprecated version 1 field is "
                  f"never placed")
+    if cfg.get("default_agent") != "orchestrator":
+        fail(f"opencode.json: default_agent={cfg.get('default_agent')!r}; the owner decided on "
+             f"2026-11-10 that the lead plays the orchestrator, so a new session starts in "
+             f"'orchestrator' (SPEC-0001 OPENCODE_LEAD_PLAYS_THE_ORCHESTRATOR)")
     depths = [int(a["fm"]["max_spawn_depth"]) for a in load_agents().values()
               if str(a["fm"].get("max_spawn_depth", "")).isdigit()]
     have = (cfg.get("experimental") or {}).get("subagent_depth")

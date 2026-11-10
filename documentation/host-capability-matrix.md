@@ -101,7 +101,7 @@ hosts and targets no frozen host.
 | Per-session injection dedup | mechanically enforced | unsupported⁸ | unsupported | degraded³ | mechanically enforced⁵ |
 | Pre-tool guard | mechanically enforced | mechanically enforced | unsupported | unsupported | unsupported |
 | Slash commands | mechanically enforced | mechanically enforced | unsupported | mechanically enforced | mechanically enforced |
-| Always-applied instructions | mechanically enforced (24 207 B) | mechanically enforced (24 207 B) | mechanically enforced (≤ 24 207 B)⁴ | mechanically enforced (29 851 B) | mechanically enforced (18 466 B) |
+| Always-applied instructions | mechanically enforced (67 131 B, recorded exemption) | mechanically enforced (67 131 B, recorded exemption) | mechanically enforced (≤ 24 207 B)⁴ | mechanically enforced (29 851 B) | mechanically enforced (18 466 B) |
 
 ¹ The leaf/coordinator split (who holds the spawn tool at all: `Agent` on Claude Code, `Task` accepted) is read by the
 harness from each agent's `tools:` line, and ADR-0003 classes that read
@@ -212,8 +212,9 @@ parity here; the differences are budget mechanics, not enforcement.
   with the mode, the model and variant, and the rules as rendered, and prints
   no configuration warning. The earlier, verbatim projection registered
   nothing on that release, because a frontmatter `tools:` list voids the whole
-  agent file there. The orchestrator is a selectable `primary` agent, not the
-  session's default (a [defect](#defects-to-close)).
+  agent file there. The orchestrator is the default agent, so a new session
+  starts in it (a session started in `orchestrator` on 2.2.6, with no
+  configuration warning).
 - **Codex CLI: unsupported.** `integrations/codex/README.md`: "Codex does
   not support `.claude/`-style directories of subagents out of the box;
   subagents are configured globally in `~/.codex/config.toml`." The seed
@@ -582,7 +583,7 @@ function's own computation against current sources:
 | Harness | Formula | Measured |
 |---|---|---|
 | Claude Code | kernel + agent descriptions + skill descriptions + orchestrator output style | 67 131 B (recorded exemption) |
-| opencode | kernel + agent descriptions + skill descriptions | 24 207 B |
+| opencode | kernel + agent descriptions + skill descriptions + orchestrator charter (the default agent) | 67 131 B (recorded exemption) |
 | Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 24 207 B |
 | Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 18 466 B |
 | GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 29 851 B |
@@ -600,10 +601,11 @@ the same shape, so GitHub Copilot is modelled like every other harness. `EAGER_E
 holds one recorded debt: on Claude Code the main session plays the
 orchestrator, so its charter and always-loaded nodes ride in the
 `orchestrator` output style on every session. Its extra bytes
-are the pointer boilerplate each projected file carries. On opencode the
-orchestrator is a selectable `primary` agent whose text loads only when a user
-selects it, so it adds nothing to the figure above (a
-[defect](#defects-to-close)).
+are the pointer boilerplate each projected file carries. On opencode
+the orchestrator is the default agent, so its charter and always-loaded nodes
+are the main session's system prompt on every session, a second recorded debt
+(owner decision, 2026-11-10); the host's own coding prompt does not apply to
+that agent, and a user can switch to the host's `build` agent.
 
 ## Defects to close
 
@@ -614,7 +616,6 @@ close it. The adapter README lists them by name.
 
 | Host | Difference | Where it shows | What would close it |
 |---|---|---|---|
-| opencode | The lead does not play the orchestrator. Claude Code's main session carries the orchestrator's charter and always-loaded nodes in an output style; opencode installs it as a selectable primary agent and keeps the host's default agent. Delivering the charter to every opencode session would take its always-loaded surface from 24,207 to 67,131 bytes, past the budget of 41,600. | Always-applied instructions | The owner decisions D1 (the budget) and D2 (the default agent) in [`docs/plans/owner-decisions-8.4.0-opencode-2.md`](../docs/plans/owner-decisions-8.4.0-opencode-2.md) |
 | opencode | No worker-continuation guard. The host can continue a finished child (the subagent tool with a `sessionID`, documented and not run), so the prompt-cache hazard exists wherever the provider's cache has a lifetime. `resume-hook.py` reads Claude Code's transcript layout and cache settings, so the shared core cannot decide on opencode's input as it stands. | Pre-tool guard; Prompt-cache lifetime | A core input contract carrying the child's last-activity time and the provider's cache lifetime, then a third branch in the plugin |
 | opencode | The seed kernel is absent in a compose-kernel plant: the kernel sits in `CLAUDE.md` only, and the host reads `AGENTS.md` (documented, not verified live). | Root kernel loading | The plugin delivers the kernel once per session through its synthetic-message surface without loading it twice, which adds a kernel-delivery duty to the envelope |
 | opencode | Per-session dedup is not verified live; fixtures hold it. | Per-session injection dedup | Check 7 of `docs/skills/opencode-live-verification.md` passing on a release |
