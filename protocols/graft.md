@@ -773,10 +773,22 @@ protection, and the migration respects it by being a proposal. It is also why
 the installer's own write into that subtree, the adopted-instructions ledger,
 has to be reported by hand.
 
-The same three questions apply to any future shape change: **what form does the
-plant carry, what does the new form buy it, and what is the conversion**, asked
-about the plant's content, answered in the graft record, decided by the
-steward.
+**The kinds form of a spec (8.5.0).** The earlier form reads each contract as
+one a test checks, linked by its §10 row and its name in the test's code. The
+kinds form adds a `- **Check:**` line per contract (`test`, `run`, `review`,
+`covered`), so a declared value is proved by a run or a review rather than by
+a test that reads it back, a declared-values table, and a §10 designed by risk.
+Both forms lint; propose converting a spec when it is reopened or the worth
+check flags its tests. `<seed>/tools/spec-convert.py --dry-run <spec>` prints
+the mechanical part (`Contract form: kinds`, `Trust path: no`, `Check: test` on
+each unlabelled contract, with its present mapping); after the steward
+ratifies, `--write --steward-ratified <spec>` writes it and a backup that
+`graft-audit.py` classes `SHAPE-MIGRATED`, once Phase 7's audits have run.
+Re-labelling, the declared values, the risk-based §10 and a trust path set to
+yes are the plant's architect's judgment. The same three questions apply to
+any future shape change: **what form does the plant carry, what does the new
+form buy it, and what is the conversion**, answered in the graft record and
+decided by the steward.
 
 #### Memory migration: from harness memory to a session record (7.31.0)
 
@@ -839,8 +851,8 @@ fast-forwards with the rest of the machinery; see the territory list.) **Bring
 all three engines current.** Reconcile each explicitly, as a config-preserving
 fast-forward: adopt the seed's current engine body and re-inject the PROJECT
 CONFIG that engine carries (`ROOT_ID` / `KINDS` / `KIND_PREFIX` in
-`graph-lint.py`; `TEST_GLOBS` in `spec-lint.py`; none in `grill-lint.py`, whose
-reconciliation is a plain fast-forward with a backup).
+`graph-lint.py`; `TEST_GLOBS` / `SKIP_DIRS` in `spec-lint.py`; none in
+`grill-lint.py`, whose reconciliation is a plain fast-forward with a backup).
 `tools/graft-graph-engine.py` picks that set from the plant file's name when no
 `--preserve` is given, and an explicit `--preserve` wins. The plant gains the
 engine, keeps its configured identity, and a knob it predates adopts the seed
@@ -1241,7 +1253,9 @@ graft's own spawns from it.
 mechanical half on a copy outside the plant: the ledger, the install with its
 log, the engines, the audits and the lints. It prints this table's result
 column, a judgment row as `not run` with its judge. It writes nothing in the
-plant and ratifies nothing.
+plant and ratifies nothing. The graft that brings the worth check to a plant
+with no baseline runs `worth-check.py --write-baseline` once, there and in the
+apply, and records `baseline holds N tests`; graft removes no test.
 
 The apply install prints the source-index build report last, and
 growth-audit repeats it after its verdicts. It is advice and never a row of

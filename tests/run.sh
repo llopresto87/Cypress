@@ -110,6 +110,7 @@ add_step bash "$ROOT/tests/test-ratchet-lint.sh"       # pair: ratchet-lint.py b
 add_step bash "$ROOT/tests/test-status-register.sh"
 add_step bash "$ROOT/tests/test-session-metrics.sh"
 add_step bash "$ROOT/tests/test-status-migrate.sh"
+add_step bash "$ROOT/tests/test-spec-convert.sh"
 add_step bash "$ROOT/tests/test-graft-tools.sh"
 add_step bash "$ROOT/tests/test-growth-audit.sh"
 add_step python3 "$ROOT/tests/test_graph_lint.py"

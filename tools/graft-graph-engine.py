@@ -13,7 +13,8 @@ plant's own top-level config assignments, so the plant gains every engine
 improvement while keeping the identity it configured. Each engine carries its
 own config:
   * graph-lint.py  ROOT_ID / KINDS / KIND_PREFIX
-  * spec-lint.py   TEST_GLOBS
+  * spec-lint.py   TEST_GLOBS / SKIP_DIRS (the plant's test layout, which
+                   worth-check.py and source-index.py read from it too)
   * grill-lint.py  none
 A config knob the plant predates (an older engine that never had it) adopts
 the seed's default.
@@ -52,7 +53,7 @@ from pathlib import Path
 DEFAULT_PRESERVE = ("ROOT_ID", "KINDS", "KIND_PREFIX")
 ENGINE_PRESERVE = {
     "graph-lint.py": DEFAULT_PRESERVE,
-    "spec-lint.py": ("TEST_GLOBS",),
+    "spec-lint.py": ("TEST_GLOBS", "SKIP_DIRS"),
     "grill-lint.py": (),
 }
 
@@ -211,12 +212,20 @@ def main() -> int:
         lead, p_body = split_comment(p_asg)
         lead = lead or split_comment(s_asg)[0]
         if is_set_literal(p_rhs) and is_set_literal(s_rhs):
-            # additive-vocabulary knob (e.g. KINDS): union so the seed's new
-            # members AND the plant's own members both survive.
-            new_asg = f"{lead}{name} = {union_set(p_rhs, s_rhs)}"
-            merged = merged.replace(s_asg, new_asg, 1)
+            # additive-vocabulary knob (e.g. KINDS, SKIP_DIRS): union so the
+            # seed's new members AND the plant's own members both survive.
+            # Where one side already holds every member, that side's source
+            # is kept as written: rewriting an equal set on one line churned
+            # every current engine into a backup and a new file.
             seed_new = [m for m in set_members(s_rhs) if m not in set_members(p_rhs)]
             plant_own = [m for m in set_members(p_rhs) if m not in set_members(s_rhs)]
+            if not seed_new:
+                new_asg = lead + p_body.rstrip("\n")
+            elif not plant_own:
+                new_asg = lead + split_comment(s_asg)[1].rstrip("\n")
+            else:
+                new_asg = f"{lead}{name} = {union_set(p_rhs, s_rhs)}"
+            merged = merged.replace(s_asg, new_asg, 1)
             if seed_new or plant_own:
                 print(f"  unioned {name}: added seed {seed_new or '[]'}, kept plant {plant_own or '[]'}")
         else:
