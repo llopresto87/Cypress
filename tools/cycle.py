@@ -11,8 +11,11 @@ and why, what the tip may see red, and whether the RED hashes still hold
   - the batch record, `docs/graph/plans/<unit>/batch-record.txt`;
   - the question files, `docs/graph/plans/<unit>/questions/batch-<N>.md`;
   - git: an increment has landed when every contract slug its §9 row names
-    appears in a commit message on the current branch (`test-first.cycle`'s
-    existing format carries the slug); with no history or no contract it is
+    appears in the slug of a GREEN commit subject on the current branch, in
+    the format `test-first.cycle` defines (`feat(<scope>): <slug> — implements
+    SPEC-NNNN` or `fix(<scope>): <slug> — adds regression for SPEC-NNNN`); a
+    RED, spec or plan commit naming the slug lands nothing. The result is an
+    inference and is printed as one; with no history or no contract it is
     `landed: unknown`.
 
 It never spawns and decides no tier, ruling or acceptance: a hold condition,
@@ -56,6 +59,7 @@ HEADER = "# batch record (delegation.green-self-test): written by cycle.py recor
 NAMED_RE = re.compile(r"\bincrements?\s+(\d+(?:\s*(?:,|and|to|-|–)\s*\d+)*)", re.I)
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 SLUG_RE = re.compile(r"\b[A-Z][A-Z0-9_]{2,}\b")
+GREEN_SUBJECT = re.compile(r"^(?:feat|fix)\([^)]*\): (.+?) — (?:implements|adds regression for) SPEC-\d+\s*$")
 NOT_PROSE_WORKERS = ("reviewer", "architect", "security", "devils-advocate")
 
 
@@ -91,7 +95,7 @@ def named(text: str) -> set[int]:
 
 
 def git(top: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", "-C", str(top), *args], capture_output=True, text=True)
+    return subprocess.run(["git", "-C", str(top), *args], capture_output=True, text=True, errors="replace")
 
 
 def sha256(path: Path) -> str:
@@ -235,8 +239,11 @@ class Cycle:
                     "text": f"{body.get('where', '')} {body.get('work held', '')}"})
 
     def _read_commits(self):
-        log = git(self.top, "log", "--format=%B%x00", "HEAD")
-        named_slugs = set(SLUG_RE.findall(log.stdout)) if log.returncode == 0 else None
+        log = git(self.top, "log", "--format=%s", "HEAD")
+        named_slugs = None
+        if log.returncode == 0:
+            named_slugs = {s for line in log.stdout.splitlines()
+                           if (m := GREEN_SUBJECT.match(line)) for s in SLUG_RE.findall(m.group(1))}
         self.committed: set[int] = set()
         self.unknown: list[int] = []
         for n in self.order:
@@ -361,6 +368,9 @@ class Cycle:
         out += [f"in flight: increment {n} — {flight[n]}" for n in sorted(flight)]
         out += waits
         out += [f"held: increment {n} — {held[n]}" for n in sorted(held)]
+        if self.committed:
+            out.append("landed (inferred from commit subjects): increment(s) "
+                       + ", ".join(map(str, sorted(self.committed, key=self.order.get))))
         if self.unknown:
             out.append("landed: unknown (no commit names its contracts) — increment(s) "
                        + ", ".join(map(str, self.unknown)))
