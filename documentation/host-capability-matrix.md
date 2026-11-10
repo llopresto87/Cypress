@@ -53,12 +53,18 @@ Source for every `install_*` function: `install.sh`. Source for every hook
 wiring: each adapter's `integrations/<name>/settings.json` (or `.ts`
 extension, or `.toml` example) and its `README.md`. Version measured:
 manifest.json's current version at the time of this pass (see the
-Measurements section).
+Measurements section). An opencode cell rises only on an observation made on a
+running OpenCode 2 release by the live procedure
+(`docs/skills/opencode-live-verification.md`), and its evidence line names
+that release; documentation and fixture runs hold or lower a cell. The cells
+below were last observed on OpenCode 2.2.6
+(`integrations/opencode/verified-version`).
 
 ## Support tiers (ADR-0009)
 
 A tier is a maintenance commitment, set by
-[ADR-0009](../docs/decisions/adr-0009-host-support-tiers.md). It says what the
+[ADR-0009](../docs/decisions/adr-0009-host-support-tiers.md) and, for opencode,
+by [ADR-0033](../docs/decisions/adr-0033-opencode-first-class-on-opencode-2.md). It says what the
 seed owes each host on the next change; the matrix below says what each harness
 holds today, so the two do not replace each other. The assignment's one home is the three tier arrays in
 `install.sh`, and `tests/seed-lint.py` (`check_host_tiers`) holds this table to
@@ -68,32 +74,32 @@ host installs only when it is named, as in `install.sh all codex`, and prints a
 
 | Tier | Hosts | What the seed commits to |
 |---|---|---|
-| `first-class` | `claude-code`, `prime-agent` | Feature parity is the target. A feature that ships on one is owed to the other, or its absence is recorded as a defect to close. |
-| `supported` | `opencode` | Installed by `all`, with its install surfaces unchanged except the `model:` line of each projected agent, which the installer writes from the plant's model map ([ADR-0022](../docs/decisions/adr-0022-the-plant-model-map.md)). |
+| `first-class` | `claude-code`, `opencode`, `prime-agent` | Feature parity is the target. A feature that ships on one is owed to the others, or its absence is recorded as a defect to close. opencode means OpenCode 2 only. |
+| `supported` | none | The tier stays defined; no host sits in it. |
 | `frozen` | `codex`, `github-copilot` | Still installable by name, with a `DEPRECATED` notice. No new features; the existing tests run as regression. |
 
-A feature reaches opencode only where the host carries it natively; where it
-cannot, the gap is recorded in this matrix and stays the host's gap, with no
-workaround. A
-harvest generalises a feature for the first-class hosts, carries it to
-opencode under that rule, and targets no frozen host.
+A feature that ships on one first-class host is owed to opencode: through the
+host's own mechanism where OpenCode 2 holds it, through a thin envelope over
+the shared hook core where only its plugin API does, and otherwise recorded here
+as a defect to close. A harvest generalises a feature for the first-class
+hosts and targets no frozen host.
 
 ## The matrix
 
 | Capability | Claude Code | opencode | Codex CLI | GitHub Copilot | Prime Agent |
 |---|---|---|---|---|---|
 | Root kernel loading | mechanically enforced | mechanically enforced | mechanically enforced | mechanically enforced | mechanically enforced |
-| Specialist discovery/registration | mechanically enforced | degraded | unsupported | projected | observed |
+| Specialist discovery/registration | mechanically enforced | projected | unsupported | projected | observed |
 | Delegation mechanism | mechanically enforced | mechanically enforced | unsupported | unsupported | mechanically enforced |
 | Recursion bound | brief-enforced¹ | mechanically enforced | unsupported | unsupported | mechanically enforced² |
-| Tool allowlists | mechanically enforced | degraded | unsupported | projected | brief-enforced |
+| Tool allowlists | mechanically enforced | projected | unsupported | projected | brief-enforced |
 | Model selection | mechanically enforced | mechanically enforced⁷ | unsupported | unsupported | brief-enforced |
 | Effort override (agent-frontmatter `effort:` key) | mechanically enforced | not recorded⁶ | not recorded⁶ | not recorded⁶ | brief-enforced⁶ |
-| Session-start hook | mechanically enforced | unsupported | unsupported | projected³ | mechanically enforced |
-| Routing hook | mechanically enforced | unsupported | unsupported | projected³ | mechanically enforced |
-| Status hook | mechanically enforced | unsupported | unsupported | projected³ | mechanically enforced |
-| Per-session injection dedup | mechanically enforced | unsupported | unsupported | degraded³ | mechanically enforced⁵ |
-| Pre-tool guard | mechanically enforced | unsupported | unsupported | unsupported | unsupported |
+| Session-start hook | mechanically enforced | observed | unsupported | projected³ | mechanically enforced |
+| Routing hook | mechanically enforced | mechanically enforced | unsupported | projected³ | mechanically enforced |
+| Status hook | mechanically enforced | mechanically enforced | unsupported | projected³ | mechanically enforced |
+| Per-session injection dedup | mechanically enforced | unsupported⁸ | unsupported | degraded³ | mechanically enforced⁵ |
+| Pre-tool guard | mechanically enforced | mechanically enforced | unsupported | unsupported | unsupported |
 | Slash commands | mechanically enforced | mechanically enforced | unsupported | mechanically enforced | mechanically enforced |
 | Always-applied instructions | mechanically enforced (24 207 B) | mechanically enforced (24 207 B) | mechanically enforced (≤ 24 207 B)⁴ | mechanically enforced (29 851 B) | mechanically enforced (18 466 B) |
 
@@ -133,10 +139,13 @@ session id the host's session manager gives. When the host gives no id, the
 core injects in full on every prompt (see "Per-session injection dedup"
 below).
 
-⁶ Whether opencode, Codex CLI or GitHub Copilot read an `effort`
+⁶ Whether Codex CLI or GitHub Copilot read an `effort`
 key from agent frontmatter at all is not established
 (`docs/specs/SPEC-0005-cycle-economy.md` §6, "Effort";
-`core/method/delegation-model-classes.md`, `delegation.effort`). "not
+`core/method/delegation-model-classes.md`, `delegation.effort`). On opencode
+the installer places no `effort` key; the effort travels as the model map
+cell's `#<variant>`, which OpenCode 2.2.6 registers, and whether the provider
+applies it is not verified live. "not
 recorded" is not one of the six classes above: it names an open question, not
 a confirmed capability gap, so no cell here reads "unsupported" on the
 strength of a guess. Prime Agent takes the effort per spawn as
@@ -149,6 +158,12 @@ top of the frontmatter key is likewise not recorded
 ⁷ Once the plant's model map row is filled. An unfilled row projects no
 `model:` line, and the agent runs on its caller's model.
 
+⁸ The plugin passes the session id to the same `route-hook.py`, and fixtures
+hold the ledger, but no live run has yet sent a second prompt in one host
+process. A cell rises only on a live observation (ADR-0033), so the class
+stays until check 7 of the live procedure passes (see "Per-session injection
+dedup" below and the [defects](#defects-to-close)).
+
 ## Per-capability evidence
 
 ### Root kernel loading
@@ -158,9 +173,11 @@ config key required:
 
 - Claude Code: `CLAUDE.md` at the project root (`install_claude_code`,
   `place_kernel()` in `install.sh`).
-- opencode: `AGENTS.md`, falling back to `CLAUDE.md` if opencode-native
-  files are absent (`integrations/opencode/README.md`, "opencode is
-  Claude-Code-compatible by default").
+- opencode: `AGENTS.md` (`integrations/opencode/README.md`, "What the host
+  reads"), as OpenCode 2 documents it; the seed relies on no `CLAUDE.md`
+  fallback, and none is verified live. In a compose-kernel plant the seed kernel sits in `CLAUDE.md` only, so
+  an opencode session there does not see it (a
+  [defect](#defects-to-close)).
 - Codex CLI: `AGENTS.md`, walking up to the project root, truncated at
   `project_doc_max_bytes` (default 32 KiB; the seed's kernel is ~7.5 KB, so
   it fits, but the shipped `config.toml.example` still raises the budget to
@@ -183,13 +200,20 @@ parity here; the differences are budget mechanics, not enforcement.
   name via `Agent` (`Task` accepted). When a file written mid-session is
   picked up is in
   [`delegation.harness-registration`](../core/method/delegation-bounds.md#a-specialist-is-spawnable-only-once-the-host-registered-it).
-- **opencode: degraded.** `.opencode/agents/*.md` is discovered the same
-  way, but opencode's agent-markdown contract is not a superset of the
-  seed's frontmatter: it does not recognize the seed's `model:` or `tools:`
-  shapes at all (see below). Discovery itself works; what an agent is
-  *allowed and modeled as* once discovered does not
-  (`integrations/opencode/README.md`, "Known gap: the agent frontmatter is
-  Claude-Code-shaped").
+- **opencode: projected.** `render_opencode_agents()` in `install.sh`
+  transforms every `docs/graph/agents/*.md` into
+  `.opencode/agents/<callable name>.md` carrying only OpenCode 2's own fields
+  (`description`, `mode`, `model`, `permissions`) and the composed charter
+  body (`integrations/opencode/README.md`, "The native agent file"). The
+  transform drops `effort`, `can_delegate`, `routing_triggers` and the graph
+  fields, which the host does not read; it turns `tools:` and `delegates_to:`
+  into host rules (see "Tool allowlists"). Observed on OpenCode 2.2.6:
+  `opencode2 debug agents` lists all 20 seed agents under their callable names
+  with the mode, the model and variant, and the rules as rendered, and prints
+  no configuration warning. The earlier, verbatim projection registered
+  nothing on that release, because a frontmatter `tools:` list voids the whole
+  agent file there. The orchestrator is a selectable `primary` agent, not the
+  session's default (a [defect](#defects-to-close)).
 - **Codex CLI: unsupported.** `integrations/codex/README.md`: "Codex does
   not support `.claude/`-style directories of subagents out of the box;
   subagents are configured globally in `~/.codex/config.toml`." The seed
@@ -227,10 +251,14 @@ parity here; the differences are budget mechanics, not enforcement.
   (`tools:` frontmatter). **mechanically enforced**: ADR-0003 `hard` for the
   grant the harness reads from the `tools:` line, and for nothing wider; what
   it leaves open is in the [leaf spawn row of the enforcement table](../DOCUMENTATION.md#enf-leaf-cannot-spawn).
-- opencode: has its own subagent-invocation mechanism and reads
-  `subagent_depth` from `opencode.json` natively: **mechanically
-  enforced** as a mechanism, though which agents may act as coordinators is
-  not distinguished by the harness (see "tool allowlists").
+- opencode: the host's own subagent tool. Which agents an agent may launch
+  is its own rules: a charter with `Task` gets a rule denying every
+  `subagent` launch and one allow per agent in its `delegates_to:`, and a
+  charter without `Task` launches nothing. Observed on OpenCode 2.2.6: a
+  coordinator whose rules allow only one agent was refused another by the host
+  ("Permission denied: subagent"), and the allowed one ran. **mechanically
+  enforced**, and the allowlist is held by the agent's own host rules rather
+  than by a brief; Claude Code gets its bound through the agent type.
 - Codex CLI: no working spawn-tool equivalent is wired by this integration (see
   discovery, above): **unsupported**.
 - GitHub Copilot: `install_github_copilot()` in `install.sh` states it outright in a comment:
@@ -256,13 +284,18 @@ parity here; the differences are budget mechanics, not enforcement.
   The host's own nesting limit on subagents spawning subagents is a
   separate, harness-held ceiling the seed does not set
   ([`delegation.bounds`](../core/method/delegation-bounds.md#delegation-is-bounded)).
-- opencode: `subagent_depth` in `opencode.json` is "the load-bearing key".
-  opencode defaults it to 1 ("a depth at which subagents do not launch
-  subagents of their own"), and the seed ships it set to 3 to reach its deepest chain;
-  `tests/seed-lint.py` asserts the two agree
-  (`integrations/opencode/README.md`). **mechanically enforced**, and
-  numerically real: the one host where the seed's actual delegation depth
-  is a harness-checked runtime ceiling rather than a lint-only claim.
+- opencode: `experimental.subagent_depth` in `opencode.json` is the
+  load-bearing key. The host defaults the depth to 1, at which a subagent
+  launches none of its own, and the seed ships 3, the deepest chain;
+  `tests/seed-lint.py` asserts the two agree (`integrations/opencode/README.md`,
+  "opencode.json"). Observed on OpenCode 2.2.6: the key is accepted with no
+  warning, three nested launches ran and a fourth was refused ("Subagent depth
+  limit reached (3)"); the top-level
+  `subagent_depth` an earlier seed shipped is omitted as an unsupported legacy
+  setting. A leaf launches nothing, because its rules deny `subagent`.
+  **mechanically enforced**: the host holds one depth for the whole session,
+  the seed's deepest, and a coordinator whose own `max_spawn_depth` is lower is
+  held to that number by `agent-lint.py --lint` only.
 - Codex CLI / GitHub Copilot: no delegation mechanism, so no recursion to
   bound: **unsupported**.
 - Prime Agent: `RLM_MAX_DEPTH`, default **2**, is a real runtime ceiling,
@@ -284,13 +317,17 @@ parity here; the differences are budget mechanics, not enforcement.
   a tool it does hold, such as the shell, as the
   [tool allow-list row of the enforcement table](../DOCUMENTATION.md#enf-tool-allowlist)
   records. **mechanically enforced**.
-- opencode: explicitly **degraded**. `integrations/opencode/README.md`'s
-  gap table: the seed ships `tools: [Read, Glob, Grep, Bash]` (a list);
-  opencode expects `permission: {edit: deny, bash: deny}` (the `tools`
-  object is deprecated). Consequence stated verbatim: "the harness does not
-  hold a read-only leaf's tool bound". Until `install.sh` emits a
-  transformed projection for opencode (as it already does for Copilot),
-  this is brief-enforced at best in practice.
+- opencode: **projected**. The transform renders each charter's `tools:`
+  as the agent's `permissions:`: a rule denying every action, then one allow
+  per host action the tools map to in
+  `integrations/opencode/tool-permissions.json`, with the host's `.env` guard
+  restored after `read`; the host applies the last matching rule. A tool name
+  the table lacks stops the install. Observed on OpenCode 2.2.6: an agent with
+  neither edit nor shell had its write tool removed by the host, and no file
+  was created; all 20 agents' effective rules, read from the host's own
+  listing, equal their charters' tools and `delegates_to:`. As on Claude Code,
+  a worker granted the shell can reach through it much of what its list leaves
+  out ([tool allow-list row](../DOCUMENTATION.md#enf-tool-allowlist)).
 - Codex CLI: no evidence of a per-agent tool-restriction surface in this
   integration: **unsupported**.
 - GitHub Copilot: **projected**. The transform derives a real VS-Code-native
@@ -315,7 +352,8 @@ parity here; the differences are budget mechanics, not enforcement.
   writes each projected agent's `model:` line from the plant's model map,
   `docs/graph/models.md`, at the agent's class and effort
   (`render_opencode_agents()` in `install.sh`; `integrations/opencode/README.md`,
-  "Model choice comes from the plant's model map"). **mechanically enforced**
+  "The native agent file"). Observed on OpenCode 2.2.6: the host lists each
+  agent's model, with the variant a `#<variant>` cell names. **mechanically enforced**
   once the map row is filled. An unfilled row projects no `model:` line, and the
   agent runs on its caller's model. `install.sh opencode --check` compares the
   placed projections with a fresh rendering, the `model:` line included.
@@ -352,7 +390,12 @@ parity here; the differences are budget mechanics, not enforcement.
 - Prime Agent: the parent passes the brief's effort as
   `rlm.spawn(..., thinking=<effort>)` on each spawn (`APPEND_SYSTEM.md`).
   **brief-enforced**.
-- opencode, Codex CLI, GitHub Copilot: whether the host reads an
+- opencode: the installer places no `effort` key. The plant's map carries
+  the effort as a cell's `#<variant>`, which OpenCode 2.2.6 registers; whether
+  the provider applies it, and any per-launch effort, are **not recorded**
+  (the subagent tool's observed input is the agent, a description and the
+  prompt; a `model` field is documented and not run).
+- Codex CLI, GitHub Copilot: whether the host reads an
   `effort` key from agent frontmatter at all is **not recorded**
   (`docs/specs/SPEC-0005-cycle-economy.md` §6, "Effort"). This sits outside
   the six classes above by design (see footnote 6): an unconfirmed read is
@@ -370,7 +413,11 @@ parity here; the differences are budget mechanics, not enforcement.
   installer places the lead setting only on `--prompt-cache-ttl 1h`, and
   `resume-hook.py` reads the worker lifetime, counting an hour only when the
   worker's transcript shows a one-hour cache write. **documented**, not observed.
-- opencode, Codex CLI, GitHub Copilot, Prime Agent: **not recorded**.
+- opencode, Codex CLI, GitHub Copilot, Prime Agent: **not recorded**. On
+  opencode the host can continue a finished child (the subagent tool with a
+  `sessionID`, documented and not run), so the hazard `resume-hook.py` guards
+  exists wherever the provider's cache has a lifetime (a
+  [defect](#defects-to-close)).
 
 ### Session-start hook / Routing hook / Status hook
 
@@ -393,12 +440,23 @@ Only the session-start hook runs it, never the per-prompt one.
   the pre-tool guard is deliberate, see below). Both are prompt- or
   session-scoped; whether either fires for a subagent's turn is in the
   [delegation node](../core/method/delegation-briefs.md#every-brief-carries-the-graph-discipline).
-- **opencode**: `install_opencode()` in `install.sh` places no hook
-  file of any kind, and no config key exists for one either
-  (`integrations/opencode/README.md`: "the config schema allows no unknown
-  key at all"). **unsupported**, all three. The code-anchor line reaches an
-  opencode session only through the newest session record, where canonize
-  writes it.
+- **opencode**: `install_opencode()` in `install.sh` places the three cores
+  in `.opencode/hooks/` and the plugin `.opencode/plugins/cypress.ts`, which
+  the host loads by convention (`integrations/opencode/README.md`, "The plugin
+  and the hook core"). On the host's prompt hook the plugin runs
+  `route-hook.py` and adds its text as a synthetic message with
+  `resume: false`, ahead of the prompt, which it leaves unedited. On the first
+  prompt this host process sees for a session it first runs `status-hook.py`
+  the same way. The plugin composes no text; a child session (one with a
+  `parentID`) gets nothing. Observed on OpenCode 2.2.6: the plugin loads with
+  no install step and no network, and both texts arrive byte-identical to the
+  cores' text. Routing and Status hook: **mechanically enforced**, and, like
+  Claude Code's hooks, they never block. Session-start hook: **observed**,
+  because no session-start event runs the status core: the first prompt of a
+  session in a host process does, so a new host process runs it again on a
+  session it has not seen. OpenCode 2 offers the plugin no compaction event it
+  uses, so the reset Prime Agent performs after a compaction does not happen
+  here (a [defect](#defects-to-close)).
 - **Codex CLI**: no hook surface appears in `config.toml.example` or its
   README. **unsupported**, all three. Upstream Codex CLI does document
   `SessionStart`, `UserPromptSubmit` and `PreCompact` hooks, and the seed wires
@@ -441,19 +499,24 @@ list, a call made by indirection passes, and it holds only on a host that
 fires it. Its classes, `hard` for a matched command on this host and
 `not a control` otherwise, are in the
 [pre-Bash guard row of the enforcement table](../DOCUMENTATION.md#enf-pre-bash-guard).
-**mechanically enforced**, on Claude Code alone. Whether it fires on a
+**mechanically enforced** on Claude Code. Whether it fires on a
 subagent's Bash calls is recorded in the
 [delegation node](../core/method/delegation-briefs.md#every-brief-carries-the-graph-discipline).
 
-- opencode: "The seed wires no pre-tool hook for opencode, so the
-  bounded-execution clauses … are the agent's own discipline rather than a
-  hook's check" (`integrations/opencode/README.md`, "Bounded execution has
-  no hook here"). **unsupported**.
+- opencode: the plugin's permission hook runs the same `bound-hook.py` for a
+  shell command, and a command the core refuses is denied through the host
+  with the core's reason as the message, byte for byte; other actions keep the
+  effect the host decided. A missing or slow core lets the command through,
+  and `install.sh opencode --check` names it. Observed on OpenCode 2.2.6: a
+  refused command was denied and the model reported the core's reason.
+  **mechanically enforced** for the bound guard. No continuation guard ships
+  (a [defect](#defects-to-close)).
 - Codex CLI, GitHub Copilot, Prime Agent: no equivalent shipped for any of
   the three. Copilot's hook set stops at route/status, the seed wires no
   Codex hook at all (see the session-start hook section above), and Prime
   Agent's two extensions cover only routing and status, never a tool-call
-  gate. **unsupported** on all three.
+  gate. **unsupported** on all three; on Prime Agent, a first-class host, that
+  is a [defect](#defects-to-close).
 
 ### Slash commands
 
@@ -463,7 +526,8 @@ subagent's Bash calls is recorded in the
   produces one command file per protocol node declaring `command: true`,
   into `.claude/commands/`, `.opencode/commands/`, and
   `.prime/agent/prompts/` respectively, the identical roster on all
-  three. **mechanically enforced**.
+  three. **mechanically enforced**. On opencode the class predates OpenCode 2,
+  and that the host lists the generated commands is not yet verified live.
 - GitHub Copilot: a separate but equivalent generator produces
   `.github/prompts/<name>.prompt.md` from the same `command: true` roster
   (`install_github_copilot()` in `install.sh`), discovered natively by
@@ -483,8 +547,13 @@ already injected (SPEC-0003).
   suggested this session is named by id, not repeated in full, with a full
   injection after each reset, every `REFRESH_EVERY` routed prompts, and on
   any doubt about the record. Class: **mechanically enforced**.
-- **opencode**: no per-prompt injection ships, so there is nothing to dedup.
-  Class: **unsupported**.
+- **opencode**: the plugin passes the session id the host gives to the same
+  `route-hook.py`, so the session would keep one ledger under
+  `.cypress/session/` with Claude Code's rules. The plugin's fixture test and
+  the core's ledger tests hold that; no live run has sent a second prompt in
+  one host process. Each new host process runs the status core again on a
+  session it has not seen, which resets that session's ledger, as a Claude
+  Code resume does. Class: **unsupported**⁸, held until a live observation.
 - **Codex CLI**: frozen under ADR-0009, and nothing ships. Class:
   **unsupported**.
 - **GitHub Copilot**: it runs the same `route-hook.py`, but its envelope
@@ -531,7 +600,27 @@ the same shape, so GitHub Copilot is modelled like every other harness. `EAGER_E
 holds one recorded debt: on Claude Code the main session plays the
 orchestrator, so its charter and always-loaded nodes ride in the
 `orchestrator` output style on every session. Its extra bytes
-are the pointer boilerplate each projected file carries.
+are the pointer boilerplate each projected file carries. On opencode the
+orchestrator is a selectable `primary` agent whose text loads only when a user
+selects it, so it adds nothing to the figure above (a
+[defect](#defects-to-close)).
+
+## Defects to close
+
+Each first-class host is owed what another holds
+([ADR-0033](../docs/decisions/adr-0033-opencode-first-class-on-opencode-2.md)),
+so each remaining difference is recorded here, its one home, with what would
+close it. The adapter README lists them by name.
+
+| Host | Difference | Where it shows | What would close it |
+|---|---|---|---|
+| opencode | The lead does not play the orchestrator. Claude Code's main session carries the orchestrator's charter and always-loaded nodes in an output style; opencode installs it as a selectable primary agent and keeps the host's default agent. Delivering the charter to every opencode session would take its always-loaded surface from 24,207 to 67,131 bytes, past the budget of 41,600. | Always-applied instructions | The owner decisions D1 (the budget) and D2 (the default agent) in [`docs/plans/owner-decisions-8.4.0-opencode-2.md`](../docs/plans/owner-decisions-8.4.0-opencode-2.md) |
+| opencode | No worker-continuation guard. The host can continue a finished child (the subagent tool with a `sessionID`, documented and not run), so the prompt-cache hazard exists wherever the provider's cache has a lifetime. `resume-hook.py` reads Claude Code's transcript layout and cache settings, so the shared core cannot decide on opencode's input as it stands. | Pre-tool guard; Prompt-cache lifetime | A core input contract carrying the child's last-activity time and the provider's cache lifetime, then a third branch in the plugin |
+| opencode | The seed kernel is absent in a compose-kernel plant: the kernel sits in `CLAUDE.md` only, and the host reads `AGENTS.md` (documented, not verified live). | Root kernel loading | The plugin delivers the kernel once per session through its synthetic-message surface without loading it twice, which adds a kernel-delivery duty to the envelope |
+| opencode | Per-session dedup is not verified live; fixtures hold it. | Per-session injection dedup | Check 7 of `docs/skills/opencode-live-verification.md` passing on a release |
+| opencode | Effort is not verified to reach the provider: the host registers a map cell's `#<variant>`, and a per-launch effort is not verified. | Effort override | A live check that the variant changes the request the provider receives |
+| opencode | No compaction reset: OpenCode 2 offers the plugin no compaction event it uses, so the status and ledger reset Prime Agent performs after a compaction does not happen. | Session-start hook | A host compaction event the plugin subscribes to, running `status-hook.py` as Prime Agent's `session_compact` does |
+| Prime Agent | No pre-tool guard: Claude Code and opencode refuse a matched shell command through `bound-hook.py`; Prime Agent's extensions cover routing and status only. | Pre-tool guard | Owner decision D4 in [`docs/plans/owner-decisions-8.4.0-opencode-2.md`](../docs/plans/owner-decisions-8.4.0-opencode-2.md): a tool-call hook in Prime Agent's extension API that can refuse, and a third envelope over `bound-hook.py` |
 
 ## Measurements
 

@@ -195,7 +195,7 @@ The bundled config only lists the seed's own resource directories, with
 ### Recursion depth — a global/session/env dial, never committed
 
 Prime Agent bounds recursion with `RLM_MAX_DEPTH` (**default 2**). Unlike
-opencode's committable `subagent_depth`, this is **not** settable from a
+opencode's committable `experimental.subagent_depth`, this is **not** settable from a
 project `.prime/agent/settings.json` — `getRlmMaxDepth()` reads *global*
 settings only, so a committed value is silently ignored. The seed's deepest
 legal delegation chain reaches `max_spawn_depth: 3` (orchestrator →
@@ -271,7 +271,8 @@ build.
 
 ## Interchangeable with Claude Code in one plant
 
-Claude Code and Prime Agent are the two first-class citizens, and a single
+Claude Code and Prime Agent are two of the three first-class hosts (opencode
+is the third), and a single
 plant is meant to run **either one, interchangeably**, off the same project
 knowledge. Install both — in one command or in two, in any order:
 
