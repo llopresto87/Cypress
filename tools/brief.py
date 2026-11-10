@@ -18,10 +18,11 @@ carries the SECURITY PATH block of method/security-controls.md byte for byte
 (uncommitted, in the plant and in each repository directly under it) and the
 files its task part names with `graph-lint.py --trust-claims`; a claimed file
 prints `SECURITY PASS REQUIRED after this review: <files>` to the caller and is
-logged with the spawn. `--kind KIND [--label LABEL]` derives the spawn's effort
+logged with the spawn. `--kind KIND[,KIND] [--label LABEL]` derives the spawn's effort
 from the role and task kind table of `method/delegation-model-classes.md`
 (`delegation.effort`) and prints `effort: <value> (<reason>)` for the caller to
-pass as the spawn's effort; `--effort` given verbatim is logged as it is.
+pass as the spawn's effort; of several kinds, `fix`, `mechanical` or `amend`
+wins; `--effort` given verbatim is logged as it is.
 
   python3 docs/graph/brief.py --role tester --spawn-id orchestrator.3.tester.1 \
       --task "<exact task line>" --route "<agent-lint line or rationale>" \
@@ -61,6 +62,7 @@ AGENTS = GRAPH / "agents"
 MODEL_CLASSES = GRAPH / "method" / "delegation-model-classes.md"
 LABELS = {"low": "low", "medium-low": "low", "medium": "medium", "medium-hard": "high", "hard": "high"}
 EFFORTS = ["low", "medium", "high"]
+LIGHT = ("fix", "mechanical", "amend")  # win over trust and red-trust when several kinds fit
 
 
 def fenced(path: Path, head: str) -> str:
@@ -101,11 +103,22 @@ def derive_effort(role: str, kind: str, label: str, security_path: bool, trust: 
     rows = effort_rows()
     if kind == "first" and trust and (role, "first-trust") in rows:
         kind = "first-trust"
-    if kind:
-        if (role, kind) not in rows:
-            kinds = ", ".join(k for r, k in rows if r == role) or "none"
-            raise SystemExit(f"brief: no effort row for {role} --kind {kind}; its kinds: {kinds} "
+    kinds = [k for k in kind.split(",") if k]
+    for k in kinds:
+        if (role, k) not in rows:
+            known = ", ".join(x for r, x in rows if r == role) or "none"
+            raise SystemExit(f"brief: no effort row for {role} --kind {k}; its kinds: {known} "
                              f"(delegation.effort)")
+    over = ""
+    if len(kinds) > 1:
+        light = [k for k in kinds if k in LIGHT]
+        if not light:
+            raise SystemExit(f"brief: --kind {kind} names several kinds and none of {', '.join(LIGHT)}, "
+                             f"which win over the rest; name one (delegation.effort)")
+        over = ", over " + ", ".join(k for k in kinds if k != light[0])
+        kinds = light[:1]
+    kind = kinds[0] if kinds else ""
+    if kind:
         value = rows[(role, kind)]
         when = re.fullmatch(r"(\w+); (\w+) when labelled ([\w-]+(?: or [\w-]+)*)", value)
         if when:
@@ -122,7 +135,7 @@ def derive_effort(role: str, kind: str, label: str, security_path: bool, trust: 
             if cap and EFFORTS.index(got) > EFFORTS.index(cap):
                 return f"{cap} ({role} {kind}, label {label}, capped at {cap})"
             return f"{got} ({role} {kind}, label {label})"
-        return f"{value} ({role} {kind})"
+        return f"{value} ({role} {kind}{over})"
     head = re.search(r"^effort:\s*(\w+)", charter_head(role), re.M)
     return f"{head.group(1)} ({role} definition default)" if head else ""
 

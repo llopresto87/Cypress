@@ -121,6 +121,9 @@ for row in "1|effort: low (reviewer recheck)|--role reviewer --kind recheck" \
            "2b|effort: high (tester red, label hard)|--role tester --kind red --label hard" \
            "2c|effort: medium (implementer flow)|--role implementer --kind flow" \
            "2d|effort: low (implementer fix)|--role implementer --kind fix" \
+           "2h|effort: low (implementer fix, over trust)|--role implementer --kind trust,fix" \
+           "2i|effort: medium (implementer trust)|--role implementer --kind trust" \
+           "2j|effort: low (tester amend, over red-trust)|--role tester --kind red-trust,amend" \
            "3|effort: low (implementer increment, label medium-low)|--role implementer --kind increment --label medium-low" \
            "4|effort: medium (architect ruling)|--role architect --kind ruling" \
            "5|effort: high (security path)|--role tester --kind red --security-path" \
