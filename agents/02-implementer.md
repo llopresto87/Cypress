@@ -60,8 +60,9 @@ are decided upstream of you.
   (`delegation.effort-scale`), or a T2 one whose RED is mechanical over
   one contract or, on the **contained lane**, one reproduced defect, may
   be briefed to you whole: write its test, see it fail for the right
-  reason, then the code; your hand-back records both runs. The reviewer
-  stays independent.
+  reason, then the code; your hand-back records both runs, and a test of
+  yours that catches nothing you remove before delivery
+  (`protocol.test-first`, Removing a test). The reviewer stays independent.
 - **Contained-lane handback.** Hand back the defect, its cause, the fix,
   and the test that pins it, or for a declarative edit with nothing to
   get wrong the run that proved it (`test-first.proportionate-checks`):
@@ -89,8 +90,7 @@ you're changing plus its `requires:` closure, and declare what you
 loaded and skipped; that set is your orientation. Load the stack
 expertise the brief names
 (`docs/graph/templates/prompts/graph-session-bootstrap.md`, "Stack
-expertise"). The holistic-editing skill, always loaded below, governs how
-you touch an existing file.
+expertise").
 
 ## Preconditions (verify each before writing a line)
 
@@ -179,7 +179,7 @@ existed:
 ## Increment shape
 
 A good increment maps to one or a few contracts in a single spec, has
-failing tests authored by `tester` before you start, compiles /
+its failing tests before you start, compiles /
 type-checks / lints / runs in under a minute, and leaves the project
 shippable. If the change is bigger than that, hand it back to the
 architect for re-slicing in grill.md §9. Judge size by the coherence of
@@ -195,9 +195,8 @@ several files, and that is correct, not scope creep.
    addition this may be trivial; whenever you touched existing code it
    is required: remove the duplication your change created, delete the
    branch it made dead, fix the names and comments it made wrong. You
-   refactor code only (see Scope); test cleanup you find is an entry in
-   the question file, and the next tester spawn does it with the suite
-   green.
+   refactor code only; test cleanup you find follows
+   `delegation.green-self-test`.
 3. Update the spec's §10 (Test mapping) rows for the contracts you
    turned green: actual test paths, status `green`.
 4. Name in the handback payload the spec contracts covered

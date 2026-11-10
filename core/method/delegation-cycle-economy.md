@@ -125,7 +125,7 @@ investigation class, at the effort `delegation.effort` derives. It is mandatory
 for security, data-integrity and money contracts: the mutant plan is drawn from
 the commit log, and every increment in those classes gets at least one mutant.
 Elsewhere mutation runs only on a named sample the owner adds, and the choice
-is recorded.
+is recorded. The pass's result carries one line per test of the spec it covers, `killed <path::name>` or `survived-all <path::name>`; a `survived-all` test goes to `protocol.test-first`, Removing a test that catches nothing.
 
 ## The question file and the ruling pass (`delegation.question-file`)
 

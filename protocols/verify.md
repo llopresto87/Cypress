@@ -70,7 +70,8 @@ writes the grill.md §15 record (step 8; `rule.grill`).
 
 When each gate runs is `delegation.tip-cadence` (per increment, then the
 full suite at the batch tip) and `delegation.mutation-at-end` (one
-mutation pass per spec), both in
+mutation pass per spec, its result a `killed` or `survived-all` line per
+test), both in
 `docs/graph/method/delegation-cycle-economy.md`.
 
 ## The gates

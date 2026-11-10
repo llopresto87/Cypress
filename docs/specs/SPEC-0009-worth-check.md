@@ -2,7 +2,7 @@
 status: implemented
 status_date: 2026-11-10
 owner: architect
-status_evidence: tests/test-worth-check.sh (X580 to X592), wired into tests/run.sh, every §10 row green over the 13 contracts; each case was seen failing first on the missing tool, then passing against the fixture suite of tests/fixtures/worth/ and its hand-written verdict table
+status_evidence: tests/test-worth-check.sh (X580 to X592, X600 to X602), wired into tests/run.sh, every §10 row green over the 16 contracts; each case was seen failing first on the missing tool, then passing against the fixture suite of tests/fixtures/worth/ and its hand-written verdict table
 ---
 
 # SPEC-0009: the worth check
@@ -51,15 +51,19 @@ worth check, `tools/worth-check.py`, placed in every plant at
 assertions read back a literal that way. It spares a test that feeds inputs to
 logic, a regression test for a bug and a security negative control. It never
 removes or edits a test: a flagged test is the owner's to remove, keep with a
-reason, or leave in the plant's baseline.
+reason, or leave in the plant's baseline. Its `--removal-list` prints the
+flagged tests as one numbered batch the owner confirms by naming them, and
+removes nothing itself.
 
 ## 2. Scope
 
 In scope: the tool, its placement, the baseline file it writes, the keep line it
-reads, and the gate row a plant adds to its verification runbook.
+reads, the gate row a plant adds to its verification runbook, and the removal
+list it prints for the owner.
 
 Out of scope: removing a test (ADR-0034 OD3 gives that to the unit of work that
-created it, or to a batch the owner confirms); any language beyond Python and
+created it, or to a batch the owner confirms, `protocol.test-first`, Removing a
+test that catches nothing); any language beyond Python and
 TypeScript or JavaScript; running the check over this repository's own suite,
 whose tests assert documentation text on purpose.
 
@@ -168,8 +172,39 @@ configured, and exit 0.
 - **Then:** it exits 2 and names the option or path and the reason
 - **And:** a PATH that exists narrows the read to that file or directory
 
+### Contract: WORTH_REMOVAL_LIST_NAMES_EACH_TEST
+- **Given:** a plant whose flagged tests include one written now and one in
+  the baseline, mapped by §10 rows of the plant's `docs/graph/specs/`
+- **When:** `worth-check.py --removal-list` runs
+- **Then:** it prints `removal batch — N test(s) for the owner's confirmation
+  (nothing is removed by this list)`, then per test a numbered line naming it,
+  a `flagged:` line with the literal it reads back and `(worth-check)` or
+  `(worth-check; in the baseline)`, a `§10 row:` line per row with its spec,
+  risk text and origin, ending `-> removable on confirmation` for origin
+  `design`, and a `leaves without evidence:` line naming each `test`-kind
+  contract no other row's test still covers, or `none`
+- **And:** it closes with `To confirm, reply in the chat naming the tests to
+  remove, e.g. "remove tests 1 and 4 of the batch".` and exits 0
+
+### Contract: WORTH_REMOVAL_LIST_HOLDS_BACK_THE_NEVER_AUTOMATIC_KINDS
+- **Given:** a flagged test whose §10 origin is `bug`, one whose origin is
+  `security control`, one in a legacy §10 table that records no origin, and
+  one no §10 row maps
+- **When:** `--removal-list` runs
+- **Then:** each is listed with `NOT REMOVABLE AUTOMATICALLY` and its reason:
+  a bug reproduction stays; a security control that kills no mutant is a
+  finding for the security agent; the architect records the origin first; the
+  architect maps it to a contract first
+
+### Contract: WORTH_REMOVAL_LIST_FOR_A_REOPENED_SPEC
+- **Given:** a reopened spec, and a baseline holding tests its §10 maps
+- **When:** `--removal-list --spec SPEC-NNNN` runs
+- **Then:** the batch, headed `removal batch for SPEC-NNNN`, lists only the
+  tests that spec's §10 maps, its baseline tests included
+- **And:** a spec the plant does not hold exits 2 and names it
+
 ### Contract: WORTH_NEVER_EDITS_A_TEST
-- **Given:** any run of the worth check
+- **Given:** any run of the worth check, `--removal-list` included
 - **When:** it finishes
 - **Then:** every test file is byte for byte as it was, and nothing was written
   beside it; the only file the tool writes is the baseline
@@ -194,7 +229,9 @@ prompt.
 
 ### Command line
 
-`worth-check.py [--root DIR] [--baseline FILE] [--write-baseline] [--json] [--help] [PATH...]`.
+`worth-check.py [--root DIR] [--baseline FILE] [--write-baseline] [--json] [--help] [PATH...]`,
+and `worth-check.py --removal-list [--spec SPEC-NNNN]`, which takes neither
+`--write-baseline` nor `--json`.
 `--root` defaults to the current directory; `--baseline` is read from the root
 and defaults to `docs/graph/worth-baseline.txt`.
 
@@ -225,6 +262,15 @@ Exit 0: nothing new is flagged, or the plant is not configured. Exit 1: a flagge
 test is neither kept nor in the baseline, or `--write-baseline` was refused.
 Exit 2: a usage error or an unreadable input. `--json` prints every test read
 with its verdict (`flagged`, `spared`, `kept`) and reason.
+
+### Removal list
+
+It reads the plant's `docs/graph/specs/SPEC-*.md` §10 tables as text, never
+importing the plant's spec lint: a risk-based row links by its `path::name`
+Test cell and its Covers cell, a legacy row by its Test file and Test name
+cells and its first cell. A row whose status records `dropped:`, `merged
+into` or `removed:` links nothing. A contract's kind is its `Check:` line,
+`test` when it has none.
 
 ### Baseline
 
@@ -276,6 +322,12 @@ worth-check: FAIL — 1 flagged test(s) are not in the baseline. ...
 - [x] AC-5: bad input exits 2, no test is edited, and every install places the
   tool; maps to WORTH_BAD_INPUT_EXITS_2, WORTH_NEVER_EDITS_A_TEST,
   WORTH_CHECK_IS_PLACED
+- [x] AC-6: the removal list names each flagged test, its row, origin and the
+  contract it would leave without evidence, holds back the three kinds that
+  wait for a decision of their own, and narrows to a reopened spec; maps to
+  WORTH_REMOVAL_LIST_NAMES_EACH_TEST,
+  WORTH_REMOVAL_LIST_HOLDS_BACK_THE_NEVER_AUTOMATIC_KINDS,
+  WORTH_REMOVAL_LIST_FOR_A_REOPENED_SPEC
 
 ## 10. Test mapping
 
@@ -297,8 +349,11 @@ tool. Every row was `red` on the missing tool first.
 | WORTH_NEW_FLAG_OUTSIDE_BASELINE_FAILS | X588 the first write, a run over the baseline, a new read-back test | tests/test-worth-check.sh | integration (fixture) | green |
 | WORTH_BASELINE_ONLY_SHRINKS | X589 a refused growth leaves the file; shrinkable reported; the shrink written | tests/test-worth-check.sh | integration (fixture) | green |
 | WORTH_BAD_INPUT_EXITS_2 | X590 unknown option, missing PATH, a non-UTF-8 file, a partial baseline; a PATH narrows the read | tests/test-worth-check.sh | integration (fixture) | green |
-| WORTH_NEVER_EDITS_A_TEST | X591 the fixture suite's digest before and after every run | tests/test-worth-check.sh | integration (fixture) | green |
+| WORTH_NEVER_EDITS_A_TEST | X591 the fixture suite's digest before and after every run; the removal plant's digest around --removal-list | tests/test-worth-check.sh | integration (fixture) | green |
 | WORTH_CHECK_IS_PLACED | X592 a fresh install places the seed's file, which answers --help and reads an empty plant | tests/test-worth-check.sh | integration (temp install) | green |
+| WORTH_REMOVAL_LIST_NAMES_EACH_TEST | X600 a design-origin test written now and an older one from the baseline, each with its row and what it leaves without evidence | tests/test-worth-check.sh | integration (fixture) | green |
+| WORTH_REMOVAL_LIST_HOLDS_BACK_THE_NEVER_AUTOMATIC_KINDS | X601 bug, security control, a legacy row with no origin, no §10 row | tests/test-worth-check.sh | integration (fixture) | green |
+| WORTH_REMOVAL_LIST_FOR_A_REOPENED_SPEC | X602 --spec narrows to the spec's tests, baseline included; an unknown spec exits 2 | tests/test-worth-check.sh | integration (fixture) | green |
 | HEURISTIC_SPARES_A_READ_BACK | none: the check errs toward sparing by design | none | none | none |
 | ADOPTED_SUITE_FLAGS_ON_DAY_ONE | none: graft's judgment item is advice, and the owner decides | none | none | none |
 
@@ -316,3 +371,8 @@ tool. Every row was `red` on the missing tool first.
   baseline of a grafted plant decided per plant). Thirteen contracts; the
   fixture suite and its verdict table written first, every case seen failing on
   the missing tool, then green with the tool, the placement and the gate row.
+- 2026-11-10 — three contracts added by the implementer of step T11 (ADR-0034
+  OD3 and the owner's clean-as-you-touch decision of 2026-11-10): the removal
+  list, the kinds it holds back, and its narrowing to a reopened spec;
+  WORTH_NEVER_EDITS_A_TEST now covers `--removal-list`. X600 to X602 were seen
+  failing on the unknown option first, then green.

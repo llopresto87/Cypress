@@ -163,10 +163,11 @@ as probe files, and that tester and implementer take them the same way.
    (`spec-lint.py --slice --refs SLUG`). Each contract is one
    Given/When/Then in the spec §4.
 2. Write exactly those tests, as the §10 design states them. A case
-   that looks missing, redundant or untestable goes back to the design
-   as a question (`delegation.question-file`); it is not added or
-   dropped here (`test-first.proportionate-checks`). The test name
-   names the contract(s) it asserts.
+   that looks missing or untestable goes back to the design as a
+   question (`delegation.question-file`); a case that only reads back a
+   value or duplicates another may be dropped or merged, with one line of
+   reason in its §10 row (`skill.test-first`, Designing the set). The
+   test name names the contract(s) it asserts.
 3. Run the test. **Confirm it fails for the right reason.**
    - A test that fails because the import is missing has not yet
      achieved RED.
@@ -262,6 +263,28 @@ costs about 40 cache reads, so the handoff costs more than it saves.
 6. If using version control, commit. Commit message:
    `feat(<scope>): <contract slug> — implements SPEC-NNNN`
    or `fix(<scope>): <bug slug> — adds regression for SPEC-NNNN`.
+
+### Removing a test that catches nothing
+
+A test catches nothing when `docs/graph/worth-check.py` flags it or the
+spec's mutation pass reports it `survived-all` (`delegation.mutation-at-end`).
+
+- **Inside the unit of work that wrote it**, the class of worker that wrote
+  it (`tester`, or `implementer` on the merged path) removes it before
+  delivery and writes `removed: <reason>` after the status of its §10 row.
+  When it was a contract's only evidence, the architect settles that
+  contract's kind again, with the tester's challenge where a tester is engaged.
+- **An older test** (from an earlier delivery, a graft baseline, or the suite
+  before the method) stays until the owner confirms its removal in the chat
+  with a reply that names it (kernel §4). `python3 docs/graph/worth-check.py
+  --removal-list` prints the numbered batch to confirm.
+- **A reopened spec** lists its baseline tests for the owner's confirmation
+  within that work (`--removal-list --spec SPEC-NNNN`): clean as you touch.
+- **Three kinds wait for a decision of their own**: a test whose §10 origin is
+  `bug`, a security control, and a test no §10 row maps. A security control
+  that kills no mutant is a finding for `security` (the control does not bite),
+  answered by making it bite.
+- Graft and grow leave every test in place.
 
 ## Per-language choice of test framework
 

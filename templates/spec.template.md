@@ -241,7 +241,7 @@ exists, fails), `green` (passes), `pending` (not yet written),
 `skipped` (with reason); an accepted, untested row has none. A §7
 failure mode with no named victim is an `accepted, untested — <why>`
 row. A case the RED writer dropped or merged keeps its row, with
-`dropped: <reason>` or `merged into <other test>: <reason>` after the
+`dropped: <reason>`, `merged into <other test>: <reason>` or, for a test removed as catching nothing, `removed: <reason>` after the
 status. A legacy spec (no `Contract form` line) keeps the table
 `| Contract / Failure | Test name | Test file | Level | Status |`, one row
 per contract.

@@ -49,6 +49,34 @@ else
 fi
 [[ -f "$W" ]] || W="$ROOT/tools/worth-check.py"
 
+# SPEC-0008 X603 WRITER_REMOVES_A_TEST_THAT_CATCHES_NOTHING: the installed
+# tester and implementer point at the removal section, and the pointer
+# resolves to a section of the installed protocol that holds each rule.
+TF="$T/base/docs/graph/protocols/test-first.md"
+sect="$(awk '/^### Removing a test that catches nothing$/{on=1;next} on&&/^##/{exit} on' "$TF" 2>/dev/null | tr '\n' ' ' | tr -s ' ')"
+missing=""
+for a in 02-implementer 04-tester; do
+  tr '\n' ' ' < "$T/base/.claude/agents/$a.md" 2>/dev/null | tr -s ' ' | grep -qF '(`protocol.test-first`, Removing a test)' || missing="$missing $a-pointer"
+done
+for want in 'class of worker that wrote it' 'removed: <reason>' 'settles that contract'"'"'s kind again' \
+            'confirms its removal in the chat with a reply that names it (kernel §4)' '--removal-list' \
+            'A reopened spec' '--spec SPEC-NNNN' '`bug`, a security control, and a test no §10 row maps' \
+            'kills no mutant is a finding for `security`' 'Graft and grow leave every test in place'; do
+  grep -qF -- "$want" <<<"$sect" || missing="$missing [$want]"
+done
+[[ -z "$missing" ]] \
+  && ok "X603 WRITER_REMOVES_A_TEST_THAT_CATCHES_NOTHING: the installed charters point at the removal section, which holds each rule" \
+  || bad "X603 WRITER_REMOVES_A_TEST_THAT_CATCHES_NOTHING" "missing:$missing"
+
+# SPEC-0008 X604 MUTATION_PASS_REPORTS_EACH_TEST: the installed mutation-at-end
+# section asks for a line per test and keeps the classes it is mandatory for.
+mut="$(awk '/delegation.mutation-at-end`\)$/{on=1;next} on&&/^## /{exit} on' "$T/base/docs/graph/method/delegation-cycle-economy.md" 2>/dev/null | tr '\n' ' ' | tr -s ' ')"
+grep -qF 'one line per test of the spec it covers, `killed <path::name>` or `survived-all <path::name>`' <<<"$mut" \
+  && grep -qF 'It is mandatory for security, data-integrity and money contracts' <<<"$mut" \
+  && grep -qF 'Elsewhere mutation runs only on a named sample the owner adds' <<<"$mut" \
+  && ok "X604 MUTATION_PASS_REPORTS_EACH_TEST: the pass reports killed or survived-all per test, mandatory where it was and nowhere else" \
+  || bad "X604 MUTATION_PASS_REPORTS_EACH_TEST" "section: ${mut:0:400}"
+
 P="$T/p"; plant "$P"
 BEFORE="$(digest "$P/tests")"
 
@@ -233,6 +261,134 @@ rc=0; out="$(WC "$X" tests/python --write-baseline 2>&1)" || rc=$?
 rc=0; out="$(WC "$P" tests/python/test_logic.py 2>&1)" || rc=$?
 [[ $rc -eq 0 ]] && grep -qx 'worth-check: 0 flagged (0 in baseline), 1 files read, 0 not checked' <<<"$out" \
   && ok "X590 WORTH_BAD_INPUT_EXITS_2: a PATH narrows the read to that file" || bad "X590 WORTH_BAD_INPUT_EXITS_2" "PATH rc $rc: $out"
+
+# X600 to X602: --removal-list prints the batch the owner confirms by naming it.
+# The plant: five read-back tests, one of them older (in the baseline), mapped
+# by two specs' §10 rows of origin design, bug and security control, and one
+# test no row maps; a sixth flagged test, in the baseline, belongs to SPEC-0013.
+R="$T/rm"; plant "$R"; rm -rf "$R/tests/"*; mkdir -p "$R/docs/graph/specs"
+cat > "$R/tests/test_removal.py" <<'EOF'
+from app.labels import SUBMIT_LABEL, CANCEL_LABEL, RETRY_LABEL, TITLE, FOOTER
+
+
+def test_label_is_send():
+    assert SUBMIT_LABEL == "Send"
+
+
+def test_cancel_label():
+    assert CANCEL_LABEL == "Cancel"
+
+
+def test_retry_label():
+    assert RETRY_LABEL == "Retry"
+
+
+def test_title_text():
+    assert TITLE == "Welcome"
+
+
+def test_footer_text():
+    assert FOOTER == "Shop"
+EOF
+printf 'from app.labels import BANNER\n\n\ndef test_banner():\n    assert BANNER == "Hello"\n' > "$R/tests/test_other.py"
+cat > "$R/docs/graph/specs/SPEC-0012-submit.md" <<'EOF'
+---
+status: implemented
+---
+# SPEC-0012: submit
+
+## 0. Metadata
+
+- **Contract form:** kinds
+
+## 4. Functional contracts
+
+### Contract: SUBMIT_BUTTON_LABEL_IS_SEND
+- **Check:** test
+
+### Contract: CANCEL_LABEL_IS_CANCEL
+- **Check:** test
+
+### Contract: RETRY_LABEL_IS_SHOWN
+- **Check:** test
+
+### Contract: TITLE_IS_WELCOME
+- **Check:** test
+
+## 10. Test design
+
+| Risk (what breaks, for whom) | Test (file::name, lowest level) | Covers | Origin | Status |
+|---|---|---|---|---|
+| Cosmetic label on the submit button | tests/test_removal.py::test_label_is_send | SUBMIT_BUTTON_LABEL_IS_SEND | design | green |
+| The cancel label | tests/test_removal.py::test_cancel_label | CANCEL_LABEL_IS_CANCEL | design | green |
+| The cancel flow end to end | tests/e2e/cancel_test.py::test_cancel_flow | CANCEL_LABEL_IS_CANCEL | design | green |
+| The retry label vanished once and customers could not retry | tests/test_removal.py::test_retry_label | RETRY_LABEL_IS_SHOWN | bug | green |
+| A forged title passes the header check | tests/test_removal.py::test_title_text | TITLE_IS_WELCOME | security control | green |
+
+## 11. Open questions
+EOF
+cat > "$R/docs/graph/specs/SPEC-0013-banner.md" <<'EOF'
+---
+status: implemented
+---
+# SPEC-0013: banner
+
+## 4. Functional contracts
+
+### Contract: BANNER_SAYS_HELLO
+
+## 10. Test mapping
+
+| Contract / Failure | Test name | Test file | Level | Status |
+|---|---|---|---|---|
+| BANNER_SAYS_HELLO | test_banner | tests/test_other.py | unit | green |
+EOF
+printf '# baseline\ntests/test_removal.py::test_cancel_label\ntests/test_other.py::test_banner\n' > "$R/docs/graph/worth-baseline.txt"
+RBEFORE="$(digest "$R")"
+rc=0; out="$(WC "$R" --removal-list 2>&1)" || rc=$?
+e1="$(grep -A3 -F '. tests/test_removal.py::test_label_is_send' <<<"$out" || true)"
+[[ $rc -eq 0 ]] \
+  && grep -qx 'removal batch — 6 test(s) for the owner'"'"'s confirmation (nothing is removed by this list)' <<<"$out" \
+  && grep -q '^ *[0-9]\. tests/test_removal.py::test_label_is_send$' <<<"$e1" \
+  && grep -q '^    flagged: only assertion reads back "Send" that the same change adds (worth-check)$' <<<"$e1" \
+  && grep -q '^    §10 row: SPEC-0012 "Cosmetic label on the submit button" origin: design *-> removable on confirmation$' <<<"$e1" \
+  && grep -q '^    leaves without evidence: SUBMIT_BUTTON_LABEL_IS_SEND (kind test; the architect re-settles its kind)$' <<<"$e1" \
+  && grep -q '^To confirm, reply in the chat naming the tests to remove, e.g. "remove tests 1 and 4 of the batch".$' <<<"$out" \
+  && ok "X600 WORTH_REMOVAL_LIST_NAMES_EACH_TEST: a design-origin test names why it is flagged, its §10 row and origin, and the contract it leaves without evidence" \
+  || bad "X600 WORTH_REMOVAL_LIST_NAMES_EACH_TEST" "rc $rc: $out"
+e2="$(grep -A3 -F '. tests/test_removal.py::test_cancel_label' <<<"$out" || true)"
+grep -q '^    flagged: .*(worth-check; in the baseline)$' <<<"$e2" \
+  && grep -q 'origin: design *-> removable on confirmation$' <<<"$e2" \
+  && grep -q '^    leaves without evidence: none' <<<"$e2" \
+  && ok "X600 WORTH_REMOVAL_LIST_NAMES_EACH_TEST: an older test from the baseline is listed, and a contract another row still covers is not left without evidence" \
+  || bad "X600 WORTH_REMOVAL_LIST_NAMES_EACH_TEST" "older test: ${e2:-not listed}"
+for pair in 'test_retry_label|origin: bug *-> NOT REMOVABLE AUTOMATICALLY (a bug reproduction stays)$' \
+            'test_title_text|origin: security control *-> NOT REMOVABLE AUTOMATICALLY (a security control; one that kills no mutant is a finding for the security agent)$' \
+            'test_footer_text|^    no §10 row -> NOT REMOVABLE AUTOMATICALLY'; do
+  t="${pair%%|*}"; want="${pair#*|}"
+  e="$(grep -A3 -F ". tests/test_removal.py::$t" <<<"$out" || true)"
+  grep -q "$want" <<<"$e" \
+    && ok "X601 WORTH_REMOVAL_LIST_HOLDS_BACK_THE_NEVER_AUTOMATIC_KINDS: $t" \
+    || bad "X601 WORTH_REMOVAL_LIST_HOLDS_BACK_THE_NEVER_AUTOMATIC_KINDS" "$t: ${e:-not listed}"
+done
+e6="$(grep -A3 -F '. tests/test_other.py::test_banner' <<<"$out" || true)"
+grep -q 'SPEC-0013 "BANNER_SAYS_HELLO" origin: not recorded *-> NOT REMOVABLE AUTOMATICALLY' <<<"$e6" \
+  && ok "X601 WORTH_REMOVAL_LIST_HOLDS_BACK_THE_NEVER_AUTOMATIC_KINDS: a legacy row records no origin, so its test is held back" \
+  || bad "X601 WORTH_REMOVAL_LIST_HOLDS_BACK_THE_NEVER_AUTOMATIC_KINDS" "legacy row: ${e6:-not listed}"
+rc=0; out="$(WC "$R" --removal-list --spec SPEC-0013 2>&1)" || rc=$?
+[[ $rc -eq 0 ]] && grep -qx 'removal batch for SPEC-0013 — 1 test(s) for the owner'"'"'s confirmation (nothing is removed by this list)' <<<"$out" \
+  && grep -q '^ *1\. tests/test_other.py::test_banner$' <<<"$out" && grep -q '(worth-check; in the baseline)' <<<"$out" \
+  && ! grep -q 'test_removal.py' <<<"$out" \
+  && ok "X602 WORTH_REMOVAL_LIST_FOR_A_REOPENED_SPEC: --spec lists the spec's own tests, its baseline tests included, and no other" \
+  || bad "X602 WORTH_REMOVAL_LIST_FOR_A_REOPENED_SPEC" "rc $rc: $out"
+rc=0; out="$(WC "$R" --removal-list --spec SPEC-0099 2>&1)" || rc=$?
+[[ $rc -eq 2 ]] && grep -q 'SPEC-0099' <<<"$out" \
+  && ok "X602 WORTH_REMOVAL_LIST_FOR_A_REOPENED_SPEC: a spec the plant does not hold exits 2 and names it" \
+  || bad "X602 WORTH_REMOVAL_LIST_FOR_A_REOPENED_SPEC" "unknown spec rc $rc: $out"
+rc=0; out="$(WC "$P" --removal-list 2>&1)" || rc=$?
+[[ $rc -eq 0 && "$(digest "$R")" == "$RBEFORE" ]] && grep -q '^removal batch — 9 test(s)' <<<"$out" \
+  && ok "X591 WORTH_NEVER_EDITS_A_TEST: --removal-list exits 0 with tests flagged and leaves every file of the plant as it was" \
+  || bad "X591 WORTH_NEVER_EDITS_A_TEST" "removal list rc $rc, plant changed: $([[ "$(digest "$R")" == "$RBEFORE" ]] && echo no || echo yes)"
 
 # X591 WORTH_NEVER_EDITS_A_TEST: every run above left the fixture suite's bytes as they were.
 [[ "$(digest "$P/tests")" == "$BEFORE" ]] \

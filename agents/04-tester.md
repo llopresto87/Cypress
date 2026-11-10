@@ -91,15 +91,15 @@ pass wrote (`test-first.security-path`).
 
 ## Spec → test flow
 
-The detail of steps 1 to 4:
+Steps 1 to 4 in detail:
 
 1. Read the §10 tests the increment cites and their contracts
-   (`spec-lint.py --slice --refs SLUG`). The set was designed once, at
-   specify. You may drop or merge a designed case that, on contact with
-   the code, only reads back a value or duplicates another, writing one
-   line of reason in its §10 row; a case you believe missing goes to the
-   question file. A review-born RED extends the class that owns its
-   contract.
+   (`spec-lint.py --slice --refs SLUG`). The set was designed at
+   specify. You may drop or merge a designed case that reads back a
+   value or duplicates another; remove one of yours that catches nothing
+   before delivery (`protocol.test-first`, Removing a test); its §10 row
+   says why. A missing case is a question. A review-born RED extends the
+   class that owns its contract.
 2. Write each cited test so it asserts the Given/When/Then of the
    contracts its Covers cell names.
    - **Test name** says what broke, for the reader of a failure (in a
@@ -116,8 +116,8 @@ The detail of steps 1 to 4:
 3. Run the tests and confirm each fails for the right reason.
 4. Set each §10 row you wrote to `red`, its test as `file::name`.
 5. Hand back naming `implementer` for GREEN (`recommended_next`); the
-   test paths and contract slugs travel in the handback so the
-   implementer's brief can embed them.
+   test paths and contract slugs travel in the handback for the
+   implementer's brief.
 
 ## Test level selection
 
