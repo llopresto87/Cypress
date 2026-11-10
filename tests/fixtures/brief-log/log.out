@@ -4,5 +4,5 @@
 - orchestrator.4 — produced_by: reviewer — route: protocol.test-first review names reviewer — effort: medium (reviewer first)
 - orchestrator.5 — produced_by: research-scout — route: protocol.ingest-library names research-scout
 - Spawns: 5 (implementer×1 authoring/low, research-scout×1 investigation/effort not recorded, reviewer×1 authoring/medium, tester×2 authoring/medium)
-- Serial waits: 2 (issue groups, a gap over 60 s between compositions: orchestrator.1 orchestrator.2 → orchestrator.3 → orchestrator.4 orchestrator.5)
+- Serial waits: 2 (inferred from composition times, not handback order: issue groups, a gap over 60 s between compositions: orchestrator.1 orchestrator.2 → orchestrator.3 → orchestrator.4 orchestrator.5)
 - Tokens: input 17, cache write not recorded (5m not recorded, 1h not recorded), cache read 10000, output 42 — 2 of 5 spawns recorded

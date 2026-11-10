@@ -594,8 +594,8 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 - **Then:** stdout carries the attribution lines, then `- Spawns: <N>
   (<role>×<count> <class>/<effort>, ...)`, sorted, the class read from the
   role's `model:` and a missing effort as `effort not recorded`; `- Serial
-  waits: <groups - 1> (issue groups, a gap over 60 s between compositions:
-  <ids> → <ids> ...)`; and `- Tokens: input N, cache write N (5m N, 1h N),
+  waits: <groups - 1> (inferred from composition times, not handback order:
+  issue groups, a gap over 60 s between compositions: <ids> → <ids> ...)`; and `- Tokens: input N, cache write N (5m N, 1h N),
   cache read N, output N — K of M spawns recorded`, each N the sum over the
   recorded spawns or `not recorded` when any of them lacks it; exit 0; the
   output matches `tests/fixtures/brief-log/log.out` byte for byte
@@ -3391,3 +3391,9 @@ kept outside the seed.
   `test-first.cycle` format and prints `landed (inferred from commit
   subjects)`; CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE and the driver section say
   so (X508, X510, seen red first).
+- 2026-11-10 — corrected in place after an independent review: the
+  template defines Serial waits by handback order, while `brief.py --log`
+  counts issue groups from composition times. The line now says the value is
+  inferred and on what basis, and `protocols/deliver.md` has a lead that knows
+  the handback order replace the value
+  (BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS, X515, seen red first).
