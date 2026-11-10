@@ -140,8 +140,8 @@ into it only under the two conditions below.
   settings, and hooks; the shared router script `docs/graph/agent-lint.py`
   (also projected to `.claude/agent-lint.py` on Claude Code installs); and the
   graph engine scripts `docs/graph/{graph-lint.py,spec-lint.py,grill-lint.py}`
-  (and the config-free `agent-lint.py` / `agnosticism-lint.py` /
-  `prose-lint.py` / `status-register.py`, which fast-forward), preserving the
+  (and the config-free `agent-lint.py` / `agnosticism-lint.py` / `prose-lint.py` /
+  `status-register.py` / `worth-check.py`, which fast-forward), preserving the
   config each engine carries. Graft carries the seed's newest version of these
   onto the plant. `_schema.md` and `index.md` stay the plant's: they are
   project-instantiated (the engine-vs-instance rule, Phase 3).

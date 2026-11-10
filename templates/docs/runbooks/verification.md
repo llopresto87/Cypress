@@ -11,6 +11,7 @@ List only the gates the project's blast radius calls for
 | Gate | Command | Expected outcome | Trusted since |
 |---|---|---|---|
 | `<gate>` | `<cmd>` | `<exit status and what it asserts>` | `<date>` |
+| `worth-check` | `python3 docs/graph/worth-check.py` | exit 0: no newly written test only reads back a literal its change adds; a flagged test is kept with a `worth-check: keep — <reason>` line above it or was recorded in `docs/graph/worth-baseline.txt`. Until `TEST_GLOBS` in `docs/graph/spec-lint.py` names the test layout (`grow.gate.spec-wired`) it prints that it is not configured and exits 0 | `<date>` |
 
 `Trusted since` is the date this gate was last shown to fail for the reason
 it claims to guard against. A gate with no such date has authorized nothing,

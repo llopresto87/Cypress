@@ -53,7 +53,7 @@ overwrite — should be none; knowledge is add-if-missing). The seed-owned graph
 subtrees docs/graph/{protocols,skills,agents,method,templates}/ and the shared
 scripts (graph-lint.py, spec-lint.py, grill-lint.py, agent-lint.py, agnosticism-lint.py,
 prose-lint.py, brief.py, cycle.py, status-register.py, session-metrics.py, code-anchor.py, source_paths.py,
-source-index.py, plant_walk.py) are machinery, expected to be fast-forwarded — but only
+source-index.py, plant_walk.py, worth-check.py) are machinery, expected to be fast-forwarded — but only
 where a seed source actually backs the path: a plant-authored project skill
 under docs/graph/skills/ is plant knowledge. _schema.md and index.md are
 project-instantiated and always the plant's own, like everything else under
@@ -301,6 +301,8 @@ DELIVERED_TOOLS = {
     # the source index (SPEC-0007) and the walk it loads beside it
     "source-index.py": "tools/source-index.py",
     "plant_walk.py": "tools/plant_walk.py",
+    # the worth check (SPEC-0009); its baseline worth-baseline.txt is plant state
+    "worth-check.py": "tools/worth-check.py",
 }
 # the graph engines: placed add-if-missing, then reconciled by
 # graft-graph-engine.py, which keeps the plant's config and comments

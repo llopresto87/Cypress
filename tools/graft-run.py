@@ -39,7 +39,9 @@ WHAT IT DOES, IN ORDER
   8. prints the judgment items before the table, each for the steward to settle
      and put to the owner as a numbered decision in Phase 8: the copy's own
      graph-lint.py --trust-unsettled names each crosscut node with no `trust:`
-     field and each `trust: true` crosscut that claims no path
+     field and each `trust: true` crosscut that claims no path, and the copy's
+     own worth-check.py --json names the tests it flags that no baseline holds,
+     for the owner to decide per plant whether to record a baseline
   9. prints the gate table: one line per row of the Phase 7 table in
      protocols/graft.md, in its order, as the graft record's integrity-gate
      block gives it: `<gate id>: PASS / BLOCK / N-A — <evidence>`. A judgment
@@ -544,7 +546,7 @@ def main() -> int:
         reg = run.sh("status-register.txt", [sys.executable, g / "status-register.py", "--root", "docs/graph"])
 
     plans_after = plan_defects(run, "after")      # the seed's engines, after step 4
-    judgment = trust_items(run, g)
+    judgment = trust_items(run, g) + worth_items(run, g)
     after = porcelain(run)
     evidence = {
         "plans_before": plans_before, "plans_after": plans_after,
@@ -599,6 +601,32 @@ def trust_items(run, g: Path) -> list:
         return [f"trust: graph-lint.py --trust-unsettled did not answer (exit {rc}, "
                 f"{run.logs / 'trust.txt'}): read each crosscut node's `trust:` by hand"]
     return [f"trust: {i['settle']}" for i in items]
+
+
+def worth_items(run, g: Path) -> list:
+    """The tests the copy's own worth check flags that no baseline holds
+    (SPEC-0009), as one judgment item. Graft records no baseline and removes no
+    test: the owner decides per plant, after seeing them, whether the plant
+    records a baseline (docs/graph/worth-check.py --write-baseline) or keeps
+    each test with a reason. A plant whose check is not configured, or that
+    flags nothing new, adds no item."""
+    if not (g / "worth-check.py").is_file():
+        return []
+    rc, out = run.sh("worth-check.txt", [sys.executable, g / "worth-check.py", "--json"])
+    try:
+        report = json.loads(out)
+        new = [t["test"] for t in report.get("tests", [])
+               if t.get("verdict") == "flagged" and not t.get("in_baseline")]
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return [f"worth: worth-check.py --json did not answer (exit {rc}, "
+                f"{run.logs / 'worth-check.txt'}): run python3 docs/graph/worth-check.py by hand"]
+    if not report.get("configured") or not new:
+        return []
+    shown = ", ".join(new[:5]) + (f" and {len(new) - 5} more" if len(new) > 5 else "")
+    return [f"worth: the plant's worth check flags {len(new)} test(s) no baseline holds ({shown}; "
+            f"{run.logs / 'worth-check.txt'}): the owner decides per plant whether to record them "
+            f"as the baseline with docs/graph/worth-check.py --write-baseline, keep each with a "
+            f"reason, or leave them flagged; graft removes no test"]
 
 
 # -- one check per mechanical row: (verdict, evidence) -------------------------
