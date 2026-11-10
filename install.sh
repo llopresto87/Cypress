@@ -3246,8 +3246,10 @@ report_recreated_nodes() {
 # the pointer line or the no-graph message, and status-hook.py ends with the
 # code-anchor line or its not-checked line even when the status register is
 # absent or silent (SPEC-0003 STATUS_HOOK_RESETS_WITHOUT_REGISTER), so "printed
-# nothing" names a broken script, never a quiet plant. bound-hook.py, wired under
-# PreToolUse, is a guard and is not run. Each hook runs on the interpreter its
+# nothing" names a broken script, never a quiet plant. A PreToolUse guard
+# (bound-hook.py, resume-hook.py) is not run, only looked for: a missing script
+# fails the check naming the event, matcher and path
+# (CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT). Each hook runs on the interpreter its
 # command or extension names (place_hook wrote it), so an interpreter this
 # machine lacks, or one below the Python floor, fails the check by name instead
 # of failing every session silently behind `|| true`. Returns 1 when any hook
@@ -3317,6 +3319,31 @@ for ext, event, script in (("route-extension.ts", "UserPromptSubmit", "route-hoo
         runner = TS_RUNNER.search(path.read_text(encoding="utf-8", errors="replace"))
         hooks.append((event, ".prime/agent/hooks/" + script, "argv",
                       runner.group(1) if runner else "python3"))
+
+# Blocking hooks (PreToolUse) are guards: looked for, never run
+# (CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT).
+guards = []
+settings = root / ".claude/settings.json"
+if settings.is_file():
+    try:
+        pre = (json.loads(settings.read_text(encoding="utf-8")).get("hooks") or {}).get("PreToolUse") or []
+    except (OSError, ValueError, AttributeError):
+        pre = []  # already reported above as an unreadable hook config
+    for entry in pre:
+        if not isinstance(entry, dict):
+            continue
+        for h in entry.get("hooks", []):
+            m = SCRIPT.search(str(h.get("command", ""))) if isinstance(h, dict) and h.get("type") == "command" else None
+            if m:
+                guards.append((str(entry.get("matcher", "")), m.group(1)))
+for matcher, script in guards:
+    name = f"hook PreToolUse[{matcher}] {script}"
+    if (root / script).is_file():
+        print(f"[seed] --check: {name} is present; a guard is not run.")
+    else:
+        print(f"[seed] WARNING: --check: {name} is wired but the script is missing; "
+              f"the guard is off; re-run install.sh to restore it", file=sys.stderr)
+        failed = 1
 
 env = dict(os.environ, CLAUDE_PROJECT_DIR=str(root), PYTHONDONTWRITEBYTECODE="1")
 for event, script, mode, interpreter in hooks:

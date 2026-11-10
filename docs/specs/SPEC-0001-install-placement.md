@@ -1189,14 +1189,43 @@ its own record, and that slug stays as written in §12's history.
   therefore not a failed check
 - **And:** a wired command that names no script under the plant is said on
   one line and not run
-- **And:** `bound-hook.py`, wired under `PreToolUse` without `|| true`, is a
-  guard and not a context hook, and is not run
+- **And:** a blocking hook (`PreToolUse`) is a guard and not a context hook,
+  and is never run by `--check`; its script is only looked for
+  (CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT)
 - **And:** each hook runs on the interpreter its command or extension names;
   a name this machine cannot find on PATH, or an interpreter below the Python
   floor, fails the check naming the hook and the interpreter, and the hook is
   not run
 - **And:** with every hook passing, CHECK_WITHOUT_COPILOT_SAYS_SO's line and
   exit code are unchanged
+
+### Contract: BLOCKING_HOOK_WIRING_FAILS_OPEN_ON_A_MISSING_SCRIPT
+- **Given:** the `PreToolUse` commands of `.claude/settings.json` (the Bash
+  guard `.claude/bound-hook.py` and the SendMessage guard
+  `.claude/resume-hook.py`), as the installer places them
+- **When:** the host runs a command and its script is present as a regular
+  file
+- **Then:** the script runs on the interpreter the command names and its exit
+  code passes through unchanged, so exit 2 still blocks the tool call; the
+  command carries no `|| true`
+- **And:** when the script is absent, a dangling link or a directory, the
+  command exits 0 and prints one line on stderr,
+  `cypress: hook script missing: <path>; the guard is off. Re-run install.sh to restore it.`,
+  so a missing script never blocks the tool it guards
+- **And:** the installer's rewrite of `python3` to the interpreter it resolved
+  still reaches the command, and the wiring puts the interpreter word once
+
+### Contract: CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT
+- **Given:** an installed plant whose `.claude/settings.json` wires a
+  `PreToolUse` command naming a script under the plant, and that script is
+  absent or not a regular file
+- **When:** `install.sh <host> --check --project-dir <target>` runs
+- **Then:** it exits non-zero and prints on stderr one line per such hook,
+  `[seed] WARNING: --check: hook PreToolUse[<matcher>] <script> is wired but the script is missing; the guard is off; re-run install.sh to restore it`
+- **And:** it does not execute the script, and a present script gets one
+  stdout line saying it is present and not run
+- **And:** the checks of the context hooks, their lines and exit codes are
+  unchanged (CHECK_EXECUTES_EACH_WIRED_HOOK)
 
 ### Contract: CHECK_FLAGS_RETIRED_HARNESS_ENTRY
 - **Given:** a plant carrying an `origin: seed` agent or skill that the
@@ -2082,6 +2111,8 @@ $ head -1 /p/docs/graph/libraries/rxjs.md
 | RECORDED_EXPERTISE_PAGE_WITHDRAWN | M18 case_expertise_silence: with the seed's page removed, a plain install exits 0 with a `WARNING` naming the id and leaves the page and its entry; after the plant deletes the page the next run does not place it and keeps the entry; `--check` names the id and exits non-zero | tests/test-install-placement.sh | integration; red on arrival (`unknown argument: --expertise`) | green |
 | JURISDICTION_RESOLVED_ONCE | S13 case_jurisdiction_resolved_once: over a plant stamped `legal_corpus: yes`, `legal_jurisdiction: it`, a re-install with no flag prints no "jurisdiction undecided" line and no "no --legal-jurisdiction given", the national-layer report names `'it'` and the stamp keeps it; a re-install with `--legal-jurisdiction fr` names `'fr'`, not `'it'`, and the stamp records `fr`; a plant with no recorded code and no flag still prints the undecided banner | tests/test-plant-state.sh | integration; red on arrival (the no-flag re-install printed the undecided banner) | green |
 | CHECK_EXECUTES_EACH_WIRED_HOOK | M12 case_hook_check: over a copy of the every-host install, `claude-code --check` exits 0, keeps CHECK_WITHOUT_COPILOT_SAYS_SO's line, prints a ran line for the two Claude Code and the two Prime Agent hooks, and leaves the tree byte-identical; with `.claude/route-hook.py` removed it exits non-zero naming `UserPromptSubmit .claude/route-hook.py`; over a copy of the Copilot-only install with `.github/hooks/status-hook.py` removed, `github-copilot --check` exits non-zero naming `SessionStart .github/hooks/status-hook.py` | tests/test-install-placement.sh | integration; red on arrival (no ran line: `--check` ran no hook) | green |
+| BLOCKING_HOOK_WIRING_FAILS_OPEN_ON_A_MISSING_SCRIPT | M27 case_guard_wiring: the wired Bash and SendMessage commands of an installed plant, run with the script present on a blocked input (exit 2, the refusal) and with it absent, a dangling link or a directory (exit 0, the one stderr line naming the path) | tests/test-install-placement.sh | integration; red on arrival (python3 exited 2 on the missing script) | green |
+| CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT | M27 case_guard_wiring: `claude-code --check` with each blocking script removed in turn exits non-zero naming event, matcher, path and remedy, runs neither, and exits 0 with both present | tests/test-install-placement.sh | integration; red on arrival (exit 0, the path unnamed) | green |
 | CHECK_FLAGS_RETIRED_HARNESS_ENTRY | M13 case_retired_flag: over a copy of the every-host install carrying an `origin: seed` `docs/graph/skills/from-scratch-bootstrap.md` the seed does not ship and its `.claude/skills/` projection, plus an `origin: seed` `.claude/agents/legacy-steward.md` with no graph node (added at the tip), `graft-audit.py` keeps its clean-copy exit code and names the lone agent `RETIRED`, and `claude-code --check` exits 0, names all three `RETIRED` and leaves the tree byte-identical; after the projection gains a line and a re-install backs it up, `graft-audit.py` counts the backup `RETIRED`, reports no `UNMAPPED` backup and names the projection `RETIRED`; both entries are still on disk | tests/test-install-placement.sh | integration; red on arrival (`--check` printed no harness line, not even over the clean copy) | green |
 | CHECK_FLAGS_ORPHAN_HARNESS_ENTRY | M14 case_orphan_flag: over a copy of the every-host install, `claude-code --check` says every harness entry has a graph home (inside M13); with a skill in `.claude/skills/deploy-notes/` and an agent in `.prime/agent/agents/` and no graph node, it exits 0, names each `ORPHAN` with the graph home it lacks and leaves the tree byte-identical; `graft-audit.py` names the skill `ORPHAN` with its clean-copy exit code (asserted since the tip) | tests/test-install-placement.sh | integration; red on arrival (`--check` did not name the orphan skill) | green |
 | CHECK_FLAGS_RETIRED_GRAPH_NODE | M13 case_retired_flag, graph-node arm (8.1.2, graft finding F1): the every-host install copy also carries an `origin: seed` `docs/graph/protocols/<name>.md` the seed does not ship and an `origin: project` protocol of another name: `claude-code --check` exits 0, names the seed one `RETIRED` and not the project one, and leaves the tree byte-identical; `graft-audit.py` names it `RETIRED` with its clean-copy exit code; the node is still on disk | tests/test-install-placement.sh | integration | green |
@@ -2784,3 +2815,10 @@ only version surface it has, and it moves with each entry here.
   that writes nothing new. Added LEAD_CACHE_TTL_IS_PLACED_ONLY_ON_OPT_IN (M26,
   seen red first): `--prompt-cache-ttl 1h|default`, recorded in the stamp as
   `prompt_cache_ttl`, like `--kernel-mode`.
+- 2026-11-10 — an independent review found that the `PreToolUse` commands ran
+  `python3 <script>` with no existence test, so a missing hook script exited
+  2 and blocked every Bash and SendMessage call, and that `--check` looked
+  only at the context hooks. Added BLOCKING_HOOK_WIRING_FAILS_OPEN_ON_A_MISSING_SCRIPT
+  and CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT (M27, seen red first), and
+  reworded the `bound-hook.py is not run` line of CHECK_EXECUTES_EACH_WIRED_HOOK,
+  which stays true: a guard is looked for and never run.
