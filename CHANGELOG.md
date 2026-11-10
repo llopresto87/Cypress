@@ -74,9 +74,7 @@ outside a coordinator's list is refused by the host and one inside it runs; thre
 nested launches run and a fourth is refused at the configured depth; the plugin
 loads with no install; the route and status text reach the model once, ahead of
 the prompt; a child gets nothing; a refused command's reason reaches the model.
-Not verified live: the route text's second-prompt reminder in one host process
-(held by fixtures), that the provider applies a model variant, a per-launch
-effort, and slash commands. The procedure is
+Not verified live: the second-prompt reminder in one host process (held by fixtures; the owner closed it without a live check on 2026-11-10), slash commands, and whether the provider applies a model variant, which stays the user's choice through the model map. The procedure is
 `docs/skills/opencode-live-verification.md`; the version it records is in
 `integrations/opencode/verified-version`.
 
@@ -84,8 +82,9 @@ effort, and slash commands. The procedure is
 
 There is no worker-continuation guard (the shared core reads Claude Code's
 transcript layout), a compose-mode plant's opencode session does not see the
-kernel, there is no compaction reset, and Prime Agent has no pre-tool guard,
-which the owner set aside for this round. The host matrix records each with what
+kernel, and there is no compaction reset; the owner accepted these on
+2026-11-10 and asked for none to be built now. Prime Agent has no pre-tool
+guard, which the owner set aside for this round. The host matrix records each with what
 would close it; the decision notes are in
 `docs/plans/owner-decisions-8.4.0-opencode-2.md`.
 
