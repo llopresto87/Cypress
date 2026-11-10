@@ -509,8 +509,8 @@ def read_form(spec: Path, text: str, status: str, secs: dict[int, str],
         if not covers:
             fails.append(f"{where}: §10 row covers nothing; name the contracts "
                          f"it tests in its Covers cell")
-        if re.search(r"\bdropped:|\bmerged into\b", row["status"], re.I) or not ref:
-            continue                          # a dropped case covers nothing
+        if re.search(r"\bdropped:|\bremoved:|\bmerged into\b", row["status"], re.I) or not ref:
+            continue                          # a dropped or removed case covers nothing
         if status == "implemented" and st in STILL_OPEN:
             fails.append(f"{spec.name}: implemented, but the §10 row for "
                          f"{row['test']} is `{st}`")

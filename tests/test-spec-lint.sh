@@ -640,6 +640,12 @@ case_test_contract_is_linked_by_covers() {
   kedit "$TEST_ROW" ''
   run_rc 1 klint
   has -F 'contract SUBMIT_VALID_FORM_RETURNS_2XX has kind test but no §10 row covers it'
+  # ...a removed row (a test taken out as catching nothing) covers nothing either (X562)
+  kinds_reset; kedit "$TEST_ROW" '| A double submit files twice | tests/submit_test.py::test_valid_form_accepted | SUBMIT_VALID_FORM_RETURNS_2XX | design | green kept: it earns its place |'
+  run_rc 0 klint
+  kinds_reset; kedit "$TEST_ROW" '| A double submit files twice | tests/submit_test.py::test_valid_form_accepted | SUBMIT_VALID_FORM_RETURNS_2XX | design | green removed: caught nothing |'
+  run_rc 1 klint
+  has -F 'contract SUBMIT_VALID_FORM_RETURNS_2XX has kind test but no §10 row covers it'
   # Covers names only this spec's contracts and failures: a typo is drift
   kinds_reset; kedit '| SUBMIT_VALID_FORM_RETURNS_2XX | design |' '| SUBMIT_VALID_FORM_RETURNS_2XY, SUBMIT_VALID_FORM_RETURNS_2XX | design |'
   run_rc 1 klint
