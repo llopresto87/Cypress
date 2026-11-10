@@ -52,7 +52,7 @@ limit, and briefed fresh otherwise.
 
 On Claude Code, `.claude/resume-hook.py` holds the cold case mechanically,
 reading the worker's transcript, not a guess. A worker idle past its
-configured cache lifetime (five minutes whenever it cannot tell) whose last record is the host's API
+configured cache lifetime (5 min unless its transcript shows 1h) whose last record is the host's API
 error (usage or rate limit, network or server error) was cut off and is
 resumed without question. One that handed back is finished: a message to it is
 refused, because it is new work for an old context or a nudge with nothing to

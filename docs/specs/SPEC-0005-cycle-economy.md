@@ -590,7 +590,13 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 - **And:** `5m` and `1h` are the only values; another value, an unreadable
   source and nothing set resolve to 300 seconds, and so does a frontmatter
   `1h`, which the host ignores while a subscription draws on usage credits,
-  a state the hook cannot see. The host cut-off case, the `continuation:`
+  a state the hook cannot see. A resolved `1h` counts only when the worker's
+  transcript confirms the host wrote a one-hour cache: among its assistant
+  records, last record per message id, the latest with cache-creation tokens
+  carries `ephemeral_1h_input_tokens` above zero; a 5m-only write, or no
+  write, gives 300 seconds, so a configured `1h` with a 5m-only write is
+  refused at 30 minutes idle, one with a one-hour write is allowed at 30 and
+  refused at 90, and one with no creation tokens is refused at 30. The host cut-off case, the `continuation:`
   declaration and fail-open on any internal error are unchanged
 
 ### Contract: REVIEW_BRIEF_NAMES_THE_SECURITY_PASS
@@ -2583,7 +2589,7 @@ gives.
 | BRIEF_DERIVES_THE_SPAWN_EFFORT | X502 six role, kind and label fixtures print their effort; the log records it; an unknown kind is refused; X503 a first review of trust paths reads `first-trust`; seen red first | tests/test-brief.sh | fixture | green |
 | TOKEN_LEDGER_RECORDS_HOST_USAGE | X505 a full, a partial and an empty usage are stored as given or `not recorded`; an unknown spawn, a second record, a fractional count and an unknown key are refused; seen red first | tests/test-brief.sh | fixture | green |
 | TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT | X506 a hand transcript with a repeated message id, a 1h write and a `<synthetic>` record sums once per message; an empty transcript records `not recorded`; seen red first | tests/test-brief.sh | fixture | green |
-| RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME | X507 workers idle 4, 30 and 90 minutes against `5m`, `1h`, an invalid value and unset through the variable, the project setting and the agent frontmatter, plus each precedence step; seen red first | tests/test-resume-hook.sh | fixture | green |
+| RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME | X507 workers idle 4, 30 and 90 minutes against `5m`, `1h`, an invalid value and unset through the variable, the project setting and the agent frontmatter, plus each precedence step; a configured `1h` with a 5m-only last write, a one-hour last write and no write; seen red first | tests/test-resume-hook.sh | fixture | green |
 | REVIEW_BRIEF_NAMES_THE_SECURITY_PASS | X503 a review naming `app/trusted/session.py` with `app/trusted/gate.py` uncommitted prints both; a review of `app/ui/page.py` prints nothing; `--log` blocks until a security spawn follows; seen red first | tests/test-brief.sh | fixture | green |
 | IMPLEMENTER_WRITES_A_DESIGN_NOTE | (none) the `IMPLEMENTER_WRITES_A_DESIGN_NOTE` row of seed-lint's `TEXT_RULES`; red id: `IMPLEMENTER_WRITES_A_DESIGN_NOTE: agents/02-implementer.md does not hold 'restart of the component that holds state'`; seen red first | tests/seed-lint.py | real-tree | green |
 | RED_TEST_HOLDS_ITS_EVIDENCE | (none) the `RED_TEST_HOLDS_ITS_EVIDENCE` row of seed-lint's `TEXT_RULES`; red id: `RED_TEST_HOLDS_ITS_EVIDENCE: skills/test-first/SKILL.md does not hold 'again after rebuilding the component that holds the state'`; seen red first | tests/seed-lint.py | real-tree | green |
@@ -3100,3 +3106,9 @@ kept outside the seed.
   `ENABLE_PROMPT_CACHING_1H`; the hook honours both on the owner's account of
   the precedence, unverified. `agentType` in `agent-<id>.meta.json` was read
   from real subagent records on 2026-11-10.
+- 2026-11-10 — a devils-advocate press refuted the guard's mitigation: a
+  valid `1h` the host ignores (an older host, managed settings, a gateway)
+  let a cold resume through for up to an hour. Amended
+  RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME in place: a resolved
+  `1h` counts only when the worker's transcript shows a one-hour cache write
+  (X507, the three new cases seen red first).
