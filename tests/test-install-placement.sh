@@ -11,6 +11,7 @@
 #   M13 a retired seed entry or graph node is flagged RETIRED; M14 a plant-only harness entry ORPHAN
 #   M15-M20 selective placement: propose, place, refuse, refresh, leave, check
 #   M21 keys an earlier seed wrote into the stamp are named and kept
+#   M26 the lead prompt-cache setting is placed only on opt-in
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -1052,6 +1053,40 @@ PY
     echo "  M25 ALWAYS_LOADS_COMPOSES_ONLY_WHAT_THE_ROLE_NEEDS: a selector composes only its sections, Neighbours and reference-only sections drop, an unknown section stops the install — OK"
 }
 
+# M26, SPEC-0001 LEAD_CACHE_TTL_IS_PLACED_ONLY_ON_OPT_IN: the default install
+# writes no prompt-cache setting; `--prompt-cache-ttl 1h` writes
+# `"promptCacheTtl": "1h"` into .claude/settings.json and records it in the
+# stamp, a silent re-run keeps it, `default` removes it, another value is
+# refused before writing, and --check is clean in every state.
+case_prompt_cache_ttl() {
+    local P="$WORK/prompt-cache-ttl" out rc why="LEAD_CACHE_TTL_IS_PLACED_ONLY_ON_OPT_IN"
+    plant_base claude-code --copy || fail "$why: the install failed"
+    plant_copy "$P"
+    ttl() { python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get(sys.argv[2], "absent"))' "$P/$1" "$2"; }
+    chk() { rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$P" 2>&1)" || rc=$?
+            [[ $rc -eq 0 ]] || fail "$why: --check is not clean $1 (rc $rc): $out"; }
+    [[ "$(ttl .claude/settings.json promptCacheTtl)" == absent ]] || fail "$why: the default install wrote promptCacheTtl"
+    chk "after the default install"
+    "$ROOT/install.sh" claude-code --project-dir "$P" --copy --prompt-cache-ttl 1h >/dev/null 2>&1 \
+        || fail "$why: --prompt-cache-ttl 1h failed"
+    [[ "$(ttl .claude/settings.json promptCacheTtl)" == 1h ]] || fail "$why: the opt-in did not write promptCacheTtl 1h"
+    [[ "$(ttl .cypress/seed.json prompt_cache_ttl)" == 1h ]] || fail "$why: the stamp does not record prompt_cache_ttl"
+    python3 -c 'import json,sys; sys.exit(not json.load(open(sys.argv[1]))["hooks"])' "$P/.claude/settings.json" \
+        || fail "$why: the opt-in lost the hooks"
+    chk "with the opt-in"
+    "$ROOT/install.sh" claude-code --project-dir "$P" --copy >/dev/null 2>&1 || fail "$why: the silent re-run failed"
+    [[ "$(ttl .claude/settings.json promptCacheTtl)" == 1h ]] || fail "$why: a silent re-run dropped the opt-in"
+    "$ROOT/install.sh" claude-code --project-dir "$P" --copy --prompt-cache-ttl default >/dev/null 2>&1 \
+        || fail "$why: --prompt-cache-ttl default failed"
+    [[ "$(ttl .claude/settings.json promptCacheTtl)" == absent && "$(ttl .cypress/seed.json prompt_cache_ttl)" == absent ]] \
+        || fail "$why: default left the setting or the stamp key"
+    chk "after default"
+    rc=0; out="$("$ROOT/install.sh" claude-code --project-dir "$P" --copy --prompt-cache-ttl 2h 2>&1)" || rc=$?
+    [[ $rc -ne 0 ]] && grep -q -- '--prompt-cache-ttl must be 1h or default' <<<"$out" \
+        || fail "$why: an invalid value was not refused (rc $rc): $out"
+    echo "  M26 LEAD_CACHE_TTL_IS_PLACED_ONLY_ON_OPT_IN: the default writes no setting; 1h writes and records it, a silent re-run keeps it, default removes it, 2h is refused; --check clean throughout — OK"
+}
+
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
 if [ "${1:-}" = "__case" ]; then
     "$2"
@@ -1208,7 +1243,7 @@ export BASE BASECOPILOT ESEED
 SCN="$(mktemp)"
 for c in case_recover case_symchurn case_m2 case_m4 case_m10 case_cond case_hook_check case_retired_flag case_orphan_flag \
          case_expertise_propose case_expertise_place case_expertise_refused case_expertise_silence \
-         case_expertise_plant_edits case_expertise_check case_retired_stamp_keys case_agents_compose case_agents_recompose case_orchestrator_style case_agents_sections; do
+         case_expertise_plant_edits case_expertise_check case_retired_stamp_keys case_agents_compose case_agents_recompose case_orchestrator_style case_agents_sections case_prompt_cache_ttl; do
     printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0

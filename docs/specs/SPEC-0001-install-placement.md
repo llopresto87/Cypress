@@ -701,6 +701,19 @@ its own record, and that slug stays as written in §12's history.
   owner decided on 2026-10-14 that these keys are reported and kept, not
   dropped
 
+### Contract: LEAD_CACHE_TTL_IS_PLACED_ONLY_ON_OPT_IN
+- **Given:** a Claude Code plant
+- **When:** `install.sh claude-code` runs without `--prompt-cache-ttl`, then
+  with `--prompt-cache-ttl 1h`, then again without it, then with
+  `--prompt-cache-ttl default`, then with any other value
+- **Then:** the default install writes no prompt-cache setting; `1h` writes
+  `"promptCacheTtl": "1h"` into `.claude/settings.json`, every hook kept, and
+  records `prompt_cache_ttl: "1h"` in `.cypress/seed.json`; a later install
+  without the flag keeps it (DECISIONS_SURVIVE_SILENCE); `default` removes the
+  setting and the stamp key; another value is refused before any write
+- **And:** `install.sh claude-code --check` is clean in each state. The
+  owner's brief of 2026-11-10 asks that the default install write nothing new
+
 ### Contract: HOOKS_RUN_ON_THE_FLOOR_INTERPRETER
 - **Given:** a PATH holding a Python at the seed's floor (SPEC-0005 §5, the
   floor's one home): `python3` itself, or a `python3.<n>` at or above it
@@ -2084,6 +2097,7 @@ $ head -1 /p/docs/graph/libraries/rxjs.md
 | HUB_KEPT_CANONICAL_IN_COMPOSE_MODE | K8 case_k8_compose_keeps_the_hub: compose over a team AGENTS.md keeps it byte-identical, CLAUDE.md is the import line, a blank line and the kernel, no root backup and no migration row, the cost is stated, the stamp records the mode; a silent re-install changes nothing; `tools/graft-audit.py` over the compose plant exits 0 with no `!! KERNEL` line; `--kernel-mode replace` restores ONE_KERNEL_BODY, files the hub and drops the key | tests/test-install-kernel-modes.sh | integration; the graft-audit arm red on arrival (`KERNEL STALE: AGENTS.md`, `KERNEL EXTENDED: CLAUDE.md`) | green |
 | HUB_KEPT_CANONICAL_IN_COMPOSE_MODE | X485 case_audit_kernel_currency_compose (GA-K5): a synthetic plant stamped `kernel_mode: compose` whose AGENTS.md is a team hub and whose CLAUDE.md is the import line, a blank line and the seed kernel reads `kernel: current`, exit 0; with a seed line missing under the import line it is `KERNEL STALE: CLAUDE.md`, exit 1; guard: the same tree with no stamp is `KERNEL STALE: AGENTS.md` | tests/test-graft-tools.sh | unit; red on arrival (exit 1, the hub reported STALE) | green |
 | HUB_NOT_COMPOSABLE | K8 case_k8_hub_not_composable: an absent AGENTS.md (rules in CLAUDE.md, or nothing), a linked one and one holding the seed kernel are refused with an `ERROR:` naming AGENTS.md, no Python error, the target unchanged; a compose mode the stamp recorded, re-run with no flag over a removed hub, is refused naming `kernel_mode in .cypress/seed.json` and `--kernel-mode replace`, not the flag | tests/test-install-kernel-modes.sh | integration; the stamped arm red on arrival (the refusal named `--kernel-mode compose`) | green |
+| LEAD_CACHE_TTL_IS_PLACED_ONLY_ON_OPT_IN | M26 case_prompt_cache_ttl: the default install has no `promptCacheTtl`; `1h` writes and stamps it, a silent re-run keeps it, `default` removes it, `2h` is refused; `--check` clean in each state; seen red first | tests/test-install-placement.sh | integration | green |
 | RETIRED_STAMP_KEYS_NAMED_AND_KEPT | M21 case_retired_stamp_keys: a stamp carrying `grafted`, `base`, `by`, `name` and a plant key: the re-install names the four, sorted, on one line, not the plant key, and keeps all five | tests/test-install-placement.sh | integration | green |
 | PLACED_SKILL_IS_A_ROUTABLE_NODE | M16 case_expertise_place, the flat arm: `skill-corpus/generic-routable` is placed at `docs/graph/skills/generic-routable.md` with its `origin:` line, routes through `graph-lint.py --show`, is projected to `.claude/skills/` and recorded; M17 still refuses the flat page with no frontmatter | tests/test-install-placement.sh | integration | green |
 | PLACED_CORPUS_PAGE_IS_REACHABLE | M16 case_expertise_place: with a stack-keyed and a generic skill, two library pages and a tool page placed into a plant before growth, the plant's `graph-lint.py` exits 0, `--plan` on each skill's `load_when` phrase loads it, and `docs/graph/index.md` equals the template | tests/test-install-placement.sh | integration; red on arrival (`skill.generic-routable` and `skill.lumen-upgrade` unreachable) | green |
@@ -2765,3 +2779,8 @@ only version surface it has, and it moves with each entry here.
   rows lost) while the customization and rootstock rows passed.
   INSTALL_KEEPS_DIVERGED_MACHINERY is new, held by X500: `--keep-diverged`
   leaves each such file the plant's, and the kept-deltas row checks it.
+- 2026-11-10 — the owner's brief of 2026-11-10 asks for an explicit opt-in
+  that places the lead session's prompt-cache setting, with a default install
+  that writes nothing new. Added LEAD_CACHE_TTL_IS_PLACED_ONLY_ON_OPT_IN (M26,
+  seen red first): `--prompt-cache-ttl 1h|default`, recorded in the stamp as
+  `prompt_cache_ttl`, like `--kernel-mode`.

@@ -90,6 +90,14 @@
 #                        by every later install; `--kernel-mode replace`, the
 #                        default, returns to one shared kernel body, filing the
 #                        hub's rules for migration.
+#   --prompt-cache-ttl 1h  With `claude-code`: write `"promptCacheTtl": "1h"`
+#                        into .claude/settings.json, so the lead session's
+#                        prompt cache lives an hour (Claude Code v2.1.242 or
+#                        later; integrations/claude-code/README.md says when it
+#                        pays). Recorded in .cypress/seed.json
+#                        (`prompt_cache_ttl`) and kept by every later install;
+#                        `--prompt-cache-ttl default` removes it. Without it the
+#                        install writes no cache setting.
 #   --keep-diverged      For a graft's apply: leave as the plant's each
 #                        seed-owned file the plant edited that
 #                        tools/graft-ledger.py classes KEEP-PLANT or MERGE
@@ -318,7 +326,7 @@ if not isinstance(data, dict):
     # owned keys have the wrong type, is refused.
     raise SystemExit(0)
 for key in ("seed", "version", "tools", "legal_corpus", "legal_jurisdiction",
-            "installed_at", "installed_from", "kernel_mode"):
+            "installed_at", "installed_from", "kernel_mode", "prompt_cache_ttl"):
     if key in data and not isinstance(data[key], str):
         print(f"records {key!r} as a JSON {type(data[key]).__name__}, "
               f"not a string")
@@ -593,6 +601,36 @@ place_hook() {
     staged="$STAGE/hooks/${dest#"$PROJECT_DIR"/}"
     place_state <(render_hook_python "$src") "$staged"
     place_generated "$staged" "$dest"
+}
+
+# place_claude_settings: the Claude Code settings through place_hook, unless the
+# owner opted into --prompt-cache-ttl 1h: then the settings, rendered as
+# place_hook would, gain `"promptCacheTtl": "1h"` as their first key and are
+# placed as generated content, a real file in both link modes.
+place_claude_settings() {
+    local src="$SEED_ROOT/integrations/claude-code/settings.json"
+    local dest="$PROJECT_DIR/.claude/settings.json" staged
+    if [[ "$PROMPT_CACHE_TTL" != 1h ]]; then
+        place_hook "$src" "$dest"
+        return
+    fi
+    staged="$STAGE/hooks/.claude/settings.json"
+    if [[ "$PYTHON" == python3 ]]; then
+        place_state <(add_prompt_cache_ttl < "$src") "$staged"
+    else
+        place_state <(render_hook_python "$src" | add_prompt_cache_ttl) "$staged"
+    fi
+    place_generated "$staged" "$dest"
+}
+
+# add_prompt_cache_ttl: stdin settings JSON with `"promptCacheTtl": "1h"`
+# inserted after its opening brace, every other byte kept.
+add_prompt_cache_ttl() {
+    run_python -c 'import sys
+t = sys.stdin.read()
+if not t.startswith("{\n"):
+    sys.exit("ERROR: the Claude Code settings do not open with a brace line")
+sys.stdout.write("{\n  \"promptCacheTtl\": \"1h\",\n" + t[2:])'
 }
 
 # render_hook_python SOURCE: print SOURCE with this run's interpreter in place
@@ -2211,7 +2249,7 @@ install_claude_code() {
     generate_slash_commands "$PROJECT_DIR/.claude/commands"
     # Settings file is placed (so the project can edit it); an edited copy is
     # backed up before replacement — a graft never destroys a plant's hook config.
-    place_hook "$SEED_ROOT/integrations/claude-code/settings.json" "$PROJECT_DIR/.claude/settings.json"
+    place_claude_settings
     retire_copilot_hook_duplicates
     # Progressive-discovery enforcement hook (referenced by settings.json).
     place_file "$SEED_ROOT/integrations/claude-code/route-hook.py" \
@@ -2672,6 +2710,7 @@ while [[ $# -gt 0 ]]; do
         --legal-jurisdiction)  LEGAL_JURISDICTION="$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')"; shift 2 ;;
         --expertise)           EXPERTISE="${2:-}"; EXPERTISE_GIVEN=1; shift $(( $# > 1 ? 2 : 1 )) ;;
         --kernel-mode)         KERNEL_MODE_FLAG="${2:-}"; shift $(( $# > 1 ? 2 : 1 )) ;;
+        --prompt-cache-ttl)    PROMPT_CACHE_TTL_FLAG="${2:-}"; shift $(( $# > 1 ? 2 : 1 )) ;;
         -h|--help) usage 0 ;;
         *) die "unknown argument: $1 (try --help)" ;;
     esac
@@ -2681,6 +2720,10 @@ done
 case "${KERNEL_MODE_FLAG-unset}" in
     unset|replace|compose) ;;
     *) die "--kernel-mode must be replace or compose (got: ${KERNEL_MODE_FLAG:-nothing})" ;;
+esac
+case "${PROMPT_CACHE_TTL_FLAG-unset}" in
+    unset|1h|default) ;;
+    *) die "--prompt-cache-ttl must be 1h or default (got: ${PROMPT_CACHE_TTL_FLAG:-nothing})" ;;
 esac
 # Every later step runs its Python on the floor interpreter, so it is found
 # before the first of them and before the first write.
@@ -3108,6 +3151,14 @@ case "${KERNEL_MODE_FLAG:-}" in
     replace) KERNEL_MODE="" ;;
     *) [[ "$(stamp_field "$PROJECT_DIR/.cypress/seed.json" kernel_mode)" == compose ]] \
            && KERNEL_MODE=compose ;;
+esac
+# The lead prompt-cache opt-in, resolved the same way; the default writes nothing.
+PROMPT_CACHE_TTL=""
+case "${PROMPT_CACHE_TTL_FLAG:-}" in
+    1h) PROMPT_CACHE_TTL=1h ;;
+    default) ;;
+    *) [[ "$(stamp_field "$PROJECT_DIR/.cypress/seed.json" prompt_cache_ttl)" == 1h ]] \
+           && PROMPT_CACHE_TTL=1h ;;
 esac
 # preflight_kernel_mode — HUB_NOT_COMPOSABLE: compose keeps the plant's own
 # AGENTS.md canonical, so a hub that is absent, a link, or a body the seed wrote
@@ -3550,7 +3601,7 @@ sys.exit(0 if isinstance(json.load(open(sys.argv[1], encoding="utf-8")), dict) e
 import json, os, sys
 OWNED = {"seed", "version", "installed_at", "installed_from", "tools",
          "legal_corpus", "legal_jurisdiction", "agent_projections", "expertise",
-         "kernel_mode"}
+         "kernel_mode", "prompt_cache_ttl"}
 with open(os.environ["STAMP_PATH"], encoding="utf-8") as fh:
     data = json.load(fh)
 if isinstance(data, dict):
@@ -3666,6 +3717,8 @@ PYEOF
         printf '  "legal_jurisdiction": "%s",\n' "$juris"
         # The owner's opt-in to compose mode; absent in replace mode, the default.
         [[ "$KERNEL_MODE" == compose ]] && printf '  "kernel_mode": "compose",\n'
+        # The owner's opt-in to a one-hour lead prompt cache; absent by default.
+        [[ "$PROMPT_CACHE_TTL" == 1h ]] && printf '  "prompt_cache_ttl": "1h",\n'
         printf '  "agent_projections": [\n'
         local proj sep=""
         for t in "${tools[@]}"; do

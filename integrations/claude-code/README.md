@@ -73,6 +73,42 @@ closed set are recorded once, in `core/method/delegation-model-classes.md`
 `docs/graph/method/delegation-model-classes.md`, so a plant session reaches
 those facts from its own graph.
 
+## Prompt cache lifetime
+
+Claude Code caches each request's prompt so a later call reads it at the
+cached rate instead of paying for it again. The facts below come from the
+Claude Code documentation (prompt caching, settings, subagents and
+environment variables), read on 2026-11-10.
+
+- **Defaults.** The main conversation, the lead, gets the default lifetime.
+  Everything else, subagents above all, gets five minutes, except the helper
+  requests the server controls, which get one hour on a subscription.
+- **Controls.** `promptCacheTtl` (the lead) and `subagentPromptCacheTtl`
+  (workers) in any settings file, `5m` or `1h`; the matching variables
+  `CLAUDE_CODE_PROMPT_CACHE_TTL` and `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`;
+  all four need Claude Code v2.1.242 or later. A subagent definition can set
+  `cacheTtl` nested under `experimental:` in its frontmatter (v2.1.248 or
+  later); Claude Code ignores a frontmatter `1h` while a subscription draws on
+  usage credits. `FORCE_PROMPT_CACHING_5M` forces five minutes for both and
+  `ENABLE_PROMPT_CACHING_1H` requests an hour for both; the pages read did not
+  document these two.
+- **Precedence**, first match wins: the force-five-minutes variable; the
+  bucket's variable; the bucket's setting; the subagent's frontmatter; the
+  enable-one-hour variable; the default.
+- **Cost.** A cache write costs more than an uncached input token, a one-hour
+  write more than a five-minute one, and a read costs less. The documentation
+  read gives no multipliers; the API pricing page is their source, not
+  checked here, and the seed stores no price.
+- **Rule of thumb.** The lead gains from an hour when it waits on workers for
+  more than five minutes at a time on metered billing. Workers stay on five
+  minutes while new work goes to fresh workers (`delegation.continuation`).
+
+The default install writes no cache setting. `install.sh claude-code
+--prompt-cache-ttl 1h` writes `"promptCacheTtl": "1h"` into
+`.claude/settings.json` and records the choice in `.cypress/seed.json`, so a
+later install keeps it; `--prompt-cache-ttl default` removes it. The resume
+guard below reads the worker lifetime by the same precedence.
+
 ## Install
 
 Run `install.sh claude-code` from the seed root in the target project:
@@ -167,7 +203,8 @@ the guard is `core/method/bounded-execution.md` (`toolcraft.bounded-execution`);
 
 `resume-hook.py` (PreToolUse, matcher `SendMessage`) is the second guard, wired
 the same way. It acts only on a worker whose transcript has been idle longer
-than a subagent's prompt cache lives (`COLD_AFTER`, five minutes), because a message to it
+than the worker's prompt cache lives (the lifetime resolved as above; five
+minutes when it cannot tell, `COLD_AFTER`), because a message to it
 re-reads its whole context uncached. A worker whose last record is the host's
 API error (usage or rate limit, network or server error) was cut off and its
 resume is allowed. Any other cold worker, one that handed back above all, is
