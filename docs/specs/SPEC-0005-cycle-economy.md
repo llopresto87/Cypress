@@ -949,8 +949,10 @@ live state of a build cycle in one read, so the lead stops working
 through `grill-lint.py`'s own `plan_graph` and `pack`, the spawn log
 (`spawns.jsonl` beside the plan), the batch record and the question files
 (`docs/graph/plans/<unit>/batch-record.txt` and `questions/batch-<N>.md`), and
-git: an increment is committed when a commit message from the commit that added
-the plan up to `HEAD` names it (`increment N`, `increments N, M`, `N-M`). It
+git: an increment is committed (landed) when every contract slug its §9 row
+names appears in a commit message on the current branch, the format
+`test-first.cycle` already uses; with no history or no contract the report
+prints `landed: unknown (no commit names its contracts) — increment(s) N`. It
 never spawns, and it decides no tier, ruling or acceptance. Invocation:
 `cycle.py --unit UNIT [--plan P]`; `cycle.py record-red N --unit UNIT --file
 PATH... --test ID... [--ruling RID]` or `record-red N --unit UNIT --wrong
@@ -971,7 +973,8 @@ GREEN wave has handed back.
   per batch, packed by `pack` over the increments ready now; `in flight:` per
   increment a logged spawn of its worker names that has no recorded outcome;
   `waits:` per increment whose files meet a live lane; `held:` lines;
-  `expected-red:` per test id, or `expected-red: none`; `not run:` per id of
+  `landed: unknown (no commit names its contracts) — increment(s) ...` when
+  any; `expected-red:` per test id, or `expected-red: none`; `not run:` per id of
   the last tip; `mismatch:` lines; `question:` per unruled entry that touches
   no increment by number, file or contract; and `ruling pass: owed — ...` or
   `ruling pass: not owed — no unruled question entry and nothing held`; exit 0
@@ -979,6 +982,9 @@ GREEN wave has handed back.
   held; a RED's other dependents only once its own GREEN is committed
 - **And:** when no increment is ready the ready lines are one line, `ready:
   nothing is ready to spawn`, and the exit is 0
+- **And:** an increment is committed once every contract slug of its §9 row
+  appears in a commit message on the current branch; an unrelated commit lands
+  nothing; with no git history, or no contract, it is `landed: unknown`
 
 ### Contract: CYCLE_DRIVER_NAMES_THE_HOLD_CONDITION
 - **Test file:** `tests/test-cycle.sh`
@@ -2695,7 +2701,7 @@ gives.
 | TOKEN_LEDGER_RECORDS_HOST_USAGE | X505 a full, a partial and an empty usage are stored as given or `not recorded`; an unknown spawn, a second record, a fractional count and an unknown key are refused; seen red first | tests/test-brief.sh | fixture | green |
 | TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT | X506 a hand transcript with a repeated message id, a 1h write and a `<synthetic>` record sums once per message; an empty transcript records `not recorded`; seen red first | tests/test-brief.sh | fixture | green |
 | RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME | X507 workers idle 4, 30 and 90 minutes against `5m`, `1h`, an invalid value and unset through the variable, the project setting and the agent frontmatter, plus each precedence step; a configured `1h` with a 5m-only last write, a one-hour last write and no write; seen red first | tests/test-resume-hook.sh | fixture | green |
-| CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE | X508 a fresh plan prints the ready RED and prose batches in order; with every increment committed it prints `ready: nothing is ready to spawn`, exit 0; seen red first | tests/test-cycle.sh | integration (installed plant) | green |
+| CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE | X508 a fresh plan prints the ready RED and prose batches in order; an unrelated commit lands nothing, commits naming every contract slug land their increments, and with no git every increment is `landed: unknown`, exit 0; seen red first | tests/test-cycle.sh | integration (installed plant) | green |
 | CYCLE_DRIVER_NAMES_THE_HOLD_CONDITION | X509 a hand fixture holds one increment under each of the three conditions and two by dependency; the report matches `tests/fixtures/cycle/held.out` byte for byte; seen red first | tests/test-cycle.sh | integration (installed plant) | green |
 | CYCLE_DRIVER_CHECKS_THE_RED_HASHES | X510 a recorded RED file changed and one removed print `mismatch:` lines, exit 1; seen red first | tests/test-cycle.sh | integration (installed plant) | green |
 | CYCLE_DRIVER_REFUSES_MALFORMED_INPUT | X511 an unknown record kind, a spawn log line that is not JSON, a forward dependency and a `record-red` of a GREEN each exit 2 with one `cycle:` stderr line and no report; seen red first | tests/test-cycle.sh | integration (installed plant) | green |

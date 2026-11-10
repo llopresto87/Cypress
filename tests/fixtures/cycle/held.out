@@ -1,10 +1,11 @@
-cycle: grill.md, unit u — 8 increment(s): 1 committed, 2 RED observed, 0 in flight, 5 held
+cycle: grill.md, unit u — 8 increment(s): 0 committed, 2 RED observed, 0 in flight, 5 held
 ready GREEN implementer: increment 3 (hardest low, size 5)
 held: increment 4 — condition 1: unruled Q1.1 in questions/batch-1.md touches it
 held: increment 5 — with increment 4, which it depends on
 held: increment 6 — with increment 5, which it depends on
 held: increment 7 — condition 3: tip failure guide.links attributed to it
 held: increment 8 — condition 2: its RED failed for the wrong reason: fails on a missing fixture, not the contract
+landed: unknown (no commit names its contracts) — increment(s) 7
 expected-red: alpha.case_one
 expected-red: beta.case_one
 question: Q1.4 in questions/batch-1.md touches no increment by number, file or contract — the lead attributes it

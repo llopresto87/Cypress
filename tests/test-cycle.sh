@@ -34,11 +34,16 @@ rc=0; out="$(C "$P" --unit u 2>&1)" || rc=$?
   && [[ "$(tail -1 <<<"$out")" == "ruling pass: not owed — no unruled question entry and nothing held" ]] \
   && ok "X508 CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE: a fresh plan prints the ready RED and prose batches" \
   || bad "X508 CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE" "rc $rc: $out"
-G "$P" commit -q --allow-empty -m "feat: alpha to delta (increments 1-8)"
+G "$P" commit -q --allow-empty -m "chore: unrelated tidy (increments 1-8)"
 rc=0; out="$(C "$P" --unit u 2>&1)" || rc=$?
-[[ $rc -eq 0 ]] && grep -qx 'ready: nothing is ready to spawn' <<<"$out" \
-  && grep -q '8 committed' <<<"$out" \
-  && ok "X508 CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE: an empty cycle says nothing is ready, exit 0" \
+[[ $rc -eq 0 ]] && grep -q ' 0 committed' <<<"$out" \
+  && ok "X508 CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE: an unrelated commit lands nothing" \
+  || bad "X508 CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE (unrelated)" "rc $rc: $out"
+for s in ALPHA BETA GAMMA DELTA; do G "$P" commit -q --allow-empty -m "feat(core): $s — implements SPEC-0001"; done
+rc=0; out="$(C "$P" --unit u 2>&1)" || rc=$?
+[[ $rc -eq 0 ]] && ! grep -q '^ready RED\|^ready GREEN' <<<"$out" \
+  && grep -q ' 7 committed' <<<"$out" && grep -qx 'landed: unknown (no commit names its contracts) — increment(s) 7' <<<"$out" \
+  && ok "X508 CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE: commits in the existing format land their increments; one with no contract is unknown" \
   || bad "X508 CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE (empty)" "rc $rc: $out"
 
 # X509 CYCLE_DRIVER_NAMES_THE_HOLD_CONDITION and X513 CYCLE_DRIVER_RECORDS_ATOMICALLY
@@ -48,7 +53,7 @@ rc=0
 o1="$(C "$P" record-red 1 --unit u --file tests/test_alpha.sh --test alpha.case_one)" || rc=$?
 C "$P" record-red 2 --unit u --file tests/test_beta.sh --test beta.case_one >/dev/null || rc=$?
 C "$P" record-red 8 --unit u --wrong "fails on a missing fixture, not the contract" >/dev/null || rc=$?
-G "$P" commit -q --allow-empty -m "docs: the guide (increment 7)"
+G "$P" commit -q --allow-empty -m "docs: the guide"
 o2="$(C "$P" record-tip --unit u --fail 7 guide.links)" || rc=$?
 [[ $rc -eq 0 ]] && cmp -s "$FX/record.out" "$P/$REC" \
   && [[ "$o1" == "recorded: increment 1 — 1 file(s), 1 test id(s) in $REC" ]] \
@@ -82,7 +87,7 @@ rc=0; out="$(C "$P3" --unit u 2>&1)" || rc=$?
   && grep -qx "mismatch: tests/test_beta.sh — increment 2 recorded cdd2f37440bb, now missing" <<<"$out" \
   && ok "X510 CYCLE_DRIVER_CHECKS_THE_RED_HASHES: a changed and a removed RED file are mismatches, exit 1" \
   || bad "X510 CYCLE_DRIVER_CHECKS_THE_RED_HASHES" "rc $rc: $out"
-G "$P3" commit -q --allow-empty -m "feat: alpha and beta (increments 3, 4)"
+G "$P3" commit -q --allow-empty -m "feat(core): ALPHA — implements SPEC-0001" && G "$P3" commit -q --allow-empty -m "feat(core): BETA — implements SPEC-0001"
 rc=0; out="$(C "$P3" --unit u 2>&1)" || rc=$?
 ! grep -q '^mismatch:' <<<"$out" && [[ $rc -eq 0 ]] \
   && ok "X510 CYCLE_DRIVER_CHECKS_THE_RED_HASHES: once the own GREEN commits, the files are not checked" \
@@ -97,6 +102,13 @@ rc=0; out="$(C "$P9" --unit u 2>&1)" || rc=$?
 [[ $rc -eq 1 ]] && grep -qx 'expected-red: delta.case_one' <<<"$out" && grep -q '^mismatch: tests/test_delta.sh ' <<<"$out" \
   && ok "X510 CYCLE_DRIVER_CHECKS_THE_RED_HASHES: a RED committed alone is still expected-red and still checked" \
   || bad "X510 CYCLE_DRIVER_CHECKS_THE_RED_HASHES (RED committed alone)" "rc $rc: $out"
+
+# X508 with no git history, landing is unknown and the driver still reports
+P10="$T/p10"; cp -R "$P" "$P10"; rm -rf "$P10/.git"
+rc=0; out="$(C "$P10" --unit u 2>&1)" || rc=$?
+[[ $rc -eq 0 ]] && grep -qx 'landed: unknown (no commit names its contracts) — increment(s) 1, 2, 3, 4, 5, 6, 7, 8' <<<"$out" \
+  && ok "X508 CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE: with no git, every increment is landed: unknown, exit 0" \
+  || bad "X508 CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE (no git)" "rc $rc: $out"
 
 # X511 CYCLE_DRIVER_REFUSES_MALFORMED_INPUT
 refused() {   # $1 label, $2 plant, $3 stderr prefix; the rest is the command
