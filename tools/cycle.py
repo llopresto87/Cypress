@@ -10,9 +10,10 @@ and why, what the tip may see red, and whether the RED hashes still hold
   - the spawn log, `spawns.jsonl` beside the plan (`brief.py` writes it);
   - the batch record, `docs/graph/plans/<unit>/batch-record.txt`;
   - the question files, `docs/graph/plans/<unit>/questions/batch-<N>.md`;
-  - git: an increment is committed when a commit message, from the commit that
-    added the plan up to HEAD, names it (`increment 7`, `increments 3, 4`,
-    `increments 1-8`).
+  - git: an increment has landed when every contract slug its §9 row names
+    appears in a commit message on the current branch (`test-first.cycle`'s
+    existing format carries the slug); with no history or no contract it is
+    `landed: unknown`.
 
 It never spawns and decides no tier, ruling or acceptance: a hold condition,
 a failure's attribution and a ruling are the lead's and the architect's, and
@@ -103,9 +104,10 @@ class Cycle:
         if not self.plan.is_file():
             raise Refusal(f"{plan}: no plan")
         r = git(self.plan.parent, "rev-parse", "--show-toplevel")
-        if r.returncode != 0:
-            raise Refusal(f"{plan}: not inside a git work tree")
-        self.top = Path(r.stdout.strip()).resolve()
+        if r.returncode == 0:
+            self.top = Path(r.stdout.strip()).resolve()
+        else:
+            self.top = next((d for d in self.plan.parents if (d / "docs" / "graph").is_dir()), self.plan.parent)
         self.unit_dir = self.plan.parent / unit
         self.record_path = self.unit_dir / "batch-record.txt"
         self.gl = grill_lint()
@@ -233,18 +235,15 @@ class Cycle:
                     "text": f"{body.get('where', '')} {body.get('work held', '')}"})
 
     def _read_commits(self):
-        rel_plan = self.rel(self.plan)
-        added = git(self.top, "log", "--format=%H", "--diff-filter=A", "--", rel_plan)
-        base = added.stdout.split()[-1] if added.returncode == 0 and added.stdout.split() else None
+        log = git(self.top, "log", "--format=%B%x00", "HEAD")
+        named_slugs = set(SLUG_RE.findall(log.stdout)) if log.returncode == 0 else None
         self.committed: set[int] = set()
-        if base is None:
-            return
-        log = git(self.top, "log", "--format=%H%x01%B%x00", "HEAD")
-        for chunk in log.stdout.split("\x00"):
-            sha, _, body = chunk.strip("\n").partition("\x01")
-            self.committed |= named(body) & set(self.order)
-            if sha == base:
-                break
+        self.unknown: list[int] = []
+        for n in self.order:
+            if named_slugs is None or not self.contracts[n]:
+                self.unknown.append(n)
+            elif self.contracts[n] <= named_slugs:
+                self.committed.add(n)
 
     # ---- derived state ---------------------------------------------------------
     def recorded(self) -> set[int]:
@@ -362,6 +361,9 @@ class Cycle:
         out += [f"in flight: increment {n} — {flight[n]}" for n in sorted(flight)]
         out += waits
         out += [f"held: increment {n} — {held[n]}" for n in sorted(held)]
+        if self.unknown:
+            out.append("landed: unknown (no commit names its contracts) — increment(s) "
+                       + ", ".join(map(str, self.unknown)))
         out += [f"expected-red: {t}" for t in expected] or ["expected-red: none"]
         out += [f"not run: {t}" for t in sorted(self.not_run)]
         out += mismatches

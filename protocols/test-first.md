@@ -255,8 +255,8 @@ costs about 40 cache reads, so the handoff costs more than it saves.
    are named in the worker handbacks; the close-out librarian persists
    them (§3.7/§3.8).
 6. If using version control, commit. Commit message:
-   `feat(<scope>): <contract slug> — implements SPEC-NNNN (increment N)`
-   or `fix(<scope>): <bug slug> — adds regression for SPEC-NNNN (increment N)`; `cycle.py` reads the number.
+   `feat(<scope>): <contract slug> — implements SPEC-NNNN`
+   or `fix(<scope>): <bug slug> — adds regression for SPEC-NNNN`.
 
 ## Per-language choice of test framework
 
