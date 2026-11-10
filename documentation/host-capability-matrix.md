@@ -358,6 +358,17 @@ parity here; the differences are budget mechanics, not enforcement.
   the six classes above by design (see footnote 6): an unconfirmed read is
   not the same claim as a confirmed absence, and the matrix does not guess.
 
+### Prompt-cache lifetime
+
+- Claude Code: the lead and worker lifetimes are host settings
+  (`promptCacheTtl`, `subagentPromptCacheTtl`, v2.1.242 or later) and a
+  subagent frontmatter key (`experimental: cacheTtl`, v2.1.248 or later);
+  workers default to five minutes. Defaults, precedence and when to change
+  them: `integrations/claude-code/README.md`, "Prompt cache lifetime". The
+  installer places the lead setting only on `--prompt-cache-ttl 1h`, and
+  `resume-hook.py` reads the worker lifetime. **documented**, not observed.
+- opencode, Codex CLI, GitHub Copilot, Prime Agent: **not recorded**.
+
 ### Session-start hook / Routing hook / Status hook
 
 These three are grouped because their per-host story is identical: a
