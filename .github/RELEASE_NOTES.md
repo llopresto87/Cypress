@@ -31,12 +31,13 @@ on, then compares two arms under the trial protocol in
   their condition, the expected-red list, RED-hash mismatches and whether a
   ruling pass is owed. It reads the plan, the spawn log, the batch record,
   the question files and git. An increment counts as landed when every
-  contract slug its plan row names appears in a commit message on the
-  branch. `record-red` and `record-tip` write the batch record. It spawns
+  contract slug its plan row names appears in a GREEN `feat`/`fix`
+  commit subject on the branch, and the report says this is inferred. `record-red` and `record-tip` write the batch record. It spawns
   nothing and decides nothing.
 - **Generated Session metrics lines.** `brief.py --log` prints the
   countable lines of the delivery's Session metrics block, so they are
-  copied, not counted by hand.
+  copied, not counted by hand. The Serial waits value is inferred from
+  composition times and says so.
 - **A batch-size notice.** `brief.py --increments N[,N] --unit <unit>`
   prints a notice when a batch is smaller than its effort scale allows;
   `--alone` records a security or concurrency GREEN batched alone on
