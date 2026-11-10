@@ -235,10 +235,13 @@ The standard gate holds (`CLAUDE.md` Gates: `bash tests/run.sh`), on an interpre
 | 4 | Should the guard read managed settings, or take 300 seconds for a project or user `subagentPromptCacheTtl: 1h` whenever a managed settings file exists? | managed settings outrank the files the hook reads, and the prompt-caching page says they can set the lifetime | managed settings are not read | the owner's decision, then a RED case in `tests/test-resume-hook.sh` | owner | none |
 | 5 | Should the Claude Code README and the capability matrix state the lead's default lifetime and record the force and enable variables as documented, with a new §15 line correcting increment 3's classification? | the prompt-caching page read on 2026-11-10 documents both variables, and E3's acceptance asks the docs to state the lead default | resolved 2026-11-10 by the round brief's E3 acceptance: both documents state the lead default and the two variables as documented, "Set to `1`" | the env-vars and prompt-caching pages, read 2026-11-10 | brief | `tests/test-resume-hook.sh` |
 | 6 | Should the token ledger record every logged spawn of a delivery in one call, so the lead spends one call per delivery instead of one per spawn? | `brief.py --tokens` takes one spawn per call, a lead tool call each | one call per spawn | E5's interface step | owner | none |
+| 7 | Which of the levers T1 to T11 of the owner's brief of 2026-11-10 should go to a trial, and which should change? | each changes what the method asks of a model, or a default the owner set | nothing lands; each stays as today | the decision notes in [`owner-decisions-8.3.1-token-efficiency.md`](owner-decisions-8.3.1-token-efficiency.md), then a trial under `docs/skills/lever-trial.md` where a note asks for one | owner | none |
 
 Row 4 stays open for the owner.
 
 Row 6 stays open for the owner.
+
+Row 7 stays open for the owner. Its notes live in a sibling file because each runs to a paragraph, which this table's one-line rows cannot hold readably, and the plan's own directory holds only §9 increments.
 
 ## 13. Done Criteria
 - Every increment in §9 is done; each new contract has a `green` §10 row in its spec.
@@ -261,3 +264,4 @@ Land the next mechanism's increment, then run the release pass, `docs/skills/see
 - 2026-11-10: increment 8 (E7) landed: the slow-command rule joins clause 2 of `toolcraft.bounded-execution`, which now also holds that a reviewer runs no build, and the reviewer charter points there; the gate-output rule joins `protocols/verify.md` beside the line-cap sentence. The kernel, the always-loaded figures and the brief blocks are unchanged.
 - 2026-11-10: increment 9 (E8) landed: a model-class table beside the effort table reproduces each role's `model:`, and `brief.py` prints a class only where a row differs; every brief composes byte for byte as before. The light-variants section moved verbatim to its own leaf to keep `delegation-model-classes.md` under the leaf ceiling.
 - 2026-11-10: increment 10 (E8) landed: `docs/skills/lever-trial.md`, seed-only beside the release procedure, is how a steward compares two settings of one lever before a default moves. No trial ran and no default changed.
+- 2026-11-10: the decision notes T1 to T11 written for the owner as §12 row 7, in `owner-decisions-8.3.1-token-efficiency.md`: each gives the proposal, the mechanism it relies on, the quality risk, the trial that would decide it, how its cost is read from the token ledger, and a recommendation. Nothing in them is implemented, no default changed and no saving is claimed.
