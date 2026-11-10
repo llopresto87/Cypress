@@ -506,6 +506,50 @@ case_hook_check() {
     echo "  M12 CHECK_EXECUTES_EACH_WIRED_HOOK: four hooks ran with the plant unchanged; a missing route or Copilot status script fails --check, named — OK"
 }
 
+# M27, SPEC-0001 BLOCKING_HOOK_WIRING_FAILS_OPEN_ON_A_MISSING_SCRIPT and
+# CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT: the PreToolUse commands as
+# placed run their script with its exit code intact, and exit 0 with one stderr
+# line when the script is absent, a dangling link or a directory; --check names
+# the missing script and runs neither guard.
+case_guard_wiring() {
+    local G="$WORK/guard-wiring" out rc cmd ev script kind blocked
+    mkdir -p "$G" && cp -a "$BASE/." "$G/"
+    blocked='{"tool_name":"Bash","tool_input":{"command":"npm install"}}'
+    wired() { python3 - "$G/.claude/settings.json" "$1" <<'PY'
+import json, sys
+for e in json.load(open(sys.argv[1]))["hooks"]["PreToolUse"]:
+    if e["matcher"] == sys.argv[2]:
+        print(e["hooks"][0]["command"])
+PY
+    }
+    for ev_script in "Bash bound-hook.py" "SendMessage resume-hook.py"; do
+        ev="${ev_script% *}"; script="${ev_script#* }"
+        cmd="$(wired "$ev")"
+        [[ "$cmd" != *"|| true"* ]] || fail "BLOCKING_HOOK_WIRING_FAILS_OPEN_ON_A_MISSING_SCRIPT: the $ev guard carries || true: $cmd"
+        if [[ "$ev" == Bash ]]; then
+            rc=0; out="$(printf '%s' "$blocked" | CLAUDE_PROJECT_DIR="$G" sh -c "$cmd" 2>&1)" || rc=$?
+            [[ $rc -eq 2 ]] || fail "BLOCKING_HOOK_WIRING_FAILS_OPEN_ON_A_MISSING_SCRIPT: with the script present the wired Bash command exited $rc, not 2: $out"
+        fi
+        mv "$G/.claude/$script" "$G/.claude/$script.keep"
+        for kind in absent dangling directory; do
+            rm -rf "$G/.claude/$script"
+            case "$kind" in dangling) ln -s "$G/.claude/nowhere.py" "$G/.claude/$script" ;; directory) mkdir "$G/.claude/$script" ;; esac
+            rc=0; out="$(printf '%s' "$blocked" | CLAUDE_PROJECT_DIR="$G" sh -c "$cmd" 2>&1 >/dev/null)" || rc=$?
+            [[ $rc -eq 0 ]] || fail "BLOCKING_HOOK_WIRING_FAILS_OPEN_ON_A_MISSING_SCRIPT: the $ev command exited $rc with the script $kind: $out"
+            [[ "$out" == "cypress: hook script missing: $G/.claude/$script; the guard is off. Re-run install.sh to restore it." ]] \
+                || fail "BLOCKING_HOOK_WIRING_FAILS_OPEN_ON_A_MISSING_SCRIPT: the $kind line is not the one contracted stderr line: $out"
+            rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$G" 2>&1)" || rc=$?
+            [[ $rc -ne 0 ]] || fail "CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT: --check passed a plant whose $script is $kind: $out"
+            grep -qF "hook PreToolUse[$ev] .claude/$script is wired but the script is missing; the guard is off; re-run install.sh to restore it" <<<"$out" \
+                || fail "CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT: no line names event, matcher, path and remedy for $script ($kind): $out"
+        done
+        rm -rf "$G/.claude/$script"; mv "$G/.claude/$script.keep" "$G/.claude/$script"
+    done
+    rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$G" 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || fail "CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT: --check over both guards present exited $rc: $out"
+    echo "  M27 guard wiring: both PreToolUse guards pass their exit code through and fail open, one stderr line, when the script is absent, dangling or a directory; --check names each, runs neither — OK"
+}
+
 # M13, SPEC-0001 CHECK_FLAGS_RETIRED_HARNESS_ENTRY: an origin: seed skill the
 # seed no longer ships (it folded skill.from-scratch-bootstrap into
 # protocol.from-scratch), still in the graph and still projected, is named
@@ -1243,7 +1287,7 @@ export BASE BASECOPILOT ESEED
 SCN="$(mktemp)"
 for c in case_recover case_symchurn case_m2 case_m4 case_m10 case_cond case_hook_check case_retired_flag case_orphan_flag \
          case_expertise_propose case_expertise_place case_expertise_refused case_expertise_silence \
-         case_expertise_plant_edits case_expertise_check case_retired_stamp_keys case_agents_compose case_agents_recompose case_orchestrator_style case_agents_sections case_prompt_cache_ttl; do
+         case_expertise_plant_edits case_expertise_check case_retired_stamp_keys case_agents_compose case_agents_recompose case_orchestrator_style case_agents_sections case_prompt_cache_ttl case_guard_wiring; do
     printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0

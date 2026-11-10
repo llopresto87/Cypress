@@ -12,10 +12,14 @@ reason and both accepted forms go to stderr and the hook exits 2, which
 blocks the call and hands the model the reason.
 
 This is a GUARD, so unlike the context-injecting hooks it is wired without
-`|| true`: a hook that cannot block is not a guard. The asymmetry is paid
-for on the other side — the script itself can only ever exit 0 or 2, and
-every failure path inside it exits 0 with one line on stderr. A bug here
-degrades to no guard; it can never brick a session by blocking everything.
+`|| true`: a hook that cannot block is not a guard. The failure model has
+two halves. Inside the script every failure path exits 0 with one line on
+stderr, so a bug here degrades to no guard and can never brick a session by
+blocking everything. A script that is missing is the wiring's case, not the
+script's: the settings command tests that the file exists and, when it does
+not, allows the call with one stderr line, because `python3 <missing>` exits
+2 and would block every Bash call. `install.sh <host> --check` reports the
+missing script (SPEC-0001 CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT).
 
 Exit 0 = allow (also: not Bash, no command, unparseable stdin, internal
 error). Exit 2 = block, reason on stderr.

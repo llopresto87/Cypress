@@ -45,8 +45,11 @@ transcript's tail:
   without an error record (its parent session died).
 
 Exit 0 = allow (also: another tool, unreadable stdin, unknown worker, internal
-error). Exit 2 = refuse. A bug degrades to no guard; it never blocks every
-message.
+error). Exit 2 = refuse. A bug inside the script degrades to no guard; it never
+blocks every message. A script that is missing is the wiring's case: the
+settings command tests that the file exists and allows the message with one
+stderr line when it does not, and `install.sh <host> --check` reports it
+(SPEC-0001 CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT).
 """
 
 import json

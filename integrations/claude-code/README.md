@@ -196,7 +196,12 @@ Kill by a recorded pid (`kill -TERM $(cat job.pid)`) passes; `pkill`,
 the wrong process. The script itself can only exit 0 or 2, and every failure
 path inside it (not Bash, no command, unparseable stdin, internal error)
 exits 0 with one line on stderr, so a bug in the guard degrades to no guard
-and can never block every call. The pattern list is a commented constant at
+and can never block every call. A script that is missing is the wiring's
+case: both guard commands test that the file exists and, when it does not,
+allow the call with one stderr line, `cypress: hook script missing: <path>;
+the guard is off. Re-run install.sh to restore it.` `install.sh claude-code
+--check` fails naming the event, matcher and path of a missing guard script,
+and does not run the guard. The pattern list is a commented constant at
 the top of the file; extending it is a one-line change. The doctrine behind
 the guard is `core/method/bounded-execution.md` (`toolcraft.bounded-execution`); the test is
 `tests/test-bound-hook.sh`. What the pattern match can miss is listed in the
