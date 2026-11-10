@@ -63,6 +63,7 @@ LIFETIMES = {"5m": 300, "1h": 3600}
 TTL_VAR = "CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL"
 FORCE_5M, ENABLE_1H = "FORCE_PROMPT_CACHING_5M", "ENABLE_PROMPT_CACHING_1H"
 TAIL_BYTES = 256 * 1024      # read this much of the transcript's end for its last record
+WRITE_TAIL_BYTES = 1024 * 1024  # and this much for its last cache write
 DECLARATION = "continuation:"
 AGENT_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
@@ -125,9 +126,19 @@ def wrote_1h(worker: Path) -> bool:
     """Whether the host's last cache write for this worker was a one-hour one:
     the last record per message id wins (the one home of that reading is
     `transcript_usage` in tools/brief.py, which a plant's .claude/ lacks), and
-    the latest message with cache-creation tokens decides."""
+    the latest message with cache-creation tokens decides. Only the last
+    WRITE_TAIL_BYTES are read; any trouble reads as no one-hour write (300 s)."""
+    try:
+        with worker.open("rb") as f:
+            size = f.seek(0, 2)
+            f.seek(max(0, size - WRITE_TAIL_BYTES))
+            lines = f.read().decode("utf-8", "replace").splitlines()
+        if size > WRITE_TAIL_BYTES:
+            lines = lines[1:]                 # the first line may be cut
+    except OSError:
+        return False
     last = {}
-    for line in worker.read_text(encoding="utf-8", errors="replace").splitlines():
+    for line in lines:
         try:
             r = json.loads(line)
         except ValueError:
