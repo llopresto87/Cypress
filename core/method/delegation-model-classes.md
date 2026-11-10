@@ -177,7 +177,7 @@ medium-hard or hard → high; a `first` review of trust-claimed files reads
 | tester | `red`: RED for an increment's contracts | by label |
 | tester | `red-trust`: RED for a security or stateful contract, before its GREEN | high |
 | tester | `findings`: RED for the review and security findings of a security pass, from the probe and control files that pass wrote | medium |
-| tester | `amend`: amend one wrong test, or rule on one test question | low |
+| tester | `amend`: amend one wrong test, rule on one test question, or carry a ruling pass's test amendments | low |
 | reviewer | `first-trust`: the first review of a trust-surface increment | high |
 | reviewer | `first`: an ordinary first review | medium |
 | reviewer | `recheck`: a re-check of fixes | low |

@@ -1575,6 +1575,10 @@ TEXT_RULES = (
     # a reviewer finding on a trust path is fixed inside the security pass
     ("TRUST_PATH_TAKES_THE_SECURITY_PASS", "require", lambda: ["protocols/test-first.md"],
      re.escape("the security pass is their one fix round"), {"collapse": True}),
+    # a ruling's test amendments ride one low tester spawn, its follow-up one low implementer
+    ("BRIEF_DERIVES_THE_SPAWN_EFFORT", "require", lambda: ["core/method/delegation-cycle-economy.md"],
+     r"one `tester` spawn \(`--kind amend`, low\) carries every test amendment.*?`--kind fix`, low",
+     {"collapse": True}),
     # its findings take one tester (RED) then one implementer (GREEN), so no implementer writes tests
     ("TRUST_PATH_TAKES_THE_SECURITY_PASS", "require", lambda: ["protocols/test-first.md"],
      r"findings and those reviewer findings go to one fresh `tester`.*?then one fresh `implementer`",
