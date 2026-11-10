@@ -127,6 +127,25 @@ written "$w1" "$w1p"; x507 "configured 1h, last record of the 1h id has no write
 written "$w0"; x507 "configured 1h, no creation tokens" 4
 XENV="ENABLE_PROMPT_CACHING_1H=1"; written "$w5"; x507 "enable-1h, last write 5m only" 4
 XENV="ENABLE_PROMPT_CACHING_1H=true"; written "$w1"; x507 "enable-1h other than 1 is not documented" 4
+# The transcript is read from its last 1 MiB only: a 1h write inside the tail
+# counts, one before it does not (the lifetime stays 300 s, fail-open).
+padded() {  # $1 before|after: the 1h write before or after 1.2 MiB of other records
+    "$PY" - "$S" "$1" "$w1" "$HANDBACK" <<'PY'
+import os, sys, time
+s, where, w1, hb = sys.argv[1:]
+pad = ('{"type":"user","message":{"role":"user","content":"%s"}}\n' % ("x" * 1000)) * 1200
+for m in (4, 30, 90):
+    p = f"{s}/agent-ai{m}.jsonl"
+    with open(p, "w") as f:
+        f.write((w1 + "\n" + pad) if where == "before" else (pad + w1 + "\n"))
+        f.write(hb + "\n")
+    t = time.time() - m * 60
+    os.utime(p, (t, t))
+PY
+}
+XENV="CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL=1h"
+padded after; x507 "configured 1h, 1h write inside the last 1 MiB of a long transcript" 4 30
+padded before; x507 "configured 1h, 1h write before the last 1 MiB is not seen" 4
 XENV=""
 [[ $x == 0 ]] && echo "  X507 RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME: 5m, 1h, invalid and unset from each source against 4, 30 and 90 min idle — OK"
 if [[ "$fail" == 0 ]]; then echo "test-resume-hook: PASS"; else echo "test-resume-hook: FAIL"; exit 1; fi

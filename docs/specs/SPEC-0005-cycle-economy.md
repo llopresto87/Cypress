@@ -650,8 +650,8 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   source and nothing set resolve to 300 seconds, and so does a frontmatter
   `1h`, which the host ignores while a subscription draws on usage credits,
   a state the hook cannot see. A resolved `1h` counts only when the worker's
-  transcript confirms the host wrote a one-hour cache: among its assistant
-  records, last record per message id, the latest with cache-creation tokens
+  transcript confirms the host wrote a one-hour cache: among the assistant
+  records of its last 1 MiB, last record per message id, the latest with cache-creation tokens
   carries `ephemeral_1h_input_tokens` above zero; a 5m-only write, or no
   write, gives 300 seconds, so a configured `1h` with a 5m-only write is
   refused at 30 minutes idle, one with a one-hour write is allowed at 30 and
@@ -3403,3 +3403,8 @@ kept outside the seed.
   not a JSON record refuses `brief.py --tokens` with exit 2 and one line, now
   named in TOKEN_LEDGER_RECORDS_HOST_USAGE; a transcript line that is not a
   JSON object is skipped. Each seen red first.
+- 2026-11-10 — corrected in place after an independent review: the resume
+  guard's one-hour check read the whole worker transcript. It now reads the
+  last 1 MiB, dropping a possibly cut first line, and any read trouble gives
+  300 seconds; RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME says so (X507,
+  a write before the tail seen counted first, then not).
