@@ -10,7 +10,7 @@ status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-
 ## 0. Metadata
 
 - **Identifier:** SPEC-0005-cycle-economy
-- **Version:** 0.21 (the security path: TRUST_PATH_TAKES_THE_SECURITY_PASS, TRUST_MARKER_IS_SETTLED, SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS, ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES, AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK, MAIN_SESSION_PLAYS_THE_ORCHESTRATOR, 2026-11-09; every amendment is dated in §12)
+- **Version:** 0.22 (the security path: TRUST_PATH_TAKES_THE_SECURITY_PASS, TRUST_MARKER_IS_SETTLED, SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS, ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES, AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK, MAIN_SESSION_PLAYS_THE_ORCHESTRATOR, 2026-11-09; every amendment is dated in §12)
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-09-28
@@ -810,6 +810,67 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 - **When:** seed-lint reads them, whitespace collapsed and lowercased
 - **Then:** none says every functional contract maps to at least one test,
   or that every increment begins with the tester writing a failing test
+### Contract: SPEC_LINT_READS_THE_CONTRACT_FORM
+- **Test file:** `tests/test-spec-lint.sh`
+- **Given:** a spec whose §0 reads `- **Contract form:** kinds`, and a spec
+  without that line
+- **When:** `spec-lint.py` reads them
+- **Then:** in the first, a contract with no `- **Check:**` line, or with a
+  kind outside test, run, review and covered, fails naming the spec, the
+  contract and the line that satisfies it
+- **And:** in the second, an unlabelled contract is kind test with the
+  slug-in-test link, a labelled run, review or covered contract owes the
+  evidence of its kind, and a spec with no Check line lints byte for byte as
+  before (the owner decided on 2026-11-10 that a legacy spec accepts the label
+  contract by contract)
+### Contract: SPEC_LINT_HOLDS_EACH_KIND_TO_ITS_EVIDENCE
+- **Test file:** `tests/test-spec-lint.sh`
+- **Given:** contracts of kind run, review and covered, and a declared-values
+  table under one Check line
+- **When:** `spec-lint.py` reads a live spec and a draft
+- **Then:** a run names its command and, once live, `→ <result>`; a review
+  records `confirmed by reviewer spawn <id>` once live and may read `pending`
+  before; a covered contract names a `path::name` the suite holds in its code;
+  a declared-values table carries one run or review Check line held to the
+  same rules
+- **And:** each missing piece is a hard failure naming the spec, the contract
+  and what satisfies it, never a budget item
+### Contract: SPEC_LINT_LINKS_A_TEST_CONTRACT_BY_ITS_COVERS_CELL
+- **Test file:** `tests/test-spec-lint.sh`
+- **Given:** a new-form spec with a test contract and a §10 table headed
+  `| Risk (what breaks, for whom) | Test (file::name, lowest level) | Covers | Origin | Status |`
+- **When:** `spec-lint.py` checks shape and coverage
+- **Then:** a signed or live test contract no row's Covers cell names fails;
+  it counts as covered when a row naming it cites a `path::name` the suite
+  holds, with no slug in the test's code; a row whose test is missing leaves
+  it uncovered, a budget item as before
+- **And:** an `accepted, untested — <why>` row and a row recorded `dropped:`
+  or `merged into` cover nothing; a Covers name that is no contract or
+  failure of the spec, a Test cell that is not `file::name`, an Origin outside
+  design, bug and security control, and a Status outside red, green, pending
+  and skipped each fail; an implemented spec has no row still red or pending;
+  live contracts and no test file at all still fail as a green lie (the owner
+  decided on 2026-11-10 that the Covers cell is the link)
+### Contract: SPEC_LINT_ACCEPTS_A_SPEC_WITH_NOTHING_TO_TEST
+- **Test file:** `tests/test-spec-lint.sh`
+- **Given:** a live new-form spec whose contracts are all run or review
+- **When:** `spec-lint.py` reads it
+- **Then:** it passes with no §10 rows and no tester sign-off
+- **And:** a `- **Trust path:** yes` line in §0 keeps the tester's sign-off owed
+### Contract: SPEC_LINT_COUNTS_CONTRACTS_BY_KIND
+- **Test file:** `tests/test-spec-lint.sh`
+- **Given:** a tree holding a spec that uses the form, beside a legacy spec
+- **When:** `spec-lint.py` runs, plain and with `--list`
+- **Then:** it prints `contracts by kind: test N, run N, review N, covered N, legacy-test N`,
+  the declared-values table counted by its Check line's kind, and `--list`
+  names each new-form contract's evidence
+- **And:** a tree of specs with no Check line prints no such line
+### Contract: SPEC_LINT_SLICES_A_NEW_FORM_SPEC
+- **Test file:** `tests/test-spec-lint.sh`
+- **Given:** a new-form spec
+- **When:** `spec-lint.py --slice SLUG` runs, with or without `--lines`
+- **Then:** it prints the contract's block and each §10 row whose Covers cell
+  names the slug, under its table header
 
 ### Contract: AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK
 - **Test file:** `tests/test-install-placement.sh`
@@ -2913,6 +2974,13 @@ gives.
 | SPECIFY_DESIGNS_TESTS_ONLY_WHERE_ONE_IS_OWED | (none) the `SPECIFY_DESIGNS_TESTS_ONLY_WHERE_ONE_IS_OWED` rows of seed-lint's `TEXT_RULES`; red id: `SPECIFY_DESIGNS_TESTS_ONLY_WHERE_ONE_IS_OWED: protocols/specify.md does not hold 'no test-design spawn and no tester sign-off'`; seen red first | tests/seed-lint.py | real-tree | green |
 | REVIEWER_REOPENS_A_KIND_THAT_HIDES_LOGIC | (none) the `REVIEWER_REOPENS_A_KIND_THAT_HIDES_LOGIC` rows of seed-lint's `TEXT_RULES`; red id: `REVIEWER_REOPENS_A_KIND_THAT_HIDES_LOGIC: agents/03-reviewer.md does not hold "re-opens the contract's kind"`; seen red first | tests/seed-lint.py | real-tree | green |
 | NO_SURFACE_OWES_EVERY_CONTRACT_A_TEST | (none) the `NO_SURFACE_OWES_EVERY_CONTRACT_A_TEST` rows of seed-lint's `TEXT_RULES`; red id: `NO_SURFACE_OWES_EVERY_CONTRACT_A_TEST: protocols/specify.md:1: 'every functional contract maps to at least one test'`; seen red first | tests/seed-lint.py | real-tree | green |
+| MUST_REACH_RULE_IS_IN_EACH_NAMED_ROLE_PROMPT | X524 installed prompts carry the rule; removing it from each of four roles fails naming role and rule; `--check` in a plant reports it; seen red first by that removal | tests/test-delivery-rules.sh | integration | green |
+| SPEC_LINT_READS_THE_CONTRACT_FORM | X560 case_contract_form_is_read: a missing Check line and an unknown kind fail, named; the spec without the form line or Check lines owes legacy rows; a legacy spec's labelled run owes its result while the unlabelled contract keeps its slug link; seen red first | tests/test-spec-lint.sh | fixture | green |
+| SPEC_LINT_HOLDS_EACH_KIND_TO_ITS_EVIDENCE | X561 case_each_kind_owes_its_evidence: run without result or command, review without spawn id, covered naming a missing or comment-only test, and the declared-values table's Check line; drafts pass with the plan form; seen red first | tests/test-spec-lint.sh | fixture | green |
+| SPEC_LINT_LINKS_A_TEST_CONTRACT_BY_ITS_COVERS_CELL | X562 case_test_contract_is_linked_by_covers: no covering row, an accepted or dropped row, a missing test, a Covers typo, bad Test, Origin and Status cells, an implemented pending row, and zero test files; seen red first | tests/test-spec-lint.sh | fixture | green |
+| SPEC_LINT_ACCEPTS_A_SPEC_WITH_NOTHING_TO_TEST | X563 case_nothing_to_test_needs_no_rows: run and review only, no §10 rows, no tester tick, passes; the trust-path line restores the tester's sign-off; seen red first | tests/test-spec-lint.sh | fixture | green |
+| SPEC_LINT_COUNTS_CONTRACTS_BY_KIND | X564 case_counts_by_kind: the kinds line beside a legacy spec, `--list` evidence, and no line over legacy specs alone; seen red first | tests/test-spec-lint.sh | fixture | green |
+| SPEC_LINT_SLICES_A_NEW_FORM_SPEC | X565 case_slice_reads_the_new_form: the block and the Covers-matched row under its header, one `--lines` row; seen red first | tests/test-spec-lint.sh | fixture | green |
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | M22 case_agents_compose: the implementer's six always-loaded bodies once each with no frontmatter; `11-pentest.md` byte for byte; a hand edit is STALE to `--check` | tests/test-install-placement.sh | integration | green |
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | (none) the `ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES` row of seed-lint's `TEXT_RULES`: the `graft.gate.projection-drift` row holds `install.sh claude-code --check`; red id: `ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES: protocols/graft.md graft.gate.projection-drift does not hold 'install.sh claude-code --check'` | tests/seed-lint.py | real-tree | green |
 | TRUST_MARKER_IS_SETTLED | X496 TrustMarkerTests: `--trust-unsettled` names the unset and the pathless crosscut only; the lint warns on the pathless one and exits 0 | tests/test_graph_lint.py | fixture | green |
@@ -3520,3 +3588,14 @@ kept outside the seed.
   REVIEWER_REOPENS_A_KIND_THAT_HIDES_LOGIC and
   NO_SURFACE_OWES_EVERY_CONTRACT_A_TEST, each a seed-lint text rule seen red
   first.
+- 2026-11-10 — version 0.22, spec-lint reads how each contract is checked.
+  The owner decided on 2026-11-10 that the architect sets how each contract is
+  checked, that the §10 Covers cell links a test to its contracts in a
+  new-form spec, and that a legacy spec accepts a Check label contract by
+  contract. Added SPEC_LINT_READS_THE_CONTRACT_FORM,
+  SPEC_LINT_HOLDS_EACH_KIND_TO_ITS_EVIDENCE,
+  SPEC_LINT_LINKS_A_TEST_CONTRACT_BY_ITS_COVERS_CELL,
+  SPEC_LINT_ACCEPTS_A_SPEC_WITH_NOTHING_TO_TEST,
+  SPEC_LINT_COUNTS_CONTRACTS_BY_KIND and SPEC_LINT_SLICES_A_NEW_FORM_SPEC
+  (X560 to X565, each seen red first). A spec with no Check line lints byte
+  for byte as before.

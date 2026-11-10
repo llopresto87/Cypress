@@ -43,6 +43,13 @@ fence rule grill-lint uses). A slug declared in several specs is sliced from
 each, with a stderr note naming every file. Exit 0 every slug found; 1 a slug
 is missing (the found ones still print) or a spec is misnamed; 2 usage error.
 
+FORM — a spec whose §0 reads `- **Contract form:** kinds` gives each contract
+a `- **Check:**` line of kind test, run, review or covered, and each kind owes
+its own evidence (see FORM_RE below). A test contract there is linked by a §10
+Covers cell, not by its slug in test code. A spec with no Check line lints
+exactly as described above; when any spec uses the form the run prints
+`contracts by kind: ...`, counts only.
+
 DISCOVERY — a spec is `specs/SPEC-*.md`. Every other Markdown file in the
 specs directory, apart from its index and readme, is a misnamed spec: a FAIL
 naming the file, because the pattern alone skipped it and reported a pass over
@@ -119,6 +126,29 @@ NUMBER_RE = re.compile(r"^§?(\d+(?:\.\d+)*)\.?(?:\s|$)")
 CITE_RE = re.compile(r"§\s?(\d+(?:\.\d+)*)")
 REF_TOPS = ("6", "7")          # the template's data-shape and failure-mode sections
 Head = tuple[int, int, str]    # (1-based line, level, text)
+# CONTRACT FORM. A spec whose §0 reads `- **Contract form:** kinds` gives every
+# contract a `- **Check:** <kind>` line, and each kind owes its own evidence:
+#   test     a §10 risk row whose Covers cell names the contract, citing a
+#            `path::name` the suite holds (the Covers cell is the link; the
+#            slug in the test's code is not required);
+#   run      a recorded command, and once the spec is live `→ <result>`;
+#   review   `confirmed by reviewer spawn <id>` once live, `pending` before;
+#   covered  `path::name` of an existing test that already asserts it.
+# A spec without the form line is legacy: an unlabelled contract is kind test
+# with the slug-in-test link, a labelled one owes its kind's evidence, and a
+# spec with no Check line at all lints exactly as before.
+FORM_RE = re.compile(r"^- \*\*Contract form:\*\*\s*kinds\s*$", re.M)
+TRUST_RE = re.compile(r"^- \*\*Trust path:\*\*\s*(?:yes|true)\b", re.M | re.I)
+CHECK_RE = re.compile(r"^- \*\*Check:\*\*[ \t]*(.*)$", re.M)
+DECLARED_RE = re.compile(r"^###\s+Declared values\s*$", re.M)
+BLOCK_END_RE = re.compile(r"^#{1,3}\s", re.M)
+KINDS = ("test", "run", "review", "covered")
+ORIGINS = ("design", "bug", "security control")
+ROW_STATUSES = ("red", "green", "pending", "skipped")
+TEST_REF_RE = re.compile(r"^([^\s`:|]+)::([A-Za-z_][\w.\-]*)$")
+SPAWN_RE = re.compile(r"confirmed by reviewer spawn\s+([A-Za-z0-9][\w.\-]*)")
+RESULT_RE = re.compile(r"(?:→|->)\s*(\S.*?)\s*$")
+_SUITE: list[set[Path]] = []   # the test files, globbed once on first use
 
 
 def test_files() -> list[Path]:
@@ -310,8 +340,196 @@ def mapping_rows(lines10: list[tuple[int, str]]) -> dict[str, str]:
     return rows
 
 
-def shape(spec: Path, text: str, status: str, fails: list[str], warns: list[str]) -> None:
+def block_after(text: str, at: int) -> str:
+    """The text from `at` to the next heading of level 1 to 3."""
+    m = BLOCK_END_RE.search(text, at)
+    return text[at:m.start() if m else len(text)]
+
+
+def contract_checks(text: str) -> dict[str, str | None]:
+    """Each contract's Check line value, or None when it has none."""
+    out: dict[str, str | None] = {}
+    for m in CONTRACT_RE.finditer(text):
+        c = CHECK_RE.search(block_after(text, m.end()))
+        out.setdefault(m.group(1), c.group(1).strip() if c else None)
+    return out
+
+
+def test_exists(path: str, name: str) -> bool:
+    """`name` is in the code (not a comment) of `path`, a file of the suite."""
+    if not _SUITE:
+        _SUITE.append(set(test_files()))
+    f = (ROOT / path).resolve()
+    if f not in _SUITE[0]:
+        return False
+    try:
+        body = f.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    spans = comment_spans(body, f.suffix)
+    return any(not any(s <= m.start() < e for s, e in spans) for m in re.finditer(
+        rf"(?<![A-Za-z0-9_]){re.escape(name)}(?![A-Za-z0-9_])", body))
+
+
+def check_evidence(value: str, live: bool) -> tuple[str, str | None, str]:
+    """(kind, what is missing or None, what the evidence reads) of a Check value."""
+    kind = (re.match(r"\w+", value) or [""])[0].lower()
+    rest = value[len(kind):].strip().lstrip("—–-:").strip()
+    if kind not in KINDS:
+        return kind, (f"has kind {kind or value!r}; a Check line reads one of "
+                      f"test|run|review|covered"), ""
+    if kind == "run":
+        cmd = re.search(r"`([^`]+)`", rest)
+        if not cmd:
+            return kind, ("has kind run but names no command; add the command "
+                          "in backticks on its Check line"), ""
+        res = RESULT_RE.search(rest[cmd.end():])
+        if live and not res:
+            return kind, ('has kind run but no recorded result; add "→ pass '
+                          '(<date>)" after the run on its Check line'), ""
+        return kind, None, (f"run: `{cmd.group(1)}` → {res.group(1)}" if res
+                            else f"run: `{cmd.group(1)}` (planned)")
+    if kind == "review":
+        spawn = SPAWN_RE.search(rest)
+        if spawn:
+            return kind, None, f"review: confirmed by reviewer spawn {spawn.group(1)}"
+        if live:
+            return kind, ('has kind review but no reviewer spawn id; add '
+                          '"confirmed by reviewer spawn <id>" once the reviewer '
+                          'confirms it'), ""
+        if not re.match(r"pending\b", rest, re.I):
+            return kind, ('has kind review and reads neither "pending" nor '
+                          '"confirmed by reviewer spawn <id>"'), ""
+        return kind, None, "review: pending"
+    if kind == "covered":
+        ref = TEST_REF_RE.match(rest.split()[0].strip("`")) if rest else None
+        if not ref:
+            return kind, ("has kind covered but names no test; add "
+                          "path::name of the test that asserts it"), ""
+        if not test_exists(ref.group(1), ref.group(2)):
+            return kind, (f"has kind covered but test {ref.group(0)} does not "
+                          f"exist"), ""
+        return kind, None, f"covered: {ref.group(0)}"
+    return kind, None, ""
+
+
+def risk_rows(lines10: list[tuple[int, str]]) -> list[dict]:
+    """The rows of every §10 table headed `| Risk ... | Covers | ...`."""
+    out: list[dict] = []
+    i = 0
+    while i < len(lines10):
+        ln = lines10[i][1]
+        nxt = lines10[i + 1][1] if i + 1 < len(lines10) else ""
+        head = [c.lower() for c in row_cells(ln)] if PIPE_RE.search(ln) else []
+        if not (head and head[0].startswith("risk") and "covers" in head
+                and "|" in nxt and DELIM_ROW_RE.match(nxt)):
+            i += 1
+            continue
+        col = {k: next((j for j, c in enumerate(head) if c.startswith(k)), None)
+               for k in ("test", "covers", "origin", "status")}
+        i += 2
+        while i < len(lines10) and PIPE_RE.search(lines10[i][1]):
+            cells = row_cells(lines10[i][1])
+            get = lambda k: (cells[col[k]] if col[k] is not None and col[k] < len(cells)
+                             else "").strip()
+            out.append({"line": lines10[i][0], "test": get("test").strip("`").strip(),
+                        "covers": get("covers"), "origin": get("origin"),
+                        "status": get("status")})
+            i += 1
+    return out
+
+
+def read_form(spec: Path, text: str, status: str, secs: dict[int, str],
+              fails: list[str]) -> dict:
+    """The kinds of a spec's contracts and their evidence. `uses` is False for
+    a legacy spec with no Check line, which then lints exactly as before."""
+    kinds_spec = bool(FORM_RE.search(secs.get(0, "")))
+    checks = contract_checks(text)
+    form = {"uses": kinds_spec or any(v is not None for v in checks.values()),
+            "kinds_spec": kinds_spec, "kind": {}, "display": {}, "refs": {},
+            "rows": set(), "declared": None}
+    if not form["uses"]:
+        return form
+    live = status in LIVE_STATUSES
+    for slug, value in checks.items():
+        if value is None:
+            if kinds_spec:
+                fails.append(f"{spec.name}: contract {slug} has no Check line in a "
+                             f"spec that declares Contract form: kinds; add "
+                             f'"- **Check:** test|run|review|covered"')
+            else:
+                form["kind"][slug] = "legacy-test"
+            continue
+        kind, missing, shown = check_evidence(value, live)
+        if missing:
+            fails.append(f"{spec.name}: contract {slug} {missing}")
+        if kind in KINDS:
+            form["kind"][slug] = kind
+            form["display"][slug] = shown
+    if m := DECLARED_RE.search(text):
+        c = CHECK_RE.search(block_after(text, m.end()))
+        if not c:
+            fails.append(f"{spec.name}: the declared-values table has no Check "
+                         f'line; add "- **Check:** run|review" under it')
+        else:
+            kind, missing, _ = check_evidence(c.group(1).strip(), live)
+            if kind in ("run", "review"):
+                form["declared"] = kind
+                if missing:
+                    fails.append(f"{spec.name}: the declared-values table {missing}")
+            else:
+                fails.append(f"{spec.name}: the declared-values table has kind "
+                             f"{kind or c.group(1).strip()}; the table is checked "
+                             f"as a whole by one run or review Check line, and a "
+                             f"value that holds logic is a contract of kind test")
+    known = set(checks) | set(FAILURE_RE.findall(text))
+    for row in risk_rows(section_lines(text, 10)):
+        where = f"{spec.name}:{row['line']}"
+        covers = [t.strip().strip("`").strip() for t in row["covers"].split(",")]
+        covers = [t for t in covers if t and not t.startswith("DV:")]
+        for t in covers:
+            if t not in known:
+                fails.append(f"{where}: §10 Covers cell names {t}, which is not a "
+                             f"contract or failure of this spec")
+        if re.match(r"accepted,?\s+untested\b", row["test"], re.I):
+            if not re.search(r"untested\s*[—–-]+\s*\S", row["test"]):
+                fails.append(f"{where}: §10 accepted, untested row gives no reason; "
+                             f'write "accepted, untested — <why>"')
+            continue                          # covers nothing
+        ref = TEST_REF_RE.match(row["test"])
+        if not ref:
+            fails.append(f"{where}: §10 Test cell {row['test']!r} is not file::name")
+        if row["origin"].lower() not in ORIGINS:
+            fails.append(f"{where}: §10 Origin {row['origin']!r} is not one of "
+                         f"{', '.join(ORIGINS)}")
+        st = (re.match(r"\w+", row["status"]) or [""])[0].lower()
+        if st not in ROW_STATUSES:
+            fails.append(f"{where}: §10 Status {row['status']!r} is not one of "
+                         f"{', '.join(ROW_STATUSES)}")
+        if not covers:
+            fails.append(f"{where}: §10 row covers nothing; name the contracts "
+                         f"it tests in its Covers cell")
+        if re.search(r"\bdropped:|\bmerged into\b", row["status"], re.I) or not ref:
+            continue                          # a dropped case covers nothing
+        if status == "implemented" and st in STILL_OPEN:
+            fails.append(f"{spec.name}: implemented, but the §10 row for "
+                         f"{row['test']} is `{st}`")
+        for t in covers:
+            form["rows"].add(t)
+            if live and test_exists(ref.group(1), ref.group(2)):
+                form["refs"].setdefault(t, []).append(ref.group(0))
+    return form
+
+
+def shape(spec: Path, text: str, status: str, fails: list[str], warns: list[str]) -> dict:
     secs = sections(text)
+    form_fails: list[str] = []
+    form = read_form(spec, text, status, secs, form_fails)
+    kind = form["kind"]
+    # Nothing to test: a new-form spec with no test or covered contract, off a
+    # trust path, owes no §10 rows and no tester sign-off.
+    nothing_to_test = (form["kinds_spec"] and not TRUST_RE.search(secs.get(0, ""))
+                       and not any(k in ("test", "covered") for k in kind.values()))
     slugs = CONTRACT_RE.findall(text)
     for dup in sorted({s for s in slugs if slugs.count(s) > 1}):
         fails.append(f"{spec.name}: contract {dup} is declared twice")
@@ -330,6 +548,9 @@ def shape(spec: Path, text: str, status: str, fails: list[str], warns: list[str]
                      f"{sorted(KNOWN_STATUSES)} exempts the spec from every check "
                      f"below, so it is refused rather than honoured")
     live = status in LIVE_STATUSES
+    if nothing_to_test and "tester" in missing:
+        missing.remove("tester")
+        is_signed = not missing
     # `back-written` means the spec was written AFTER the behaviour, so there
     # was no promotion for anyone to sign. Demanding signatures there is what
     # produced a fabricated sign-off line in this repository once already —
@@ -355,7 +576,17 @@ def shape(spec: Path, text: str, status: str, fails: list[str], warns: list[str]
                          f"header has {width}; its status is read from the wrong column")
     if (is_signed or live) and declared:
         rows = mapping_rows(lines10)
-        for slug in sorted(declared - set(rows)):
+        # A legacy row is owed by each unlabelled contract; a labelled test
+        # owes a legacy row or a Covers row; run, review and covered owe none.
+        owed = declared if not form["uses"] else {
+            s for s in declared if kind.get(s) == "legacy-test"}
+        for slug in sorted(declared):
+            if kind.get(slug) == "test" and slug not in form["rows"] and (
+                    form["kinds_spec"] or slug not in rows):
+                form_fails.append(
+                    f"{spec.name}: contract {slug} has kind test but no §10 row "
+                    f"covers it; add a row whose Covers cell names {slug}")
+        for slug in sorted(owed - set(rows)):
             fails.append(f"{spec.name}: contract {slug} has no §10 test-mapping row"
                          f" ({'signed' if is_signed else status} — the mapping is owed, status `pending` is a value)")
         if status == "implemented":
@@ -364,6 +595,8 @@ def shape(spec: Path, text: str, status: str, fails: list[str], warns: list[str]
                     fails.append(f"{spec.name}: implemented, but §10 row {slug} is `{st}`")
         if not FAILURE_RE.search(text):
             warns.append(f"{spec.name}: no `### Failure:` mode — a happy-path-only spec is half a spec")
+    fails.extend(form_fails)
+    return form
 
 
 def headings(lines: list[str]) -> list[Head]:
@@ -409,6 +642,7 @@ def slice_rows(lines: list[str], sec10: Head | None,
         return []
     groups: list[tuple[int, list[int]]] = []
     header = None
+    covers = None                       # the Covers column of a risk table
     for n in range(sec10[0] + 1, section_end(heads, sec10, len(lines)) + 1):
         ln = lines[n - 1].strip()
         if not ln.startswith("|"):
@@ -416,9 +650,16 @@ def slice_rows(lines: list[str], sec10: Head | None,
             continue
         if header is None:
             header = n                  # a table's first line is its header
+            head = [c.strip().lower() for c in ln.strip("|").split("|")]
+            covers = (head.index("covers") if head[0].startswith("risk")
+                      and "covers" in head else None)
             continue
         cells = [c.strip().strip("`").strip() for c in ln.strip("|").split("|")]
-        if cells[0] != slug:
+        if covers is not None:
+            named = cells[covers].split(",") if covers < len(cells) else []
+            if slug not in [t.strip().strip("`").strip() for t in named]:
+                continue
+        elif cells[0] != slug:
             continue
         if groups and groups[-1][0] == header:
             groups[-1][1].append(n)
@@ -594,17 +835,47 @@ def main() -> int:
     live_specs = 0
     spec_list, misnamed = spec_paths()
     fails.extend(misnamed_message(p) for p in misnamed)
+    kinds_live: dict[str, tuple[str, str, str, list[str]]] = {}  # slug -> (spec, kind, evidence, test refs)
+    by_covers: dict[str, list[str]] = {}    # labelled tests of a legacy spec a Covers row proves
+    by_kind = {k: 0 for k in (*KINDS, "legacy-test")}
+    any_form = False
+    draft_scan: list[str] = []              # draft slugs read by the slug-in-test link
     for spec in spec_list:
         text = spec.read_text(encoding="utf-8", errors="replace")
         status = status_of(text)
-        shape(spec, text, status, fails, warns)
+        form = shape(spec, text, status, fails, warns)
+        kind = form["kind"]
+        any_form = any_form or form["uses"]
+        for slug in CONTRACT_RE.findall(text):
+            k = kind.get(slug, "legacy-test")
+            if k in by_kind:
+                by_kind[k] += 1
+        if form["declared"]:
+            by_kind[form["declared"]] += 1
         if status == "draft":
             drafts[spec.name] = CONTRACT_RE.findall(text)
+            if not form["kinds_spec"]:
+                draft_scan += drafts[spec.name]
         if status not in LIVE_STATUSES:
             continue
         live_specs += 1
         for slug in CONTRACT_RE.findall(text):
-            contracts[slug] = spec.name
+            k = kind.get(slug, "legacy-test")
+            if k == "legacy-test" or (k == "test" and not form["kinds_spec"]):
+                contracts[slug] = spec.name
+                if form["refs"].get(slug):
+                    by_covers[slug] = form["refs"][slug]
+            elif k in KINDS:
+                kinds_live[slug] = (spec.name, k, form["display"].get(slug, ""),
+                                    form["refs"].get(slug, []))
+    if any_form:
+        # Counts, not a judgment: printed only when a spec uses the form.
+        print("contracts by kind: " + ", ".join(f"{k} {n}" for k, n in by_kind.items()))
+    # A test contract of a new-form spec is covered by its Covers row alone.
+    kinds_uncovered = sorted(s for s, (_, k, _, refs) in kinds_live.items()
+                             if k == "test" and not refs)
+    need_files = len(contracts) + sum(1 for v in kinds_live.values()
+                                      if v[1] in ("test", "covered"))
     # A draft is left out of coverage, and a headline that says so only by
     # omission read "PASS — no live contracts to cover" over a spec already in
     # implementation, which a report then quoted as zero findings. Every
@@ -623,10 +894,10 @@ def main() -> int:
             print(headline)
         return 0 if warn_mode else rc
 
-    draft_slugs = {slug for slugs in drafts.values() for slug in slugs}
-    files = test_files() if contracts or draft_slugs else []
-    if contracts and not files:
-        print(f"spec lint: FAIL — {len(contracts)} live contract(s) but the "
+    draft_slugs = set(draft_scan)
+    files = test_files() if contracts or draft_slugs or need_files else []
+    if need_files and not files:
+        print(f"spec lint: FAIL — {need_files} live contract(s) but the "
               f"test globs matched ZERO files. A coverage check over an "
               f"empty set is a green lie; fix TEST_GLOBS or write the tests.")
         finish("", 0)
@@ -651,7 +922,7 @@ def main() -> int:
         + "|".join(re.escape(s.lower()) for s in sorted(hits, key=len, reverse=True))
         + ")(?![a-z0-9_])")
     by_lower = {s.lower(): s for s in hits}
-    for f in files:
+    for f in (files if hits else []):       # no slug to look for: nothing to scan
         try:
             body = f.read_text(encoding="utf-8", errors="replace")
         except OSError as e:
@@ -678,16 +949,19 @@ def main() -> int:
     # A draft slug a live spec also declares is skipped: the test carrying it
     # proves the live contract, and says nothing about the draft's promotion.
     for name, slugs in drafts.items():
-        if tested := [s for s in slugs if hits[s] and s not in contracts]:
+        if tested := [s for s in slugs if hits.get(s) and s not in contracts]:
             warns.append(f"{name}: draft, but tests already carry {', '.join(tested)} — "
                          f"its RED landed and its promotion to active did not "
                          f"(test-first COMMIT), so its coverage is not checked")
 
-    if not contracts:
+    if not contracts and not kinds_live:
         return finish(f"spec lint: PASS — no live contracts to cover "
                       f"({live_specs} live spec(s)){unchecked}", 0)
 
     proved = {s for s in run_proved(set(contracts)) if not hits[s]}
+    for slug, refs in by_covers.items():    # a Covers row with an existing test
+        hits[slug] = hits[slug] or refs
+    spec_of = {**contracts, **{s: v[0] for s, v in kinds_live.items()}}
     # Three states, not two. Code carries the slug: covered. Only a comment
     # carries it: a WARN, never counted as covered, and not failed as
     # uncovered either, because a suite that names its contracts in a comment
@@ -702,7 +976,10 @@ def main() -> int:
                      f"the test's code (its name, a case label, a string)")
     uncovered = sorted(s for s in contracts
                        if not hits[s] and s not in proved and s not in comment_hits)
-    covered = len(contracts) - len(uncovered) - len(comment_only)
+    covered = (len(contracts) - len(uncovered) - len(comment_only)
+               + len(kinds_live) - len(kinds_uncovered))
+    uncovered = sorted(uncovered + kinds_uncovered)
+    total = len(contracts) + len(kinds_live)
     # `--comment-only-budget N` ratchets the comment-only count the way
     # `--uncovered-budget` ratchets the uncovered one: a WARN alone let the
     # count grow with nothing failing. Above N fails; below N fails until the
@@ -734,7 +1011,13 @@ def main() -> int:
         return 0 if warn_mode else 1
 
     if list_mode:
-        for slug in sorted(contracts):
+        for slug in sorted(spec_of):
+            if slug in kinds_live and slug not in contracts:
+                _, k, shown, refs = kinds_live[slug]
+                where = (shown if k != "test" else
+                         ", ".join(sorted(set(refs))[:3]) or "UNCOVERED")
+                print(f"  {slug}  ({spec_of[slug]})  ->  {where}")
+                continue
             where = (", ".join(sorted(set(hits[slug]))[:3])
                      or ("proved by a run (plan)" if slug in proved else "")
                      or (f"COMMENT ONLY, not coverage: {', '.join(sorted(comment_hits[slug])[:3])}"
@@ -762,11 +1045,11 @@ def main() -> int:
         over = budget is None or len(uncovered) > budget
         label = "WARN" if (warn_mode or not over) else "FAIL"
         print(f"spec lint: {label} — "
-              f"{len(uncovered)}/{len(contracts)} live contract(s) have no test"
+              f"{len(uncovered)}/{total} live contract(s) have no test"
               + (f" (recorded budget {budget})" if budget is not None else "")
               + unchecked + ":")
         for slug in uncovered:
-            print(f"  - {slug}  ({contracts[slug]})")
+            print(f"  - {slug}  ({spec_of[slug]})")
         if budget is not None and len(uncovered) < budget:
             print(f"spec lint: FAIL — {len(uncovered)} uncovered against a "
                   f"recorded budget of {budget}. The debt SHRANK and the record "
@@ -781,7 +1064,7 @@ def main() -> int:
 
     by_run = f"; proved by a run per the plan: {', '.join(sorted(proved))}" if proved else ""
     recorded = f"; recorded budget {comment_budget}" if comment_budget is not None else ""
-    by_comment = (f"; {len(comment_only)} more of {len(contracts)} carried only by a "
+    by_comment = (f"; {len(comment_only)} more of {total} carried only by a "
                   f"comment (WARN, not coverage{recorded})" if comment_only else "")
     if comment_verdict:
         finish("", 0)

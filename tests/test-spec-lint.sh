@@ -8,6 +8,7 @@
 # did not coverage-check; a draft whose slugs tests carry is a promotion WARN.
 # SLICE: --slice prints one contract's block, its §10 rows and, with --refs,
 # pointers. ROW CELLS: a §10 row's cell count must match its header.
+# CONTRACT FORM (X560 to X565): Check kinds, their evidence, the Covers link.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -494,5 +495,246 @@ run_rc 0 python3 "$CB/docs/graph/spec-lint.py" --uncovered-budget 1 --comment-on
 run_rc 1 python3 "$CB/docs/graph/spec-lint.py" --uncovered-budget 1 --comment-only-budget 0
 has 'carried only by a comment, above the recorded budget of 0'
 CASE=""
+
+# ---- CONTRACT FORM: KINDS ----------------------------------------------------
+# A spec whose §0 carries `- **Contract form:** kinds` gives every contract a
+# `Check:` line of kind test, run, review or covered, and each kind owes its own
+# evidence. A spec without the line lints as before. The fixture is a live
+# new-form spec holding one contract of each kind, a declared-values table and
+# an accepted, untested §10 row; each case below mutates one copy of it.
+KF="$TMP/kinds"
+KSPEC="$KF/docs/graph/specs/SPEC-0401-kinds.md"
+kinds_reset() {
+  rm -rf "$KF"; mkdir -p "$KF/docs/graph/specs" "$KF/tests"
+  cp "$ROOT/templates/knowledge-graph/spec-lint.py" "$KF/docs/graph/"
+  cp "$ROOT/tests/fixtures/spec-forms/SPEC-0401-kinds.md" "$KSPEC"
+  # The test that covers SUBMIT_VALID_FORM_RETURNS_2XX does not carry the slug:
+  # the §10 Covers cell is the link (owner decision of 2026-11-10).
+  printf 'def test_valid_form_accepted():\n    assert post("/submit").status == 201\n' > "$KF/tests/submit_test.py"
+  printf 'def test_legacy_redirect():\n    assert get("/old").status == 301\n' > "$KF/tests/routes_test.py"
+}
+klint() { python3 "$KF/docs/graph/spec-lint.py" "$@"; }
+# kedit OLD NEW: replace OLD (which must be in the spec) with NEW
+kedit() {
+  python3 - "$KSPEC" "$1" "$2" <<'PY' || fail "kedit: text not in the fixture: $2"
+import sys
+p, old, new = sys.argv[1:4]
+s = open(p, encoding="utf-8").read()
+if old not in s:
+    sys.exit(1)
+open(p, "w", encoding="utf-8").write(s.replace(old, new, 1))
+PY
+}
+RUN_LINE='- **Check:** run — `make build && grep -c Send dist/index.html` → pass (2026-11-12)'
+REVIEW_LINE='- **Check:** review — confirmed by reviewer spawn rev-0001 (2026-11-12)'
+COVERED_LINE='- **Check:** covered — tests/routes_test.py::test_legacy_redirect'
+TEST_ROW='| A valid form is refused and the customer cannot submit | tests/submit_test.py::test_valid_form_accepted | SUBMIT_VALID_FORM_RETURNS_2XX | design | green |'
+
+case_contract_form_is_read() {
+  CASE="X560 SPEC_LINT_READS_THE_CONTRACT_FORM"
+  # the whole fixture passes, its test contract covered by the Covers cell alone
+  kinds_reset
+  run_rc 0 klint
+  has '^spec lint: PASS — 4 live contract(s) covered'
+  # a contract with no Check line in a spec that declares the form fails
+  kinds_reset; kedit "$REVIEW_LINE" ''
+  run_rc 1 klint
+  has -F 'SPEC-0401-kinds.md: contract ERROR_COPY_READS_CLEARLY has no Check line in a spec that declares Contract form: kinds; add "- **Check:** test|run|review|covered"'
+  # an unknown kind fails, naming the four
+  kinds_reset; kedit "$REVIEW_LINE" '- **Check:** maybe — later'
+  run_rc 1 klint
+  has -F "contract ERROR_COPY_READS_CLEARLY has kind 'maybe'"
+  has -F 'test|run|review|covered'
+  # the same spec without the form line and without Check lines is legacy:
+  # every contract owes a §10 row of its own, as before
+  kinds_reset; kedit '- **Contract form:** kinds' ''
+  for l in "$RUN_LINE" "$REVIEW_LINE" "$COVERED_LINE" '- **Check:** test' \
+           '- **Check:** run — `make routes-check` → pass (2026-11-12)'; do kedit "$l" ''; done
+  run_rc 1 klint
+  has -F 'contract ERROR_COPY_READS_CLEARLY has no §10 test-mapping row'
+  hasnt 'contracts by kind'
+  # a legacy spec may label one contract: the labelled run owes a run's
+  # evidence, the unlabelled one keeps its slug-in-test link (owner decision
+  # of 2026-11-10)
+  kinds_reset; rm "$KSPEC"
+  SPECS="$KF/docs/graph/specs"
+  spec SPEC-0403-mixed active y "MIXED_LABEL_IS_RUN:green MIXED_PLAIN_THING:green"
+  printf 'def test_plain():\n    """MIXED_PLAIN_THING"""\n' > "$KF/tests/test_mixed.py"
+  KSPEC="$SPECS/SPEC-0403-mixed.md"
+  kedit $'### Contract: MIXED_LABEL_IS_RUN\n- **Given:** a\n- **When:** b\n- **Then:** c\n' \
+        $'### Contract: MIXED_LABEL_IS_RUN\n- **Given:** a\n- **When:** b\n- **Then:** c\n- **Check:** run — `make check`\n'
+  run_rc 1 klint
+  has -F 'SPEC-0403-mixed.md: contract MIXED_LABEL_IS_RUN has kind run but no recorded result'
+  kedit '`make check`' '`make check` → pass (2026-11-12)'
+  run_rc 0 klint
+  has -F 'contracts by kind: test 0, run 1, review 0, covered 0, legacy-test 1'
+  has '^spec lint: PASS — 2 live contract(s) covered'
+  # ...and the unlabelled one is still read as a test by its slug
+  printf 'def test_plain():\n    pass\n' > "$KF/tests/test_mixed.py"
+  run_rc 1 klint
+  has -- '- MIXED_PLAIN_THING '
+}
+
+case_each_kind_owes_its_evidence() {
+  CASE="X561 SPEC_LINT_HOLDS_EACH_KIND_TO_ITS_EVIDENCE"
+  # run: a live spec records the result
+  kinds_reset; kedit "$RUN_LINE" '- **Check:** run — `make build && grep -c Send dist/index.html`'
+  run_rc 1 klint
+  has -F 'SPEC-0401-kinds.md: contract SUBMIT_BUTTON_LABEL_IS_SEND has kind run but no recorded result; add "→ pass (<date>)" after the run on its Check line'
+  # ...a draft may carry the command alone (the plan); a run with no command fails
+  kedit 'status: active' 'status: draft'
+  run_rc 0 klint
+  kedit '- **Check:** run — `make build && grep -c Send dist/index.html`' '- **Check:** run — the build'
+  run_rc 1 klint
+  has -F 'contract SUBMIT_BUTTON_LABEL_IS_SEND has kind run but names no command'
+  # review: a live spec records the reviewer's spawn id; a draft may be pending
+  kinds_reset; kedit "$REVIEW_LINE" '- **Check:** review — pending'
+  run_rc 1 klint
+  has -F 'contract ERROR_COPY_READS_CLEARLY has kind review but no reviewer spawn id'
+  kedit 'status: active' 'status: draft'
+  run_rc 0 klint
+  # covered: the named test exists in the suite
+  kinds_reset; kedit "$COVERED_LINE" '- **Check:** covered — tests/routes_test.py::test_gone'
+  run_rc 1 klint
+  has -F 'contract LEGACY_ROUTE_STILL_REDIRECTS has kind covered but test tests/routes_test.py::test_gone does not exist'
+  kinds_reset; kedit "$COVERED_LINE" '- **Check:** covered — tests/missing_test.py::test_legacy_redirect'
+  run_rc 1 klint
+  has -F 'test tests/missing_test.py::test_legacy_redirect does not exist'
+  # a name only a comment carries is not a test
+  kinds_reset; printf '# test_legacy_redirect is still to write\n' > "$KF/tests/routes_test.py"
+  run_rc 1 klint
+  has -F 'test tests/routes_test.py::test_legacy_redirect does not exist'
+  # declared values: one run or review Check line checks the table
+  kinds_reset; kedit '- **Check:** run — `make routes-check` → pass (2026-11-12)' ''
+  run_rc 1 klint
+  has -F 'SPEC-0401-kinds.md: the declared-values table has no Check line'
+  kinds_reset; kedit '- **Check:** run — `make routes-check` → pass (2026-11-12)' '- **Check:** run — `make routes-check`'
+  run_rc 1 klint
+  has -F 'the declared-values table has kind run but no recorded result'
+  kinds_reset; kedit '- **Check:** run — `make routes-check` → pass (2026-11-12)' '- **Check:** test'
+  run_rc 1 klint
+  has -F 'the declared-values table has kind test'
+}
+
+case_test_contract_is_linked_by_covers() {
+  CASE="X562 SPEC_LINT_LINKS_A_TEST_CONTRACT_BY_ITS_COVERS_CELL"
+  # no §10 row covers a test contract: a shape defect, whatever the budget
+  kinds_reset; kedit "$TEST_ROW" ''
+  run_rc 1 klint --uncovered-budget 5
+  has -F 'SPEC-0401-kinds.md: contract SUBMIT_VALID_FORM_RETURNS_2XX has kind test but no §10 row covers it; add a row whose Covers cell names SUBMIT_VALID_FORM_RETURNS_2XX'
+  # an accepted, untested row covers nothing
+  kinds_reset; kedit 'FAIL_LOG_WORDING | | |' 'FAIL_LOG_WORDING, SUBMIT_VALID_FORM_RETURNS_2XX | | |'
+  kedit "$TEST_ROW" ''
+  run_rc 1 klint
+  has -F 'contract SUBMIT_VALID_FORM_RETURNS_2XX has kind test but no §10 row covers it'
+  # the row's test is not in the suite: uncovered, a budget item as before
+  kinds_reset; rm "$KF/tests/submit_test.py"
+  run_rc 1 klint
+  has -F '1/4 live contract(s) have no test'
+  has -- '- SUBMIT_VALID_FORM_RETURNS_2XX '
+  run_rc 0 klint --uncovered-budget 1
+  # ...a dropped row covers nothing and its test is not looked for
+  kinds_reset
+  printf '| A double submit files twice | tests/submit_test.py::test_gone | SUBMIT_VALID_FORM_RETURNS_2XX | design | skipped dropped: merged scenario |\n' >> "$KSPEC"
+  run_rc 0 klint
+  kedit "$TEST_ROW" ''
+  run_rc 1 klint
+  has -F 'contract SUBMIT_VALID_FORM_RETURNS_2XX has kind test but no §10 row covers it'
+  # Covers names only this spec's contracts and failures: a typo is drift
+  kinds_reset; kedit '| SUBMIT_VALID_FORM_RETURNS_2XX | design |' '| SUBMIT_VALID_FORM_RETURNS_2XY, SUBMIT_VALID_FORM_RETURNS_2XX | design |'
+  run_rc 1 klint
+  has -F 'Covers cell names SUBMIT_VALID_FORM_RETURNS_2XY, which is not a contract or failure of this spec'
+  # the row's cells: Test is path::name, Origin and Status from their sets
+  kinds_reset; kedit 'tests/submit_test.py::test_valid_form_accepted' 'test_valid_form_accepted'
+  run_rc 1 klint
+  has -F "Test cell 'test_valid_form_accepted' is not file::name"
+  kinds_reset; kedit '| design | green |' '| hunch | green |'
+  run_rc 1 klint
+  has -F "Origin 'hunch'"
+  kinds_reset; kedit '| design | green |' '| design | done |'
+  run_rc 1 klint
+  has -F "Status 'done'"
+  # an implemented spec has no row still red or pending
+  kinds_reset; kedit 'status: active' 'status: implemented'; kedit '| design | green |' '| design | pending |'
+  run_rc 1 klint
+  has -F 'implemented, but the §10 row for tests/submit_test.py::test_valid_form_accepted is `pending`'
+  # no vacuous pass: live contracts and no test file at all is a green lie
+  kinds_reset; rm "$KF"/tests/*
+  run_rc 1 klint
+  has -i 'green lie'
+}
+
+case_nothing_to_test_needs_no_rows() {
+  CASE="X563 SPEC_LINT_ACCEPTS_A_SPEC_WITH_NOTHING_TO_TEST"
+  # only run and review contracts: no §10 rows and no tester sign-off owed
+  kinds_reset
+  python3 - "$KSPEC" <<'PY'
+import re, sys
+p = sys.argv[1]; s = open(p, encoding="utf-8").read()
+s = re.sub(r"### Contract: SUBMIT_VALID_FORM_RETURNS_2XX.*?(?=### Contract: SUBMIT_BUTTON)", "", s, flags=re.S)
+s = re.sub(r"### Contract: LEGACY_ROUTE_STILL_REDIRECTS.*?(?=### Declared values)", "", s, flags=re.S)
+s = s.replace("- [ ] AC-1: a valid form is accepted — maps to SUBMIT_VALID_FORM_RETURNS_2XX\n", "")
+s = s.split("## 10.")[0] + "## 10. Test design for risks\n"
+s = s.replace("tester [x]", "tester [ ]")
+open(p, "w", encoding="utf-8").write(s)
+PY
+  rm "$KF"/tests/*
+  run_rc 0 klint
+  has '^spec lint: PASS — 2 live contract(s) covered'
+  has -F 'contracts by kind: test 0, run 2, review 1, covered 0, legacy-test 0'
+  # ...unless the spec is on a trust path, which keeps the tester's sign-off
+  kedit '- **Contract form:** kinds' $'- **Contract form:** kinds\n- **Trust path:** yes'
+  run_rc 1 klint
+  has -F 'unsigned by tester'
+}
+
+case_counts_by_kind() {
+  CASE="X564 SPEC_LINT_COUNTS_CONTRACTS_BY_KIND"
+  # the declared-values table counts by its Check line's kind; a legacy spec
+  # beside it counts as legacy-test
+  kinds_reset
+  SPECS="$KF/docs/graph/specs"
+  spec SPEC-0402-legacy active y "OLD_FORM_THING:green"
+  printf 'def test_old():\n    """OLD_FORM_THING"""\n' > "$KF/tests/test_old.py"
+  run_rc 0 klint
+  has -F 'contracts by kind: test 1, run 2, review 1, covered 1, legacy-test 1'
+  has '^spec lint: PASS — 5 live contract(s) covered'
+  # --list names each new-form contract's evidence
+  run_rc 0 klint --list
+  has -F 'SUBMIT_BUTTON_LABEL_IS_SEND  (SPEC-0401-kinds.md)  ->  run: `make build && grep -c Send dist/index.html` → pass (2026-11-12)'
+  has -F 'ERROR_COPY_READS_CLEARLY  (SPEC-0401-kinds.md)  ->  review: confirmed by reviewer spawn rev-0001'
+  has -F 'LEGACY_ROUTE_STILL_REDIRECTS  (SPEC-0401-kinds.md)  ->  covered: tests/routes_test.py::test_legacy_redirect'
+  has -F 'SUBMIT_VALID_FORM_RETURNS_2XX  (SPEC-0401-kinds.md)  ->  tests/submit_test.py::test_valid_form_accepted'
+  # a tree of legacy specs alone prints no kinds line
+  rm "$KSPEC"
+  run_rc 0 klint
+  hasnt 'contracts by kind'
+}
+
+case_slice_reads_the_new_form() {
+  CASE="X565 SPEC_LINT_SLICES_A_NEW_FORM_SPEC"
+  kinds_reset
+  run_rc 0 klint --slice SUBMIT_VALID_FORM_RETURNS_2XX
+  has -F -- '- **Check:** test'
+  has -F '| Risk (what breaks, for whom) | Test (file::name, lowest level) | Covers | Origin | Status |'
+  has -F "$TEST_ROW"
+  hasnt -F 'accepted, untested'
+  hasnt 'has no §10 test-mapping row'
+  run_rc 0 klint --slice FAIL_LOG_WORDING
+  has -F 'accepted, untested'
+  run_rc 0 klint --slice --lines SUBMIT_VALID_FORM_RETURNS_2XX
+  [[ "$(grep -c -F '§10 row' <<<"$out")" -eq 1 ]] || fail "--lines: want 1 '§10 row' range"
+  # a run contract has no §10 row and says so
+  run_rc 0 klint --slice SUBMIT_BUTTON_LABEL_IS_SEND
+  has -F 'Check:** run'
+}
+collect_case X560 case_contract_form_is_read "a spec declaring Contract form: kinds owes a Check line per contract; without it the spec is legacy"
+collect_case X561 case_each_kind_owes_its_evidence "run, review and covered each owe their evidence, and a declared-values table one Check line"
+collect_case X562 case_test_contract_is_linked_by_covers "a test contract is linked by a §10 Covers cell to a test that exists"
+collect_case X563 case_nothing_to_test_needs_no_rows "a new-form spec with nothing to test owes no §10 rows and no tester sign-off"
+collect_case X564 case_counts_by_kind "the summary counts contracts by kind, and only when a new-form spec is present"
+collect_case X565 case_slice_reads_the_new_form "--slice prints a new-form contract's block and the §10 rows whose Covers names it"
+CASE=""
+[ "$CASE_FAILED" -eq 0 ] || { printf 'spec lint contract: FAIL — the contract-form block has failing cases (above)\n'; exit 1; }
 
 printf 'spec lint contract: PASS\n'
