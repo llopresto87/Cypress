@@ -57,8 +57,8 @@ exceptions are explicit and recorded in grill.md §9.
 ## Entry conditions
 
 - A spec in `docs/graph/specs/` covers the behavior being added or
-  changed, signed in its §0 (`draft` with product ✓ architect ✓ tester ✓
-  is enough to encode; the T2 covered lane needs it `active`, kernel §0).
+  changed, signed in its §0 (`draft` with product ✓ architect ✓, and tester ✓ where
+  it owes a test, is enough to encode; the T2 covered lane needs it `active`, kernel §0).
 - A plan exists in `docs/graph/plans/grill.md` §9 with the increments
   named, in dependency order, `grill-lint.py` green.
 - The relevant libraries are wikified in `docs/graph/libraries/`.

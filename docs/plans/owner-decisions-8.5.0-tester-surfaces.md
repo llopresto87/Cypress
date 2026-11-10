@@ -38,7 +38,7 @@ The round that makes a test owed only where it can catch something (ADR-0034) le
 ## The lead's trim (Phase 1)
 
 - **Finding.** Delivering the rule to the lead in full needed bytes the lead's ratcheted prompt did not have, and the first delivery removed routing examples and condensed two paragraphs of `agents/00-orchestrator.md` to make room.
-- **Decided.** The owner decided on 2026-11-10 not to keep the trim: the routing hints and examples are restored, the lead carries a two-line pointer to the rule instead of the rule (the architect slices the plan and sets kinds at specify), and the remaining bytes came from the superseded "Code to write → test-first" example. The eager surface is 67,071 bytes against the base's 67,131.
+- **Decided.** The owner decided on 2026-11-10 not to keep the trim: the routing hints and examples are restored, the lead carries a two-line pointer to the rule instead of the rule (the architect slices the plan and sets kinds at specify), and the remaining bytes came from the superseded "Code to write → test-first" example. The eager surface is 67,069 bytes against the base's 67,131.
 
 ## D6. A plain re-install and a plant's edits to its host settings (found by F2)
 
