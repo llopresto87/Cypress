@@ -59,6 +59,11 @@ HANDBACK
   claim no executed check reached sits under statically inspected or
   deferred, so the caller reads a green gate as the commands it ran, not
   as "done".
+- **A run or review contract returns its own evidence.** An increment
+  whose contracts are proved by a declared run carries that command and its
+  result under `gates:` executed; one proved by review carries the
+  reviewer's confirmation, or what fails it, in the report body. The brief
+  names both under `Evidence this hand-back owes` (`grill.increment-shape`).
 - **`gates:` also reports what the spawn added to the suite.** A spawn
   that adds tests states the cases and the runtime it added, as a delta.
   It lets the caller weigh the suite's growth against the contracts it

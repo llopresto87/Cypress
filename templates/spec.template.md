@@ -31,6 +31,7 @@ index into them.
 - **Supersedes:** <SPEC-NNNN-*>
 - **Superseded by:** <SPEC-NNNN-*>
 - **Contract form:** kinds
+- **Trust path:** no   # `yes` when a contract is security, data-integrity or money; a trust-path spec always gets its tester sign-off
 - **Sign-offs:** product [ ] · architect [ ] · tester [ ] · security [ ]
 
 ## 1. Summary

@@ -297,6 +297,27 @@ rc=0; msg="$(e6 e6e implementer 3)" || rc=$?
 rc=0; msg="$(e6 e6f tester 99)" || rc=$?
 [[ $rc -eq 0 ]] && grep -q '^brief: batch notice skipped — ' <<<"$msg" || { bad "X516 BRIEF_NOTICES_AN_UNDERSIZED_BATCH" "unknown increment blocked: rc $rc: $msg"; x516=1; }
 [[ $x516 == 0 ]] && ok "X516 BRIEF_NOTICES_AN_UNDERSIZED_BATCH: an undersized batch with more ready notices once and logs it; exact, security, concurrency and nothing-else-ready do not"
+# X545 BRIEF_NAMES_THE_EVIDENCE_A_RUN_OR_REVIEW_OWES: an increment whose §9 row
+# carries Run: or Review: puts the evidence it owes under the handback block
+x545=0; d="$T/docs/graph/plans/e7"; mkdir -p "$d"
+"$PY" - "$FC/grill.md" "$d/grill.md" <<'PY'
+import sys
+t = open(sys.argv[1]).read()
+t = t.replace("- Phase: GREEN", "- Run: `make build && grep -c Send dist/index.html`\n- Phase: GREEN", 1)
+t = t.replace("- Phase: prose", "- Review (names what the reviewer confirms): the guide's wording\n- Phase: prose", 1)
+open(sys.argv[2], "w").write(t)
+PY
+ev() { (cd "$T" && "$PY" docs/graph/brief.py --role "$1" --spawn-id "e7.$1.$2" --task t --route r --effort "low (x)" \
+     --part part.txt --plan "$d/grill.md" --unit u --increments "$2" 2>/dev/null); }
+got="$(ev implementer 3)"
+[[ "$(sed -n '/^## Handback/,$p' <<<"$got" | grep -c '^## Evidence this hand-back owes')" == 1 ]] \
+  && grep -qF -- '- increment 3 runs `make build && grep -c Send dist/index.html`: put that command and its result under `gates:` executed' <<<"$got" \
+  || { bad "X545 BRIEF_NAMES_THE_EVIDENCE_A_RUN_OR_REVIEW_OWES" "run: $(tail -4 <<<"$got")"; x545=1; }
+got="$(ev reviewer 7)"
+grep -qF -- "- increment 7 is reviewed for the guide's wording: confirm it, or name what fails it, in the report body" <<<"$got" \
+  || { bad "X545 BRIEF_NAMES_THE_EVIDENCE_A_RUN_OR_REVIEW_OWES" "review: $(tail -4 <<<"$got")"; x545=1; }
+! grep -q 'Evidence this hand-back owes' <<<"$(ev tester 1)" || { bad "X545 BRIEF_NAMES_THE_EVIDENCE_A_RUN_OR_REVIEW_OWES" "a RED increment got the section"; x545=1; }
+[[ $x545 == 0 ]] && ok "X545 BRIEF_NAMES_THE_EVIDENCE_A_RUN_OR_REVIEW_OWES: a Run: or Review: increment's brief names the evidence its hand-back owes; a RED increment's does not"
 # X517 BRIEF_DERIVES_THE_MODEL_CLASS: the class table beside the effort table
 # reproduces each role's `model:`, so every role and kind composes the brief it
 # composed before the table existed (hashes captured from the prior tip); a row

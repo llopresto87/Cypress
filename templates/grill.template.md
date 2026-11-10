@@ -130,7 +130,9 @@ Why and how: `grill.increment-shape` in protocols/grill.md.
 ### Increment 1 — <title>
 - Spec contracts: <SPEC-NNNN/contract-slug, ...>
 - Files touched:
-- Tests to write (RED): <the §10 tests this increment turns red, by name, as the spec's test design states them — or `none — <why>; proved by <run>` when nothing here can be wrong while present>
+- Tests to write (RED): <the §10 rows this increment turns red, for its `test`-kind contracts, as the spec's test design states them — or `none — <why>` when it has none>
+- Run: <the command that proves a `run`-kind contract; present only when the increment has one>
+- Review: <what the reviewer confirms for a `review`-kind contract; present only when the increment has one>
 - Behavior added:
 - Gate:
 - Rollback path:

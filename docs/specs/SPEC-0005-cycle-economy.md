@@ -629,6 +629,15 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   readiness comes from `cycle.py` and the packing from `grill-lint.py`'s
   `pack`, and a brief without `--increments` is unchanged
 
+### Contract: BRIEF_NAMES_THE_EVIDENCE_A_RUN_OR_REVIEW_OWES
+- **Test file:** `tests/test-brief.sh`
+- **Given:** a plant plan whose increment 3 carries `Run:` and increment 7
+  `Review:`
+- **When:** `brief.py` composes a brief with `--increments 3` or `7 --unit u`
+- **Then:** after the handback block, an `Evidence this hand-back owes` section
+  names the run command and asks for it with its result under `gates:`, or names
+  what the review confirms; an increment with neither gets no section
+
 ### Contract: RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME
 - **Test file:** `tests/test-resume-hook.sh`
 - **Given:** Claude Code workers that handed back and have been idle 4, 30
@@ -1165,6 +1174,48 @@ report reads §9 alone and never changes an exit status.
   `§9 increment <n>: no Effort: label`
 - **And:** on a dependency defect it prints `batches: not computed`, and the exit
   status equals the plain lint's
+
+### Contract: GRILL_TEST_KIND_CITES_A_RISK_ROW
+- **Test file:** `tests/test-grill-lint.sh`
+- **Given:** the valid plan plus an increment naming a `Check: test` contract of
+  a spec whose §0 reads `Contract form: kinds`
+- **When:** `grill-lint.py` runs
+- **Then:** it passes when `Tests to write (RED):` cites a §10 row covering the
+  contract, by its risk text (a quoted prefix is enough) or its test name
+- **And:** otherwise it exits 1 with a line naming the plan file, the increment,
+  the contract, the missing citation and the rows that would satisfy it
+
+### Contract: GRILL_NO_TEST_KIND_SCHEDULES_NO_RED
+- **Test file:** `tests/test-grill-lint.sh`
+- **Given:** an increment whose contracts are all of kind run, review or covered
+- **When:** `grill-lint.py` runs
+- **Then:** a `Tests to write (RED):` value other than `none — <why>` fails, and
+  so does `Phase: RED`, each line naming the file, the increment and the fix
+
+### Contract: GRILL_RUN_AND_REVIEW_NEED_THEIR_FIELDS
+- **Test file:** `tests/test-grill-lint.sh`
+- **Given:** an increment naming a `Check: run` and a `Check: review` contract
+- **When:** `grill-lint.py` runs
+- **Then:** with no `Run:` field it fails naming the run contract and `- Run:
+  <the command that proves it>`; with no `Review:` field it fails naming the
+  review contract and `- Review: <what the reviewer confirms>`
+- **And:** a label carrying a parenthesis (`Run (proves ...):`) is the same field
+
+### Contract: GRILL_LEGACY_PLAN_LINTS_UNCHANGED
+- **Test file:** `tests/test-grill-lint.sh`
+- **Given:** a spec with no `Contract form:` line and no `Check:` line
+- **When:** `grill-lint.py` lints a plan over it
+- **Then:** its contracts read as kind test and add no check: `none — <why>;
+  proved by <run>` passes, and the output and exit equal the lint's before
+  kinds existed
+
+### Contract: GRILL_READS_A_CHECK_LABEL_IN_A_LEGACY_SPEC
+- **Test file:** `tests/test-grill-lint.sh`
+- **Given:** a spec with no `Contract form:` line, one contract labelled `Check:
+  run` and one unlabelled, and an increment naming both
+- **When:** `grill-lint.py` runs
+- **Then:** the labelled contract needs a `Run:` field and the unlabelled one,
+  read as kind test, needs a cited §10 row; with both the plan passes
 
 ### Cycle driver (added for 8.3.1)
 
@@ -2942,6 +2993,7 @@ gives.
 | TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT | X506 a hand transcript with a repeated message id, a 1h write and a `<synthetic>` record sums once per message; an empty transcript records `not recorded`; seen red first | tests/test-brief.sh | fixture | green |
 | BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS | X515 a hand spawn log and ledger print `tests/fixtures/brief-log/log.out`; the three lines pass `session-metrics.py` in a delivery entry; no ledger, a broken ledger line and an empty log give their lines; seen red first | tests/test-brief.sh | fixture | green |
 | BRIEF_NOTICES_AN_UNDERSIZED_BATCH | X516 an undersized RED with two more ready notices once and logs it; the exact batch, a security and a concurrency GREEN of one, and a GREEN with nothing else ready do not; an unknown increment is skipped, not refused; seen red first | tests/test-brief.sh | integration (installed plant) | green |
+| BRIEF_NAMES_THE_EVIDENCE_A_RUN_OR_REVIEW_OWES | X545 a Run: increment's brief asks for the command and its result under `gates:`, a Review: increment's for the confirmation; a RED increment's carries no section; seen red first | tests/test-brief.sh | integration (installed plant) | green |
 | RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME | X507 workers idle 4, 30 and 90 minutes against `5m`, `1h`, an invalid value and unset through the variable, the project setting and the agent frontmatter, plus each precedence step; a configured `1h` with a 5m-only last write, a one-hour last write and no write; seen red first | tests/test-resume-hook.sh | fixture | green |
 | CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE | X508 a fresh plan prints the ready RED and prose batches in order; an unrelated commit lands nothing, commits naming every contract slug land their increments, and with no git every increment is `landed: unknown`, exit 0; seen red first | tests/test-cycle.sh | integration (installed plant) | green |
 | CYCLE_DRIVER_NAMES_THE_HOLD_CONDITION | X509 a hand fixture holds one increment under each of the three conditions and two by dependency; the report matches `tests/fixtures/cycle/held.out` byte for byte; seen red first | tests/test-cycle.sh | integration (installed plant) | green |
@@ -3024,6 +3076,11 @@ gives.
 | GRILL_BATCHES_FOLLOW_THE_EFFORT_TABLE | X489, a row of X486: two GREENs naming one file, one of them `hard`, print as consecutive batches, the second marked `after the batch above` | tests/test-grill-lint.sh | fixture (scope) | green |
 | GRILL_BATCHES_FOLLOW_THE_EFFORT_TABLE | X490, a row of X486: increment 1 with no `Effort:` warns and prints alone | tests/test-grill-lint.sh | fixture (scope) | green |
 | GRILL_BATCHES_FOLLOW_THE_EFFORT_TABLE | X491, a row of X486: a forward dependency prints `batches: not computed`, exit equal to the plain lint (1) | tests/test-grill-lint.sh | fixture (scope); guard | green |
+| GRILL_TEST_KIND_CITES_A_RISK_ROW | X540 case_x540_test_kind_cites_a_risk_row: a test-kind contract passes cited by quoted risk prefix or test name; an uncited one fails naming file, increment, contract and the covering rows; seen red first | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_NO_TEST_KIND_SCHEDULES_NO_RED | X541 case_x541_no_test_kind_schedules_no_red: run, review and covered contracts alone with tests named, or with `Phase: RED`, fail; seen red first | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_RUN_AND_REVIEW_NEED_THEIR_FIELDS | X542 case_x542_run_and_review_need_their_fields: a missing `Run:` or `Review:` fails naming the contract; a parenthesised label passes; seen red first | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_LEGACY_PLAN_LINTS_UNCHANGED | X543 case_x543_legacy_plan_lints_unchanged (guard): a spec with no form line and no Check line keeps `none — <why>; proved by <run>` passing | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_READS_A_CHECK_LABEL_IN_A_LEGACY_SPEC | X544 case_x544_legacy_spec_check_label_is_read: a legacy spec's `Check: run` contract needs `Run:` and its unlabelled contract a cited §10 row; seen red first | tests/test-grill-lint.sh | fixture (scope) | green |
 | ADOPTED_RULE_HOMES | (none) the `delegation.waves` entry in `ADOPTED_RULE_HOMES` (increment 2); red id: the finding line `delegation.waves: not owned by core/method/delegation-sequencing.md, its one home under SPEC-0005 (owned by no node)`; the check itself is held by X347 and X348. While the entry is carried, `tests/test-seed-lint.sh` stops at its clean-copy baseline, so each tip lists that baseline line as expected-red and the rest of the script as `not run` (R0.4) | tests/seed-lint.py | real-tree, `check_adopted_rule_homes` | green |
 | UNDECLARED_DEPENDENCY | (none) the orchestrator's check at RED observation that the test fails for the right reason, and the reviewer | — | review | pending |
 | FALSE_OVERLAP | X368, a row of X366: a bare name warns whatever directory it really sits in, and the exit status does not change | tests/test-grill-lint.sh | fixture (scope) | green |
@@ -3599,3 +3656,9 @@ kept outside the seed.
   SPEC_LINT_COUNTS_CONTRACTS_BY_KIND and SPEC_LINT_SLICES_A_NEW_FORM_SPEC
   (X560 to X565, each seen red first). A spec with no Check line lints byte
   for byte as before.
+- 2026-11-10 — the owner decided on 2026-11-10 that the architect sets how each
+  contract is checked. Added GRILL_TEST_KIND_CITES_A_RISK_ROW,
+  GRILL_NO_TEST_KIND_SCHEDULES_NO_RED, GRILL_RUN_AND_REVIEW_NEED_THEIR_FIELDS,
+  GRILL_LEGACY_PLAN_LINTS_UNCHANGED, GRILL_READS_A_CHECK_LABEL_IN_A_LEGACY_SPEC
+  and BRIEF_NAMES_THE_EVIDENCE_A_RUN_OR_REVIEW_OWES (seen red first, the legacy
+  one a guard).

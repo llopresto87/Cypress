@@ -289,11 +289,11 @@ Before `implementer` writes code: (1) a signed spec covers the change
 (`draft` with its §0 sign-offs is enough for the T3 funnel, and it
 turns `active` with its first RED; the T2 covered lane requires
 `active`), else enter `specify`; (2) grill.md §9 references the
-contracts being implemented, else update it; (3) each contract of this
-increment that holds logic has its failing test, else enter `test-first` RED.
+contracts being implemented, else update it; (3) each `test` contract has its
+failing test, each `run` or `review` one its declared evidence, else enter RED.
 
 A test is owed only where it can catch something; the architect sets each
-contract's kind at specify and slices the plan from it
+contract's kind and slices the plan from it
 (`test-first.proportionate-checks`).
 
 The T2 contained lane is exempt from (1) and (2) only: no spec owns the

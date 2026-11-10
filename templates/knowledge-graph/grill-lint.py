@@ -135,6 +135,13 @@ PRESSED_GRADE_RE = re.compile(r"\b(one-way|expensive)\b", re.I)
 VERDICT_RE = re.compile(r"could-not-refute|\brefuted\b|waived by owner", re.I)
 ADR_ID_RE = re.compile(r"\bADR-\d{4}\b")
 REQUIRED_FIELDS = ("Spec contracts", "Tests to write (RED)", "Rollback path", "Depends on")
+# Contract kinds: a spec whose §0 carries `- **Contract form:** kinds` gives
+# each contract a `- **Check:** <kind>` line; a spec without it is legacy.
+CONTRACT_FORM_RE = re.compile(r"^\s*-\s*\*\*Contract form:\*\*\s*kinds\b", re.M | re.I)
+CHECK_RE = re.compile(r"^\s*-\s*\*\*Check:\*\*\s*(test|run|review|covered)\b", re.M | re.I)
+HEADING_RE = re.compile(r"^#{2,3}\s", re.M)
+SLUG_RE = re.compile(r"\b[A-Z][A-Z0-9_]{2,}\b")
+QUOTED_RE = re.compile(r"[\"“]([^\"”]+)[\"”]")
 PHASES = ("RED", "GREEN", "prose")
 # Path tokens of a `Files touched:` value. One brace group, not nested, per
 # whitespace-free chunk; a trailing `:12` or `:12-40` line reference; the
@@ -475,6 +482,110 @@ def spec_status(text: str) -> str:
             return m.group(1).lower()
     m = STATUS_RE.search(text)
     return m.group(1).lower() if m and m.group(1).lower() != "see" else "unknown"
+
+
+def spec_kinds(text: str) -> tuple[dict[str, str] | None, list[tuple[str, str, set[str]]]]:
+    """(kind per contract, §10 rows) of a spec. Each contract's kind is its own
+    `Check:` line; a contract with none reads as `test`, the kind for doubt
+    (in a spec whose §0 declares `Contract form: kinds`, spec-lint names the
+    missing line). The kinds are None for a spec with neither that §0 line nor
+    any `Check:` line: its contracts read as kind `test` and add no check, so
+    it lints exactly as before kinds existed. A §10 row is (risk, test cell,
+    contracts covered): the Covers column when the header has one, else the
+    first cell (the legacy `Contract / Failure` column)."""
+    masked = mask_fences(text)
+    secs = sections(masked)
+    kinds: dict[str, str] = {}
+    labelled = bool(CONTRACT_FORM_RE.search(secs.get(0, "")))
+    for m in CONTRACT_DECL_RE.finditer(masked):
+        nxt = HEADING_RE.search(masked, m.end())
+        check = CHECK_RE.search(masked[m.end():nxt.start() if nxt else len(masked)])
+        kinds[m.group(1)] = check.group(1).lower() if check else "test"
+        labelled = labelled or check is not None
+    if not labelled:
+        return None, []
+    rows: list[tuple[str, str, set[str]]] = []
+    header = None
+    for ln in secs.get(10, "").splitlines():
+        s = ln.strip()
+        if not s.startswith("|"):
+            header = None
+            continue
+        if TABLE_SEP_RE.match(s):
+            continue
+        cells = [c.strip().strip("`") for c in s.strip("|").split("|")]
+        if header is None:
+            header = cells
+            continue
+        cov = next((i for i, c in enumerate(header) if c.lower().startswith("covers")), 0)
+        test = next((i for i, c in enumerate(header) if c.lower().startswith("test")), 1)
+        if max(cov, test) < len(cells):
+            rows.append((cells[0] if cov else "", cells[test], set(SLUG_RE.findall(cells[cov]))))
+    return kinds, rows
+
+
+def cites_row(value: str, risk: str, test: str) -> bool:
+    """Does a `Tests to write (RED):` value cite this §10 row: its test name
+    (the part after `::`, or the whole cell), or its risk text, whole or as a
+    quoted prefix (`"A malformed form payload..."`)?"""
+    name = test.rsplit("::", 1)[-1].strip()
+    if len(name) >= 3 and name in value:
+        return True
+    if risk and risk in value:
+        return True
+    return any(len(q) >= 8 and risk.startswith(q)
+               for q in (q.strip().rstrip(".…").strip() for q in QUOTED_RE.findall(value)))
+
+
+def kind_checks(incs: list[tuple[int, str, str]], specs: dict[str, tuple[Path, str]],
+                shown: str) -> list[str]:
+    """The checks contract kinds add to §9 (`grill.increment-shape`): a
+    test-kind contract's increment cites a §10 row covering it; an increment
+    with no test-kind contract schedules no RED; a run contract needs a `Run:`
+    field and a review contract a `Review:` field. Only contracts of a spec in
+    the kinds form are read; a legacy contract counts as kind test and adds no
+    check, so a plan in today's form lints exactly as before."""
+    out: list[str] = []
+    cache: dict[str, tuple] = {}
+    for n, _title, block in incs:
+        f = fields(block)
+        labels = {k.split("(")[0].strip(): v for k, v in f.items()}
+        tests = f.get("Tests to write (RED)", "").strip()
+        refs = CONTRACT_REF_RE.findall(f.get("Spec contracts", ""))
+        kinds_here: list[tuple[str, str, str]] = []
+        for spec, slug in refs:
+            if spec not in specs:
+                continue
+            if spec not in cache:
+                cache[spec] = spec_kinds(specs[spec][0].read_text(encoding="utf-8", errors="replace"))
+            kinds, _rows = cache[spec]
+            kinds_here.append((spec, slug, "test" if kinds is None else kinds.get(slug, "test")))
+        if not any(cache[s][0] is not None for s, _c, _k in kinds_here):
+            continue
+        where = f"{shown} §9 increment {n}"
+        for spec, slug, kind in kinds_here:
+            if cache[spec][0] is None:
+                continue
+            if kind == "test":
+                covering = [(r, t) for r, t, cov in cache[spec][1] if slug in cov]
+                if not any(cites_row(tests, r, t) for r, t in covering):
+                    fix = (f"rows covering it: {', '.join(t for _r, t in covering)}" if covering else
+                           f"{spec} §10 has no row covering it yet; the spec owes one first (specify)")
+                    out.append(f"{where}: contract {spec}/{slug} has kind test but `Tests to write (RED):` "
+                               f"cites no {spec} §10 row covering it; cite the row's risk text in quotes "
+                               f"or its test name ({fix})")
+            elif kind in ("run", "review") and not labels.get(kind.capitalize(), "").strip():
+                what = "the command that proves it" if kind == "run" else "what the reviewer confirms"
+                out.append(f"{where}: contract {spec}/{slug} has kind {kind} but the increment has no "
+                           f"`{kind.capitalize()}:` field; add `- {kind.capitalize()}: <{what}>`")
+        if not any(k == "test" for _s, _c, k in kinds_here):
+            if tests and not tests.lower().startswith("none"):
+                out.append(f"{where}: no contract here has kind test, yet `Tests to write (RED):` "
+                           f"schedules a RED spawn; write `none — <why>` (its run, review and covered "
+                           f"contracts are proved without one)")
+            if f.get("Phase", "").strip().split()[:1] == ["RED"]:
+                out.append(f"{where}: no contract here has kind test, yet `Phase: RED`; its phase is GREEN")
+    return out
 
 
 def decision_files(decisions: Path = DECISIONS) -> dict[str, Path]:
@@ -866,6 +977,7 @@ def main() -> int:
             continue
         for slug in sorted(declared - set(slugs)):
             fails.append(f"{path.name}: contract {slug} appears in no §9 increment — the plan does not implement the spec")
+    fails.extend(kind_checks(incs, specs, plan.name))
 
     # --- §13 carries no unverified claim; §14 is one action -----------------
     if 13 in secs and "[verify]" in secs[13]:

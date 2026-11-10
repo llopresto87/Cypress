@@ -122,7 +122,7 @@ What the table cannot hold:
   triggerable. A failed contract goes to a fresh `architect` (phase 2 for it,
   with the review), an attempt under `protocol.recover`'s three-attempt
   boundary. A spec with no `test` or `covered` contract and no trust path
-  (`test-first.security-path`) gets no test-design spawn and no tester
+  (§0 `Trust path: no`; `test-first.security-path`) gets no test-design spawn and no tester
   sign-off: phase 4 is skipped.
 - **Sensitive surface** (auth, secrets, payments, file uploads,
   external integrations, LLM/VLM behavior that acts on data) adds a
