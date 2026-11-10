@@ -226,6 +226,13 @@ the installer renames it to `<path>.bak-<timestamp>` and writes the new
 body. A file that already matches is left alone, with no backup and no rewrite,
 so re-installing over an unchanged project creates nothing.
 
+This holds for seed-owned agent charters and host settings too
+(`.claude/settings.json`, `opencode.json`): a plain re-install replaces a copy
+you edited and keeps your version only in the backup, so carry your keys over
+from it by hand. A graft keeps the edited file instead and names the lines it
+lacks. Whether a re-install should keep a plant's edits to its host settings
+is an open owner decision of 8.5.0.
+
 `--force` suppresses the per-file warning, never the backup
 ([backup before replace](DOCUMENTATION.md#enf-backup-before-replace)). The
 backup is graft Phase 7's safety net and the input `tools/graft-audit.py`
@@ -422,8 +429,10 @@ Run the host as `opencode2`: the adapter targets OpenCode 2 only. OpenCode 2
 discovers `.opencode/agents/<name>.md` by convention and drops a file whose
 frontmatter it cannot read without a word, so run `install.sh opencode
 --check`: it names a file still in the earlier numbered shape, an
-`opencode.json` with the earlier top-level `subagent_depth`, and a missing
-plugin or hook core, and a re-install fixes each. `opencode2 debug agents`
+`opencode.json` with the earlier top-level `subagent_depth` (with the remedy
+for a graft, which keeps your file, beside the re-install), a missing plugin or
+hook core, and an agent whose loaded prompt lacks a rule that must reach its
+role; a re-install fixes each. `opencode2 debug agents`
 lists the agents the host registered. Then confirm the session started
 *after* the files were placed
 (`docs/graph/method/delegation-bounds.md`, `delegation.harness-registration`).

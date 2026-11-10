@@ -464,15 +464,18 @@ green under `grill-lint.py`.
 
 ### Increment shape (`grill.increment-shape`)
 
-A good increment names: spec contracts, files touched, RED tests,
-behavior added, the gate, the rollback path, `Effort:` (one label) and
+A good increment names: spec contracts, files touched, the §10 rows its
+`test` contracts turn red (or `none — <why>`), a `Run:` or `Review:` where its
+contracts' kinds call for one, behavior added, the gate, the rollback path, `Effort:` (one label) and
 `Phase:` (`RED`, `GREEN` or `prose`), both from `delegation.effort-scale`,
 and `Depends on:`
 — both the earlier increments it builds on and the
 `docs/graph/libraries/` pages it relies on (`none` is a value; blank is
 not). Rows are listed in dependency order. An increment is ready when
-the tester can write the failing test from the row as written, or the
-row reads `none` and names the run that proves it; otherwise re-slice.
+it names its spec contracts, its cited §10 tests (or its `none`), the
+`Run:` or `Review:` its kinds call for, its rollback and its
+dependencies, and the tester can write the failing test from §10 as
+designed; otherwise re-slice.
 
 A new pipeline or deploy path starts as a walking skeleton: its first
 increment lands the pipeline with every job stubbed and runs it once on the
@@ -480,15 +483,19 @@ real CI target, and domain increments fill it. The spec may then grow one
 signed slice ahead of each RED (`specify.flow`); until a group's slice is
 signed, its rows read `slice pending: <behavior>` and are not ready.
 
-Each increment answers "does it need a test?" here, while slicing, not
-at RED. A declarative edit (a selector, a pipeline stage, a flag, a
-config key) usually does not: its field reads
-`Tests to write (RED): none — <why>; proved by <run>`, the increment
-gets no RED spawn, and `spec-lint.py` counts the contracts it names as
-covered by that run. A declaration that holds logic (a pattern, a
-condition, an order that changes the output) does need one. When the
-planner cannot tell, the row keeps its test and the tester decides at
-RED, handing back unwritten if the answer is no.
+Each increment carries its contracts' kinds from the spec. The
+architect settled at specify how each contract is checked (`test`,
+`run`, `review` or `covered`), and the planner copies that into the
+increment's fields: `Tests to write (RED):` cites the §10 rows that
+cover its `test` contracts, by the row's risk text in quotes or its test
+name; `Run:` names the command that proves its `run` contracts; and
+`Review:` names what the reviewer confirms for its `review` contracts.
+An increment with no `test` contract schedules no RED spawn: its field
+reads `none — <why>` and its phase is GREEN. A contract with no `Check:`
+line reads as `test`. A plan over specs that carry no `Check:` line
+keeps today's form, `none — <why>; proved by <run>` included, and
+`spec-lint.py` counts the contracts that row names as covered by the
+run. `grill-lint.py` holds the fields to the kinds.
 
 ### Press the plan (`grill.press`)
 
@@ -548,11 +555,13 @@ code. The deliverable is a sequence of RED → GREEN → REFACTOR → COMMIT
 cycles, each tied to one or more spec contracts, with the verification
 gates passing at the end.
 
-This node owns **the test-first rule** (`rule.test-first`): no
-production code without a failing test that authorizes it. A change
-with nothing a test could get wrong, such as a declarative selector or
-config entry, is authorized instead by the run that shows it working
-(`test-first.proportionate-checks`). The test
+This node owns **the test-first rule** (`rule.test-first`): a failing
+test authorizes production logic, and RED comes before GREEN wherever a
+test exists. A contract the spec checks by `run` or `review` is
+authorized by that declared run or review, named in the increment's
+`Run:` or `Review:` field, and a `covered` contract by the existing test
+that already asserts it (`grill.increment-shape`,
+`test-first.proportionate-checks`). The test
 encodes a named spec contract and must fail for the right reason first;
 GREEN adds the minimum new behavior, integrated into the file; REFACTOR
 is not optional when you touched existing code; exceptions are explicit
@@ -560,8 +569,8 @@ and recorded in grill.md §9.
 
 ### Entry conditions
 
-A spec covers the behavior, signed in its §0 (`draft` with the three
-sign-offs is enough to encode; the T2 covered lane needs it `active`);
+A spec covers the behavior, signed in its §0 (`draft` with the sign-offs
+it owes is enough to encode; the T2 covered lane needs it `active`);
 grill.md §9 names the increments in dependency order, `grill-lint.py`
 green; the libraries are wikified. Missing one → back up to the
 protocol that produces it. The T2 **contained lane** substitutes rather
@@ -595,18 +604,25 @@ sized by their effort labels (`delegation.step-scope`,
 | REVIEW | `reviewer` | the diff, the §9 row | severity findings; Critical/Major → `implementer` once more, an attempt under `recover` |
 | COMMIT | the session | a clean review | grill.md §15 entry with the `spawn_id`s in order; the commit; the spec's status advanced |
 
-An increment whose §9 row reads `Tests to write (RED): none — …` was
-judged at planning to need no test (`grill.increment-shape`): it has no
-RED phase. `implementer` makes the change and runs the proof the row
-names; REVIEW and COMMIT stand.
+An increment whose §9 row reads `Tests to write (RED): none — …` holds
+no `test` contract (`grill.increment-shape`): it has no RED phase.
+`implementer` makes the change and returns the evidence its `Run:`
+names, the command with its result; a `Review:` is confirmed by the
+reviewer in REVIEW. REVIEW and COMMIT stand.
 
-The one merge the tiers allow: a T2 single-contract increment — or a
-single reproduced defect on the contained lane — with a mechanical RED
-is briefed whole to `implementer`; the REVIEW spawn stays
-independent. Only the session writes grill.md; workers report what they
+The merged path (`tiers.execution-paths`): an increment in the low-risk
+band (`low` or `medium-low`) off trust paths, not stateful or concurrent
+and not a bug reproduction, or a T2 increment whose RED is mechanical
+over one contract (or, on the contained lane, one reproduced defect), is
+briefed whole to `implementer` (`brief.py --kind merged`). It sees the
+test fail for the right reason before it writes the code and records
+both runs in its hand-back; the REVIEW spawn stays independent. Only the session writes grill.md; workers report what they
 did in the handback (`rule.grill`).
 
-- **RED**: identify the contracts; write tests named for them; confirm
+- **RED**: identify the contracts; write the tests §10 designed for
+  them, dropping or merging a case that on contact with the code only
+  reads back a value or duplicates another, with one line of reason in
+  its §10 row (a missing case goes back to the design); confirm
   they fail because the *behavior* is missing (not an import or a
   name); if RED for the right reason is unreachable, the test or the
   contract is wrong. A test that passes without the code present, or a
@@ -652,9 +668,27 @@ exceptions (throwaway prototypes, declarative edits with nothing to get
 wrong, type-only changes, generated code) — each in grill.md §9 with a
 rationale and a date, or on the T2 contained lane in the why-record.
 
+### Removing a test that catches nothing
+
+A test catches nothing when `docs/graph/worth-check.py` flags it or the
+spec's mutation pass reports it `survived-all`. Inside the unit of work
+that wrote it, its writer (`tester`, or `implementer` on the merged
+path) removes it before delivery and writes `removed: <reason>` after
+its §10 row's status; when it was a contract's only evidence, the
+architect settles that contract's kind again. An older test, from an
+earlier delivery, a graft baseline or the suite before the method, stays
+until the owner confirms its removal by name;
+`worth-check.py --removal-list` prints the numbered batch, and a reopened spec lists its
+baseline tests within that work (`--removal-list --spec SPEC-NNNN`). A
+bug regression, a security control and a test no §10 row maps each wait
+for a decision of their own, and a security control that kills no
+mutant is a finding for `security`. Graft and grow leave every test in
+place.
+
 ### Exit conditions
 
-Every contract for the increment has a passing test named for it; its
+Every `test` contract of the increment has a passing test, and every
+`run` or `review` contract its recorded run result or confirmation; its
 targeted tests and the cross-cutting gates its files hit pass, and the
 full suite runs once at the batch tip (`delegation.tip-cadence`); the
 increment's gate ran and the full `verify` pass ran
@@ -722,7 +756,7 @@ observable behavior beyond an enumerated intended-delta list); Build
 rules); Smoke test (deployed system minimally alive); Evaluation suite
 (LLM/VLM behavior); Performance test (latency/throughput/memory); Graph
 lint (duplicate facts, broken edges, leaked pins); Spec-coverage lint
-(live spec contracts with no test; `python3 docs/graph/spec-lint.py`);
+(live spec contracts with no evidence of their kind; `python3 docs/graph/spec-lint.py`);
 Status register (a lifecycle status missing its required companion;
 `python3 docs/graph/status-register.py`); Plan-of-record lint (grill.md out
 of shape — dependency order, §5 derived from §9, plan↔spec alignment;
@@ -1249,8 +1283,12 @@ step.
 The **Session metrics** block is telemetry, not prose: Tier (with any
 reclassification), Spawns, Route bands + overrides, Retries by class (per
 `recover`), Gates run/failed-then-fixed, full-suite runs, serial waits,
-overflow notes, and a Quality line. It is a required part of the full
-form: a line the trace cannot fill says `not recorded` and why.
+overflow notes, and a Quality line, plus optional lines for tokens and
+four test counts (tests written by origin, dropped at RED, refused by the
+worth check, removed), each read from the plan's §10 rows or the worth
+check's output; an entry without the optional lines passes unchanged. It is
+a required part of the full form: a line the trace cannot fill says
+`not recorded` and why.
 `docs/graph/session-metrics.py` lints the block of the entry deliver
 appends (SPEC-0006). This is what lets the system improve on evidence
 instead of anecdote: `harvest`
@@ -1702,7 +1740,14 @@ executable project evidence, the work goes to `from-scratch`
 (`protocol.initialize` owns the fork). The plant-facts ask to the owner
 also requests the plant's model map in `docs/graph/models.md`
 (`delegation.model-map`, ADR-0022): the providers, and a model for each
-class and effort on each host the plant runs.
+class and effort on each host the plant runs. The same ask carries the facts
+the seed's tools read (`grow.plant-needs`): on Claude Code the billing mode
+and the cache lifetime for the lead and for the workers; on opencode the
+`provider/model` for each map row, with the `#<variant>` its effort calls for
+where the model has one; on any host other than Claude Code, where the host
+reports a spawn's token usage; and on every plant, whether it marks trust
+paths (a plant that marks none has every increment read as on a trust
+path).
 
 **Phase 2: Scout and establish evidence.** Spawn the planned
 investigation-class scouts on the growth-scout brief. Each writes one ledger to
@@ -1803,7 +1848,28 @@ linter stays as written (`grow.gate.graph-integrity`). When validation passes, s
 `grown: true` in the frontmatter of `docs/graph/index.md` and, in the
 same edit, remove the placeholder's pre-growth block, which a grown
 plant has no reader for. Also configure the spec-coverage gate (`TEST_GLOBS` in `spec-lint.py`) while the stack
-evidence is fresh.
+evidence is fresh. The worth check (`docs/graph/worth-check.py`) and the spec
+lint's evidence checks read the same `TEST_GLOBS`, so wiring it configures
+both; growth leaves the application's tests alone.
+
+**The plant needs of the landed capabilities (`grow.plant-needs`).**
+Installing a capability carries it; it is grown when the plant supplies the
+fact it reads. `tools/growth-audit.py` holds the list and probes each need from
+the plant's files on every run: `--plan` writes one `needs` row per need into
+`.cypress/coverage.json` and prints `PLANT NEED` for each open one, and the
+lint prints `note: plant need <id> is not configured for this plant` and lists
+them on its summary line. A need is never a verdict and never sets the exit
+code, because each capability has a safe default. Growth supplies the gate
+output form of `runbooks/verification.md`, the model map with its billing and
+cache-lifetime lines, where a host other than Claude Code reports a spawn's
+token usage, `trust: true` on each security, data-integrity or money crosscut,
+and `TEST_GLOBS`. The cycle driver needs nothing at growth. A language's
+testing idiom is a lint verdict instead: each `language` row's
+`expertise.<slug>` node owns `<slug>.testing-idiom`, and `growth-audit.py`
+reports it `HOLLOW` until it does. When the owner decides the plant goes
+without a need, its row reads `status: ABSENT` with the owner's words as
+`reason`; each open or declined need is named in the delivery and the
+plant's `changelog.md` entry (gate `grow.gate.plant-needs`, detective).
 
 ### Delivery and maturity
 
@@ -2256,6 +2322,25 @@ or deleting a harness entry is the steward's numbered decision, by name
 fast-forward, and the session-record form is an expected new file
 under `plans/`.
 
+**Spec shape migration to the kinds form (8.5.0).** The earlier form reads
+each contract as one a test checks, linked by its §10 row and its name in
+test code. The kinds form adds a `Check:` line per contract (`test`, `run`,
+`review`, `covered`), a declared-values table and a §10 designed by risk, so
+a declared value is proved by a run or a review instead of a test that reads
+it back. Both forms lint, and a spec in the earlier form may label single
+contracts. Graft proposes converting a spec when it is reopened or the worth
+check flags its tests; the steward ratifies in the graft record.
+`<seed>/tools/spec-convert.py --dry-run <spec>` prints the mechanical part
+(`Contract form: kinds`, `Trust path: no`, and `Check: test` on each
+unlabelled contract, with its present mapping); after ratification,
+`--write --steward-ratified <spec>` writes only that and keeps a timestamped
+backup, which `graft-audit.py` classes `SHAPE-MIGRATED` once Phase 7's audits
+have run. Re-labelling, the declared values, the risk-based §10 and a trust
+path set to `yes` are the plant's architect's judgment. A converted spec
+keeps its earlier §10 link until it has a risk table. The same three
+questions apply to any future shape change: what form does the plant carry,
+what does the new form buy it, and what is the conversion.
+
 **Phase 3: Reconcile the machinery (authoring-class authors).** For each ledger
 row, act on its class: nothing on CURRENT; adopt on FAST-FORWARD and
 SEED-NEW, and on HARVESTED, whose plant lines a harvest already carried
@@ -2270,7 +2355,7 @@ overwrites a placed engine, so an existing plant receives a new engine by
 graft only. Reconcile all three as a config-preserving fast-forward:
 adopt the seed's current engine body and re-inject the config that
 engine carries (`ROOT_ID` / `KINDS` / `KIND_PREFIX` in `graph-lint.py`;
-`TEST_GLOBS` in `spec-lint.py`; none in `grill-lint.py`). With no
+`TEST_GLOBS` / `SKIP_DIRS` in `spec-lint.py`; none in `grill-lint.py`). With no
 `--preserve`, `tools/graft-graph-engine.py` picks the set from the plant
 file's name; an explicit `--preserve` wins. A config knob the seed has *extended* is **UNIONED**,
 not re-injected wholesale; the load-bearing case is `KINDS` (the seed's
@@ -2305,7 +2390,18 @@ runbook it can fill). **A surface is filled only from evidence**: a project
 skill, ADR, or runbook whose content can only come from real recurring
 use sprouts during use, owned by the close-out lifecycle (`canonize` →
 `docs-librarian`), not by the graft. **Surface what was grafted but not
-grown** so the steward sees the copy-but-not-actualized state. **An
+grown** so the steward sees the copy-but-not-actualized state.
+`growth-audit.py --plan` prints a `PLANT NEED <id>` line for each capability
+that stays text until the plant supplies its own facts (`grow.plant-needs`):
+gate output, cache lifetime and the model map, the token reader, trust paths,
+the test layout the worth check reads, and a language's testing idiom. Grow
+each as that node says. `models.md` is the plant's and is never replaced, so
+copy the seed template's billing section into it and fill it. Each need left
+open is named under "Grafted but not yet grown" with its reason; until it
+closes, the capability reports that it is not configured, reports nothing as
+clean, and blocks no work. The graft that brings the worth check to a plant
+with no baseline runs `worth-check.py --write-baseline` once, there and in
+the apply, records `baseline holds N tests`, and removes no test. **An
 own-kernel plant** (one that carries no seed machinery) still receives
 the substance as a **weave**, not a summary: map each seed surface the
 delta changed to the plant's equivalent surface and land each rule where

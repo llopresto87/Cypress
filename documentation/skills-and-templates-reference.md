@@ -836,15 +836,20 @@ Source: `skills/test-first/SKILL.md`
 `test-first.no-lint-only-tests` · **requires:** (none) · **peers:**
 `protocol.test-first`, `skill.spec-author`
 
-**load_when:** shape a new test · pick a test level · name a test after a spec
-contract · unit vs integration vs e2e choice · one outcome per test ·
+**load_when:** is a test owed for this contract, increment or change · does
+this test earn its place, or only read back what was just written · shape a new
+test · pick a test level · name a test after a spec contract · unit vs
+integration vs e2e choice · one outcome per test ·
 consolidate or shrink a test suite, duplicate or expensive tests ·
 project-specific test, generic or synthetic fixture · coverage lint wants a
 test for a contract.
 
-**What it does.** The test-*shaping* technique. The RED → GREEN → REFACTOR →
-COMMIT cycle and its gates live in `docs/graph/protocols/test-first.md`; this
-skill owns the craft of shaping each test.
+**What it does.** Decides whether a test is owed, then shapes each one that
+is. The RED → GREEN → REFACTOR → COMMIT cycle and its gates live in
+`docs/graph/protocols/test-first.md`. The rule for whether a test exists is the
+skill's first section, and the architect, the tester and the reviewer load that
+section on every spawn (`always_loads:` by slug); `tools/delivery_rules.py`
+checks that it reaches them.
 
 **Test level selection.** Pick the lowest level that exercises the behavior:
 
@@ -858,25 +863,35 @@ skill owns the craft of shaping each test.
 | Property-based | Algorithms where the property is clearer than examples. |
 | Evaluation | LLM/VLM behavior, with rubrics and pass thresholds. |
 
-**Test shape.** The name names the spec §4 contract slug (in the language's
-convention); the body is Given/When/Then; one outcome per test.
+**Test shape.** The name says what broke, in the language's convention, and
+carries the slug of each contract it covers where the slug is the link from test
+to contract (a spec in the earlier form; in the kinds form the §10 Covers cell
+is the link); the body is Given/When/Then; one outcome per test.
 
-**Answer a coverage lint with a real test (`test-first.no-lint-only-tests`).**
-A coverage lint that reports an unnamed contract is answered by citing the
-slug in the existing test that asserts the contract, or by writing the test
-the contract lacks; a test that asserts nothing new does not count.
+**Answer a coverage lint by what the contract holds (`test-first.no-lint-only-tests`).**
+A contract that holds logic is answered by citing the slug in the existing test
+that asserts it, or by writing the test it lacks. A declarative contract is
+answered by the run or review its spec names, and gets no test. A test that
+asserts nothing new does not count.
 
-**Proportionate checks (`test-first.proportionate-checks`).** A check (test,
-gate, or check in delivered code) exists only for a named, real blast radius; a
-test is cheaper than its subject and never re-implements it; full rigor is for
-high blast radius, once per batch; a new check joins the automated runs or the
-running product only by owner decision. Every deleted test names its survivor,
-and consolidation is its own planned increment. A change with nothing to get
-wrong earns no new test: a declarative edit (a selector, a pipeline stage, a
-route, a flag, a config key, a mapping entry, a label) is proved by the run
-that shows it working, named with its result in the handback. A declaration
-that holds logic (a regex, glob or wildcard, a condition, an order that
-changes the output, a computed value) still earns a test that feeds it inputs.
+**A test is owed only where it can catch something (`test-first.proportionate-checks`).**
+A check (test, gate, or check in delivered code) exists only for a named victim:
+what breaks, and for whom, if it is absent. Spec size does not set test count.
+A change with nothing to get wrong earns no new test: a declarative edit (a
+selector, a route, a flag, a config key, a mapping entry, a label) is proved by
+an existing test or gate, or by the cheapest real run, named with its result in
+the handback. A declaration that holds logic (a pattern, a condition, an order
+that changes the output, a computed value) still earns a test that feeds it
+inputs. A test is cheaper than its subject and never re-implements it.
+
+**Designing the set.** The tester designs the set once, in the spec's §10, after
+surveying the existing suite; only the design adds a case. A RED writer may drop
+or merge a designed case that, on contact with the code, only reads back a value
+or duplicates another, with one line of reason in its §10 row (the owner's
+decision of 2026-11-10). Full rigor is for high blast radius, once per batch; a
+new check joins the automated runs or the running product only by owner
+decision. Every deleted test names its survivor. Removing a test that catches
+nothing follows `protocol.test-first`.
 
 **When to use.** When shaping any new test or choosing its level, or when a
 suite has grown enough to warrant a consolidation pass.
@@ -997,8 +1012,8 @@ Templates are Tier-3 artifacts; a machinery node points at them via
 | `index.md` | `docs/graph/index.md` | Tier-1 map template (the fallback the FIRST MOVE names) |
 | `node.template.md` | `docs/graph/nodes/<id>.md` | one blank node form |
 | `graph-lint.py` | `docs/graph/graph-lint.py` | the graph linter and the router (`--plan`, `--plan-json`, `--show`, `--eval`) |
-| `spec-lint.py` | `docs/graph/spec-lint.py` | the spec gate: shape of every spec, coverage of live ones |
-| `grill-lint.py` | `docs/graph/grill-lint.py` | the plan-of-record gate |
+| `spec-lint.py` | `docs/graph/spec-lint.py` | the spec gate: shape of every spec, coverage of live ones; in a spec of the kinds form, each contract's evidence by its kind |
+| `grill-lint.py` | `docs/graph/grill-lint.py` | the plan-of-record gate, including the increment fields each contract's kind calls for |
 | `frontmatter.py` | `docs/graph/frontmatter.py` | the one frontmatter reader the graph engines import (fast-forwarded, not add-if-missing) |
 
 ## Summary table — seed tools placed beside the contract files
@@ -1014,7 +1029,8 @@ described with the roster.
 | `prose-lint.py` | `docs/graph/prose-lint.py` | the prose floor under the humanizer skill, with the `--against <rev>` fact-preservation check |
 | `status-register.py` | `docs/graph/status-register.py` | the lifecycle status linter and query; a session-start hook injects its `--summary` |
 | `session-metrics.py` | `docs/graph/session-metrics.py` | the reader of the Session metrics block that deliver appends to `changelog.md` (SPEC-0006) |
-| `cycle.py` | `docs/graph/cycle.py` | the cycle driver (SPEC-0005): prints a build cycle's ready batches, held increments, expected-red list, RED-hash mismatches and owed ruling pass from the plan, the spawn log, the batch record, the question files and git; `record-red` and `record-tip` write the batch record |
+| `cycle.py` | `docs/graph/cycle.py` | the cycle driver (SPEC-0005): prints a build cycle's ready batches, held increments, expected-red list, RED-hash mismatches and owed ruling pass from the plan, the spawn log, the batch record, the question files and git; `record-red` and `record-tip` write the batch record; when the plant's `grill-lint.py` predates it, it reads the seed template placed under `docs/graph/templates/` and names it |
+| `worth-check.py` | `docs/graph/worth-check.py` | the worth check (SPEC-0009): flags a test whose only assertions read back a literal the same change adds, sparing logic, bug regressions and security negative controls; reads Python and TypeScript or JavaScript from the `TEST_GLOBS` in `spec-lint.py`; honours `worth-check: keep — <reason>`; `--write-baseline` records the plant's own `docs/graph/worth-baseline.txt`, which only shrinks; `--removal-list [--spec SPEC-NNNN]` prints the batch for the owner to confirm. It never edits a test |
 | `code-anchor.py` | `docs/graph/code-anchor.py` | records the code state at canonize (`--record`) and compares it once per session (`--compare`); writes no anchor at install |
 | `source-index.py` | `docs/graph/source-index.py` | the source index (SPEC-0007): `impact`, `affected-tests` and `anchors` from one walk over the plant's file-to-file links, each row `certain` or `maybe`, the floor listed apart, gaps listed as `incomplete`; `symbols` says where a name is defined; `--history` adds files that changed together in past commits as `maybe` rows of their own; `anchors --moved` takes its inputs from `code-anchor.py`'s moved list. Protocol steps call it once, on demand: verify (`affected-tests`), canonize (`anchors --moved`), grow and adopt (`build --json`'s inventory). It recommends, and verify and tiering decide. Its cache `.cypress/source-index/` ignores itself and is rebuilt when its key changes (ADR-0029); the installer's last step runs `build` and prints its report, and `growth-audit.py` prints it again after its verdicts; `skill.source-index` is how a session uses it |
 | `source_paths.py` | `docs/graph/source_paths.py` | the seed's path rules in one module with no CLI: what is code, the governed repositories, the Git boundary, the content hash, the atomic write under `.cypress/`, how a page cites a path, and the `repo:` rule: what a node's `repo:` value names on disk decides what it claims (a folder or a file claims the paths under it, a repository or the plant root claims nothing). `code-anchor.py`, `source-index.py` and the router's path tier in `graph-lint.py` load it beside them; `growth-audit.py` loads it in the seed |
@@ -1116,8 +1132,11 @@ project and updated continuously. Sixteen stable sections:
   `Depends on:` row names, or one `no external dependency — <reason>` line
   the lint checks against §9), **§6 Decisions Made** (table with evidence
   and ADR columns), **§7 Options Considered**, **§8 Architecture Plan**, **§9
-  Implementation Plan** (each increment names spec contracts, files, RED
-  tests or `none — <why>; proved by <run>`, behavior, gate, rollback, effort, dependencies — earlier increments
+  Implementation Plan** (each increment names spec contracts, files, the §10
+  rows its `test` contracts turn red or `none — <why>`, a `Run:` for its `run`
+  contracts and a `Review:` for its `review` contracts, behavior, gate,
+  rollback, effort, dependencies — earlier increments; a plan over specs in
+  the earlier form keeps `none — <why>; proved by <run>`
   and library pages, `none` if neither — and, when it adds structure, the
   responsibility and present variation; rows in dependency order).
 - **§10 Verification Plan**: covered by the standard gates in
@@ -1196,19 +1215,27 @@ Source: `templates/spec.template.md`
 Produces `docs/graph/specs/SPEC-NNNN-<slug>.md`, authored jointly by product +
 architect + tester. Sections: §0 Metadata (identifier; status
 `draft`/`active`/`implemented`/`superseded`/`back-written`; owner, dates,
-related grill/ADRs/wiki, supersedes/superseded-by, and the sign-off line
+related grill/ADRs/wiki, supersedes/superseded-by, `Contract form: kinds`,
+`Trust path: yes|no`, and the sign-off line
 `product [ ] · architect [ ] · tester [ ] · security [ ]`); §1 Summary; §2
 Scope (in/out); §3 User-facing behavior (product); §4 Functional contracts
-(architect; one Given/When/Then per contract, stable `UPPER_SNAKE_SLUG`s the
-tests reuse); §5 Non-functional requirements (only the binding ones); §6 Data
+(architect; one Given/When/Then per contract, stable `UPPER_SNAKE_SLUG`s §10
+cites, a `Check:` line per contract of kind `test`, `run`, `review` or
+`covered` with that kind's evidence, a `Challenge` line where the tester
+challenged the kind, and a Declared values table for values with nothing to get
+wrong); §5 Non-functional requirements (only the binding ones); §6 Data
 shapes (language-agnostic YAML, cross-link native schemas); §7 Failure modes
 (architect + security adversarial); §8 Examples (happy, edge, failure, with
 real values); §9 Acceptance criteria (product, measurable, mapped to
-contracts);
+contracts or to a declared value as `DV:<value>`);
 §10 Test design (tester; risk → test `file::name` → Covers → origin → status;
 a legacy spec keeps contract → test name → file → level → status); §11
 Open questions (a spec with open questions is still `draft`); §12 Changelog.
-The contract slugs in §4 are exactly what `spec-lint.py` scans for in tests.
+In a spec of the earlier form the contract slugs in §4 are what `spec-lint.py`
+scans for in tests; in the kinds form the §10 Covers cell is the link, and
+`spec-lint.py` reads each contract's evidence by its kind. A spec with no
+`Contract form` line lints as before, and its unlabelled contracts read as
+`test`.
 
 ---
 
@@ -1520,6 +1547,21 @@ boundary-guarded and longest-first:
   A shrink increment's `none — shrink of …` covers nothing. The plans read are
   `docs/graph/plans/grill.md` and `docs/graph/plans/grill/**/*.md`.
 
+**Evidence by kind — a spec of the kinds form (SPEC-0008).** A spec whose §0
+reads `- **Contract form:** kinds` gives every contract a `Check:` line, and a
+contract without one FAILs. Each kind owes its own evidence: `test`, a §10 risk
+row whose Covers cell names the contract and cites a `path::name` the suite
+holds; `run`, a command in backticks, and once the spec is live `→ <result>`;
+`review`, `pending` before it is live and `confirmed by reviewer spawn <id>`
+after; `covered`, the `path::name` of an existing test. A §10 row marked
+`dropped:`, `merged into` or `removed:` covers nothing. The declared-values
+table takes one `run` or `review` Check line for the whole table. A spec of the
+kinds form with no `test` or `covered` contract and no trust path owes no §10
+rows and no tester sign-off. A spec in the earlier form may label single
+contracts; its unlabelled ones keep the slug-in-test link, and a converted spec
+keeps that link until it has a risk table. When any spec uses the form, the run
+prints `contracts by kind:` with counts.
+
 **Drafts are shape-checked, not coverage-checked.** A draft turns `active` in
 the change that lands its RED tests (test-first COMMIT), so a spec in
 authoring never reports uncovered — and the headline names every draft it
@@ -1571,6 +1613,13 @@ template's own lines, so the form never counts as the plan):
   library page the plan names exists.
 - Alignment: every `SPEC-NNNN/SLUG` a §9 row names is a `### Contract:` of a
   spec on disk, and every contract of those specs appears in some increment.
+- Kinds: for a contract whose spec gives it a `Check:` line, a `test`
+  contract's increment cites a §10 row covering it (its risk text in quotes or
+  its test name), a `run` contract's increment has a `Run:` field and a
+  `review` contract's a `Review:` field, and an increment with no `test`
+  contract schedules no RED spawn and has no `Phase: RED`. A contract in the
+  earlier form counts as `test` and adds no check, so a plan in today's form
+  lints as before.
 - No `[verify]` in §9 or §13 (FAIL); in §6/§8/§11 it only WARNs.
 - No `### Increment N` heading sits outside §9 (FAIL) — that is where none of
   the increment checks above would read it.
@@ -1705,6 +1754,11 @@ payload fields:
   the §3.8 close-out; leaving one out is a silent capability leak.
 - `skills_built`: repeatable multi-step procedures a future session will walk
   again, feeding the same close-out; the procedure sibling of `tools_built`.
+
+An increment proved by a declared run carries that command and its result
+under `gates:`; one proved by review carries the reviewer's confirmation, or
+what fails it, in the report body. The brief names both under
+`Evidence this hand-back owes` (`grill.increment-shape`).
 
 Rules make explicit: a leaf worker recommends, it does not spawn (no `Task`
 tool); a delegator that stops still fills this in; `failure_class` feeds

@@ -4,7 +4,7 @@
 
 CYPRESS is an installer that gives the AI coding [tool](DOCUMENTATION.md#term-tool) you already use a written way of working on your repository. It copies three kinds of file into the repository: instruction files, the method itself in Markdown, and a few small Python scripts that need only the standard library of Python 3.14 or newer. It is not a library your code imports, not a service and not a model. Installing only places those files; the work starts when you paste one prompt into a session of your tool, and that session reads your repository and builds its [knowledge graph](DOCUMENTATION.md#term-knowledge-graph): short linked notes about your project that later sessions open a few at a time instead of rereading the code.
 
-From then on, the method in those files asks each session to size its process to the task's risk, to write a [specification](DOCUMENTATION.md#term-specification) and a failing test before the code, and to hand steps that need a clean context to separate [agents](DOCUMENTATION.md#term-agent); the glossary's [skill](DOCUMENTATION.md#term-skill) entry says how an agent differs from a skill. Most of this is asked of the model, and only part of it is checked by a tool: [What it does not do](#what-it-does-not-do) says which part is which.
+From then on, the method in those files asks each session to size its process to the task's risk, to write a [specification](DOCUMENTATION.md#term-specification) before the code and a failing test wherever a test can catch something, and to hand steps that need a clean context to separate [agents](DOCUMENTATION.md#term-agent); the glossary's [skill](DOCUMENTATION.md#term-skill) entry says how an agent differs from a skill. Most of this is asked of the model, and only part of it is checked by a tool: [What it does not do](#what-it-does-not-do) says which part is which.
 
 ## Who it is for and not for
 
@@ -79,7 +79,7 @@ The method is written for the model to follow, and most of it is a request. For 
 
 - Choosing a task's tier is the model's own call, and no tool sees a tier chosen too low ([tier classification](DOCUMENTATION.md#enf-tier-classification)).
 - Writing a specification before the code is asked of the model. A linter checks a written specification's shape, not when it was written ([spec before code](DOCUMENTATION.md#enf-spec-before-code)).
-- Writing a failing test before the code is asked of the model, and no tool sees the order ([test before code](DOCUMENTATION.md#enf-test-before-code)).
+- Writing a failing test before the code is asked of the model, and no tool sees the order ([test before code](DOCUMENTATION.md#enf-test-before-code)). Whether a contract needs a test at all is the architect's call, open to the tester's challenge; a check script refuses a test that only reads back what its change added, and only where your project runs it ([contract kind](DOCUMENTATION.md#enf-contract-kind), [worth check](DOCUMENTATION.md#enf-worth-check)).
 - Routing each task before reading anything and working through a protocol are asked of the model. The [routing](DOCUMENTATION.md#term-routing) hook adds the route to each prompt and holds nothing ([protocol order](DOCUMENTATION.md#enf-protocol-order), [prompt pointer](DOCUMENTATION.md#enf-route-hook)).
 - The linters report a fault only when someone runs them, and the install adds no CI to your project ([graph lint](DOCUMENTATION.md#enf-graph-lint), [this repository's own checks](DOCUMENTATION.md#enf-seed-gate)).
 - The kernel's byte budget is checked only in this repository's own test run, and nothing re-measures the copy in your project ([kernel budget](DOCUMENTATION.md#enf-kernel-budget)).
@@ -89,6 +89,7 @@ The method is written for the model to follow, and most of it is a request. For 
 - The overhead on a large task, one with a specification, several files and a rollback path: not measured. The one overhead figure above was measured once, on a small task.
 - The tokens the one-time growth pass spends on a repository: not measured.
 - Whether the method improves the quality of the work: not measured.
+- Whether owing a test only where it can catch something changes the number of tests a project writes or the tokens it spends: not measured.
 - Whether a host keeps the kernel's text after it compacts a long session: not recorded.
 
 ## Where to go next

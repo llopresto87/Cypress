@@ -85,7 +85,9 @@ contracts):
   `Task` launches nothing. The allowlist is the agent's own host rules, so it
   holds without a brief.
 - **Body.** The charter's body, followed by each always-loaded section its
-  `always_loads:` names, composed by `tools/agent_compose.py`, the composer
+  `always_loads:` names (a whole node, numbered sections, or one section by
+  its slug, as `skill.test-first#test-first.proportionate-checks`), composed by
+  `tools/agent_compose.py`, the composer
   Claude Code's projection uses: the two bodies are byte-identical. After an
   edit to one of those nodes, `install.sh opencode --recompose-agents` rewrites
   `.opencode/agents/` and `.opencode/skills/` only.
@@ -216,8 +218,15 @@ agent with no warning, and `--check` is green.
 exits non-zero, naming the file and the remedy, for an agent or skill
 projection that differs from what the installer would place (a file in the
 earlier numbered shape included, and a model-map edit not yet re-run), an
-`opencode.json` in the earlier shape, a missing plugin, and a missing or
-unusable hook core.
+`opencode.json` in the earlier shape, a missing plugin, a missing or
+unusable hook core, and an agent whose loaded prompt lacks a rule that must
+reach its role (`tools/delivery_rules.py`, run from the seed; today the
+restraint rule of `skill.test-first` for the architect, the tester and the
+reviewer). For the earlier `opencode.json` it names both remedies: outside a
+graft, re-run `install.sh opencode`, which replaces the file and keeps a
+backup; inside a graft, which keeps the plant's file, merge the seed's
+`integrations/opencode/opencode.json` into it in Phase 3, where
+`graft.gate.kept-deltas` names the lines it still lacks.
 
 ### Compose-kernel plants
 

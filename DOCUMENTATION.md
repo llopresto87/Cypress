@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 8.4.0
+- Version documented: 8.5.0
 - Repository role: this repo is the seed, the product shipped into other
   projects; it holds no `docs/graph/` of its own.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -156,7 +156,7 @@ full statement of each rule lives in (and only in) its owning node.
 | 3.1 | **spec**       | Every non-trivial behavior has an executable spec in `docs/graph/specs/`, written before the code — except a T2 contained change, pinned by its RED test and why-record instead ([§4.1](#41-t2s-contained-lane)). | `protocol.specify` (`rule.spec`) |
 | 3.2 | **knowledge**  | `docs/graph/` is the single source of truth for structure and capability — one home per fact, loaded minimally and declared, ahead of memory. A fact the graph states is settled: use it as stated. Facts about code are current unless the session-start code-anchor line names their paths; there the code wins, and the node is fixed in the same change. Harness memory is not a home: what a session learns goes to a session record in `docs/graph/plans/sessions/` (`stewardship-posture.session-record`). | `skill.context-router` (`rule.knowledge`) |
 | 3.3 | **grill**      | `docs/graph/plans/grill.md` is the living plan-of-record, append-only: a change lands as a new entry. | `protocol.grill` (`rule.grill`) |
-| 3.4 | **test-first** | Production code starts from a failing test that authorizes it: RED → GREEN → REFACTOR → COMMIT; characterize untested code first. A declarative edit with nothing to get wrong is proved by a run instead. | `protocol.test-first` (`rule.test-first`) |
+| 3.4 | **test-first** | A failing test authorizes production logic: RED → GREEN → REFACTOR → COMMIT; characterize untested code first. Other contracts are authorized by the run or review their own spec declares for them. | `protocol.test-first` (`rule.test-first`) |
 | 3.5 | **verify**     | Gates proportional to blast radius run, and assert something, before "done"; a gate that did not run is recorded as absent. | `protocol.verify` (`rule.verify`) |
 | 3.6 | **deliver**    | Every session ends in a cold-pickup delivery with an attribution assertion over the spawn log (detective — §6.4). | `protocol.deliver` (`rule.deliver`) |
 | 3.7 | **canonize**   | Every T2/T3 task ends with one docs-librarian close-out spawn that persists what the work taught — or records "nothing of interest, because …". | `protocol.canonize` (`rule.canonize`) |
@@ -412,10 +412,10 @@ brief; playing the role in the chat does not count.
 | Specialist | When to call |
 |------------|--------------|
 | `orchestrator` | First contact; any request spanning more than one specialist. |
-| `architect` | System boundaries, ADR-worthy decisions, contracts between modules. |
-| `implementer` | GREEN-phase code once a spec and failing tests exist. |
+| `architect` | System boundaries, ADR-worthy decisions, contracts between modules and the kind that says how each is checked. |
+| `implementer` | GREEN-phase code once a spec and each contract's declared evidence exist; the whole cycle on the merged path for low-risk work. |
 | `reviewer` | Auditing a diff against spec, plan, tests, graph. |
-| `tester` | Spec→test translation, RED phase, gates, regression corpus. |
+| `tester` | Risk-based test design, review of each contract's kind, RED phase, gates, regression corpus. |
 | `security` | Threat models, auth, secrets, supply chain, AI abuse. |
 | `pentest` | Hands-on authorized penetration testing; reproduce → fix → re-verify. |
 | `reliability` | Deploy, observability, rollback, capacity, cost; infra from scratch. |
@@ -586,7 +586,10 @@ list, RED-hash mismatches, and whether a ruling pass is owed. It reads the
 plan, the spawn log, the batch record, the question files and git; an
 increment has landed when every contract slug its plan row names appears in a
 commit message on the branch. Its `record-red` and `record-tip` commands write
-the batch record. It spawns nothing and makes no ruling.
+the batch record. It spawns nothing and makes no ruling. When the plant's own
+`grill-lint.py` predates the driver, it reads the seed template placed under
+`docs/graph/templates/` and names that engine in its report; a plan whose §9
+holds no increments is refused with a line that says so.
 
 #### GREEN runs its own tests
 
@@ -599,6 +602,12 @@ sends the GREEN back to be re-briefed from the recorded RED. A tester's RED
 spawn ONLY writes the test, confirms it fails for the right reason and hands back;
 any implementation, even a throwaway one that proves the test can pass, is the
 implementer's GREEN (`tester.spawn-scope`).
+
+The merged path is the exception (`tiers.execution-paths`). An increment in the
+low-risk band (`low` or `medium-low`, `delegation.effort-scale`) off trust paths,
+not stateful or concurrent and not a bug reproduction, goes to one implementer
+(`brief.py --kind merged`), which sees its test fail for the right reason before
+it writes the code and records both runs in its hand-back.
 
 #### The full suite runs once per cycle, after its GREEN wave
 
@@ -705,8 +714,11 @@ separate `implement` protocol).
 
 Every non-trivial behavior has a spec at `docs/graph/specs/SPEC-NNNN-*.md`,
 authored jointly by product (user-facing layer), architect (functional
-contracts), and tester (executable encoding). A spec is finished when all
-three sign off on the same document. Specs use stable section numbers (§1–§12) so
+contracts, each with the kind that says how it is checked: `test`, `run`,
+`review` or `covered`), and tester (a risk-based test design in §10, and a
+challenge to any kind it doubts). A spec is finished when its authors sign off
+on the same document; the tester signs where a test is owed or a trust path is
+touched. Specs use stable section numbers (§1–§12) so
 agents and tooling can index into them. Code without a spec is in remediation
 mode; a spec without code is an unimplemented feature. The exception is T2's
 contained lane ([§4.1](#41-t2s-contained-lane)): a small, single-surface,
@@ -716,13 +728,20 @@ the lane.
 
 ### 7.2 Test-driven development (TDD)
 
-Production code starts from a failing test that authorizes it: RED → GREEN →
-REFACTOR → COMMIT, per increment. A change with nothing a test could get wrong,
-such as adding a selector or a config key, is proved by the run that shows it
-working; the plan records that call per increment, and a declaration that holds
-logic (a pattern, a condition, an order) still gets its test
-(`test-first.proportionate-checks`, `grill.increment-shape`). Tests name spec contracts, so the reviewer
-reading the test list reconstructs the spec. Bug fixes start with a regression
+A test is owed only where it can catch something
+([`test-first.proportionate-checks`](skills/test-first/SKILL.md), ADR-0034). A
+failing test authorizes production logic: RED → GREEN → REFACTOR → COMMIT, per
+increment. A change with nothing a test could get wrong, such as adding a
+selector or a config key, is proved by the run or the review its spec declares;
+the architect settles that per contract at specify, the plan copies it into each
+increment's `Run:` or `Review:` field, and a declaration that holds logic (a
+pattern, a condition, an order) still gets its test (`grill.increment-shape`).
+In a spec of the kinds form, the §10 Covers cell links each test to the
+contracts it covers. A RED writer may drop or merge a designed case that only
+reads back a value or duplicates another, with its reason in the §10 row. A test
+that catches nothing is removed by its writer inside the same unit of work; an
+older one leaves only on the owner's confirmation, and the worth check
+(`docs/graph/worth-check.py`) lists the batch to confirm. Bug fixes start with a regression
 test that stays in the suite after the fix. A bug a test uncovered is marked
 for a fix and named to the owner; the test that found it stays unchanged as the
 bug's only acceptance check, and its red is declared in the delivery until the
@@ -894,7 +913,9 @@ steps run from the seed, and none of these tools is placed into a plant:
 `tools/graft-ledger.py` prints the base and each machinery file's three-way
 class, `tools/graft-run.py` rehearses the install, engines, audits and lints on
 a copy outside the plant and prints the gate table, `tools/graft-graph-engine.py`
-reconciles the engines, and `tools/graft-audit.py` classifies the backups.
+reconciles the engines, `tools/graft-audit.py` classifies the backups, and
+`tools/spec-convert.py` writes the mechanical part of a spec's move to the kinds
+form once the steward has ratified it ([spec conversion](#enf-spec-convert)).
 
 ## 10. The corpora
 
@@ -1072,7 +1093,8 @@ claude-code, opencode and prime-agent. For each tool it:
    missing leaf, while preserving existing files, and places the config-free
    tools beside them: `agnosticism-lint.py`, `prose-lint.py`,
    `status-register.py`, `session-metrics.py`, `cycle.py` (the cycle
-   driver, §6.9), `code-anchor.py`, which
+   driver, §6.9), `worth-check.py` (the worth check, SPEC-0009, whose
+   baseline `docs/graph/worth-baseline.txt` is the plant's own), `code-anchor.py`, which
    writes no anchor at install, and `source-index.py`, whose cache under
    `.cypress/source-index/` the last step below builds and any query
    rebuilds when its key changes (ADR-0029; guide:
@@ -1194,10 +1216,14 @@ classified, so it stays current with the file. Grouped by what they check:
 
 1. `test-unified-graph-install.sh`: graph install shape.
 2. `test-spec-lint.sh`: the spec gate: shape of every spec, coverage of live
-   ones (a plan row proved by a run included), and a table row whose cell
-   count differs from its header.
+   ones (a plan row proved by a run included), each contract's evidence by its
+   kind in a spec of the kinds form, and a table row whose cell count differs
+   from its header. `test-worth-check.sh` holds the worth check,
+   `test-spec-convert.sh` the spec conversion and `test-delivery-rules.sh` the
+   must-reach rules.
 3. `test-grill-lint.sh`: the plan-of-record gate (`grill-lint.py`): section
    shape, §9 dependency order, §5 derived from §9, plan↔spec alignment, the
+   increment fields a contract's kind calls for, the
    `--waves` report, a ledger plan read from its leaves beside it, and a
    decision in another repository, cited as `<name>:ADR-NNNN`, reported as
    external. The gate also runs `grill-lint.py` over the active round's own
@@ -1287,8 +1313,12 @@ holds:
 - the ADR catalog: `docs/decisions/index.md` links every ADR file, and every
   link resolves (`check_decision_index`);
 - the seed-only files, `docs/skills/seed-release.md`,
-  `docs/skills/lever-trial.md` and `tools/prepare-release.py`, which `manifest.json` and `install.sh` never
-  name and no plant receives (`check_seed_only_stays_home`).
+  `docs/skills/lever-trial.md`, `docs/skills/opencode-live-verification.md`
+  and `tools/prepare-release.py`, which `manifest.json` and `install.sh` never
+  name and no plant receives, and the `tools` map of `manifest.json`, which
+  lists exactly the files `install.sh` places, so a seed-side tool such as
+  `tools/spec-convert.py` or `tools/delivery_rules.py` stays out of it
+  (`check_seed_only_stays_home`).
 
 `agent-lint.py --lint` holds two frontmatter rules on every agent file, a
 plant's own commissioned experts included, because the installer
@@ -1512,18 +1542,18 @@ Each entry covers one word that the front door (the README, the install guide, t
 <a id="term-specification"></a>
 
 - **Forms:** specification, specifications, spec, specs
-- **Here:** A `SPEC-NNNN-<name>.md` file, written before the code, that binds each contract it names to the test that checks it. The [specify protocol](protocols/specify.md) owns the rule, its exceptions and the file's sections.
+- **Here:** A `SPEC-NNNN-<name>.md` file, written before the code, that binds each contract it names to what checks it: a test, a declared run, a review, or an existing test, by the contract's kind. The [specify protocol](protocols/specify.md) owns the rule, its exceptions and the file's sections.
 - **Field:** A statement of what a system should do, apart from how it is built; specification by example writes it as concrete examples that run as self-checking tests (Adzic, "Specification by Example, 10 years later", https://gojko.net/2020/03/17/sbe-10-years.html; Fowler, "SpecificationByExample", https://martinfowler.com/bliki/SpecificationByExample.html; both retrieved 2026-09-24; status: verified, the Fowler page in part). The book's own claims are secondhand (status: secondhand), and the IEEE requirements sense was not sought (status: not recorded)
 - **Implemented at:** `templates/spec.template.md`, `protocols/specify.md`, `skills/spec-author/SKILL.md`, `templates/knowledge-graph/spec-lint.py`, `docs/specs/`
 - **Enforcement:** The word itself is not a control. Writing one first is **judgment** and its shape is **soft**, in the [spec-before-code row](#enf-spec-before-code) and the [spec-lint row](#enf-spec-lint)
-- **Divergence:** **narrower**: contracts plus a test map, in a fixed layout
+- **Divergence:** **narrower**: contracts plus a test design, in a fixed layout
 - **Why:** kernel §3.1
 
 ### test-first development
 <a id="term-test-first"></a>
 
 - **Forms:** test-first development, test-first, TDD
-- **Here:** No production code is written without a failing test that authorizes it. A declarative edit with nothing to get wrong is proved by the run that shows it working instead. The [test-first protocol](protocols/test-first.md) owns the cycle and the rule for code that has no tests yet.
+- **Here:** No production logic is written without a failing test that authorizes it, and a test is owed only where it can catch something. A contract with nothing to get wrong is proved by the run or the review its spec declares instead. The [test-first protocol](protocols/test-first.md) owns the cycle and the rule for code that has no tests yet.
 - **Field:** A failing test is written before the code that passes it, in a short cycle of red, green and refactor (Fowler, "Test Driven Development", https://martinfowler.com/bliki/TestDrivenDevelopment.html, retrieved 2026-09-24; status: verified. Beck, *Test-Driven Development: By Example*, 2002; status: secondhand, the book was not opened)
 - **Implemented at:** `protocols/test-first.md`, `skills/test-first/SKILL.md`
 - **Enforcement:** The word itself is not a control. The order of test and code is **judgment**, in the [test-before-code row](#enf-test-before-code)
@@ -1858,23 +1888,29 @@ This section answers which rules a tool holds and which the method only asks the
 | <a id="enf-install-stamp"></a>The install records its version and flags in a stamp file | `install.sh` (`write_seed_stamp`) | **detective**: graft and the audits read it later | It records what was installed, not what the plant changed afterwards | [graft protocol](protocols/graft.md) |
 | <a id="enf-registration-notice"></a>The installer prints a notice about when new agents become usable | `install.sh` (`log_registration_notice`) | **not a control**: advice, printed at install | It checks nothing. When a host picks up newly placed agent files is host-dependent | [host capability matrix, Specialist discovery/registration](documentation/host-capability-matrix.md) |
 | <a id="enf-graph-lint"></a>A graph node's contract, and one home per `owns:` key | `templates/knowledge-graph/graph-lint.py` | **soft** in its lint mode; **not a control** for `--plan`, `--graph` and `--warn`, which exit 0 | A well-formed node that states something false passes. In a plant it holds only when someone runs it | [knowledge-graph skill](skills/knowledge-graph/SKILL.md) |
-| <a id="enf-spec-lint"></a>A spec's shape, and each live contract's test coverage | `templates/knowledge-graph/spec-lint.py` | **soft** | A contract slug found anywhere in a test file, a comment included, counts as covered; so does a contract a plan increment marks `none — <why>; proved by <run>`, and no tool checks that the run happened | [specify protocol](protocols/specify.md) |
-| <a id="enf-grill-lint"></a>The plan-of-record's shape | `templates/knowledge-graph/grill-lint.py` | **soft** | With no plan present it prints SKIP and exits 0. Whether an edit appended to the plan or rewrote it is not checked; a reviewer judges that. `--waves` is a report: its wave lines and overlap warnings never change the exit status | [grill protocol](protocols/grill.md) |
+| <a id="enf-spec-lint"></a>A spec's shape, and each live contract's evidence by its kind | `templates/knowledge-graph/spec-lint.py` | **soft** | In the earlier form a contract slug found in a test file's code, a name, a label or a string, counts as covered, and so does a contract a plan increment marks `none — <why>; proved by <run>`; no tool checks that the run happened. In the kinds form the evidence is read as text: the test a §10 Covers cell cites must exist, and nothing checks that it asserts the contract; a `run` result and a reviewer spawn id are taken as written, and the id is not compared with the spawn log. A converted spec keeps its earlier §10 link until it has a risk table | [specify protocol](protocols/specify.md) |
+| <a id="enf-contract-kind"></a>Each contract says how it is checked (`test`, `run`, `review` or `covered`), set by the architect and open to the tester's challenge | `templates/spec.template.md`, `skills/spec-author/SKILL.md`, `protocols/specify.md`, `templates/knowledge-graph/spec-lint.py` | **soft** for a `Check` line on every contract of a spec that declares `Contract form: kinds`; **judgment** for whether the kind fits (the architect, the tester's challenge, the owner on a kind the architect keeps against it, then the reviewer's first review) | A spec in the earlier form needs no `Check` line, and its unlabelled contracts read as `test`. No tool reads the code to see whether a `run` or `review` contract holds logic; the reviewer's first review is the only check. A spec that marks no trust path and has no `test` or `covered` contract gets no tester sign-off, so a `Trust path: no` written in error skips the tester | [spec-author skill](skills/spec-author/SKILL.md) |
+| <a id="enf-worth-check"></a>A test whose only assertions read back a literal its change adds is refused | `tools/worth-check.py` (placed into every plant's graph), `templates/docs/runbooks/verification.md` | **soft** when it is run: exit 1 on a flagged test that is neither kept nor in the baseline; **not a control** in a plant whose `spec-lint.py` sets no `TEST_GLOBS`, where it prints that it is not configured and exits 0 | It is a static heuristic with no model, and it errs toward sparing: a read-back test that also calls into code passes. It reads Python and TypeScript or JavaScript; every other test file is listed as not checked. A `worth-check: keep — <reason>` line above a test keeps it on the writer's word. In a plant it holds only where the verification runbook or a session runs it | [SPEC-0009](docs/specs/SPEC-0009-worth-check.md) |
+| <a id="enf-worth-baseline"></a>The worth baseline only shrinks | `tools/worth-check.py` (`--write-baseline`), the baseline file the plant keeps in its graph | **soft**: a later `--write-baseline` refuses to add a test | The first write is free and records whatever is flagged that day. The file is plain text the plant tracks in Git, so a line added by hand passes, and only the history shows it | [SPEC-0009](docs/specs/SPEC-0009-worth-check.md) |
+| <a id="enf-test-removal"></a>A test that catches nothing leaves only through its writer inside its own unit of work, or on the owner's confirmation by name | `protocols/test-first.md`, `tools/worth-check.py` (`--removal-list`), `templates/knowledge-graph/spec-lint.py` | **judgment** for each removal (the writer inside its unit of work; the owner for an older test); **not a control** for `--removal-list`, which prints the batch and exits 0; **soft** for a §10 row marked `removed:`, which the spec lint counts as covering nothing | No tool sees a test deleted without the owner's confirmation. A deleted test whose §10 row still cites it is caught only once the spec is live, when the cited test no longer exists. That graft and grow remove no test is protocol text | [test-first protocol](protocols/test-first.md) |
+| <a id="enf-grill-lint"></a>The plan-of-record's shape, and the increment fields each contract's kind calls for | `templates/knowledge-graph/grill-lint.py` | **soft** | With no plan present it prints SKIP and exits 0. Whether an edit appended to the plan or rewrote it is not checked; a reviewer judges that. `--waves` is a report: its wave lines and overlap warnings never change the exit status. It reads kinds only from a spec with a `Check` line; a contract in the earlier form counts as `test` and adds no check. It checks that a `Run:` or `Review:` field is present, not that the command proves the contract | [grill protocol](protocols/grill.md) |
 | <a id="enf-agent-lint"></a>The roster's frontmatter, and the routing corpus's scores | `integrations/claude-code/agent-lint.py`, `agents/_routes.golden.tsv` | **soft** for `--lint` and `--eval`; **not a control** for `--route`, which prints and exits 0 | It reads the agent files on disk, not what a host registered | [§14 Tests and gates](#14-tests-and-gates) |
 | <a id="enf-prose-lint"></a>The prose floor under the humanizer skill | `tools/prose-lint.py` | **soft** | It catches only the tells a pattern can decide. Its rate thresholds are computed over all the files passed in one run, so one file's excess can hide in another's slack; the seed's own gate runs it once per file for that reason | [§14 Tests and gates](#14-tests-and-gates) |
 | <a id="enf-agnosticism-lint"></a>No leaked identity, address or vulnerability id in shipped text | `tools/agnosticism-lint.py` | **soft** | It finds IP addresses, CVE ids and the terms passed with `--forbid` or listed in a `--forbid-file`; a name nobody listed passes. Its default glob reads Markdown only. The seed's gate runs it over every tracked file against the steward's local, gitignored `.cypress/forbid.txt`, and prints SKIPPED where that list is absent (a clone, a worktree, CI), so a release waits for a PASS in the checkout that holds it | [harvest protocol](protocols/harvest.md) |
 | <a id="enf-status-register"></a>One lifecycle status vocabulary in frontmatter | `tools/status-register.py` | **soft** in lint mode; **not a control** for the query flags, which print only | It checks the vocabulary and the agreement between frontmatter and body, not whether a status is true | [§14 Tests and gates](#14-tests-and-gates) |
 | <a id="enf-growth-audit"></a>A growth's planned artifacts are present and substantive | `tools/growth-audit.py` | **soft**: exit 1 on a finding | It checks record shape, grounding paths and a byte floor for authored leaves, not whether the prose is true | [grow protocol](protocols/grow.md) |
 | <a id="enf-graft-audit"></a>A graft's backups are classified before anything is discarded | `tools/graft-audit.py` | **soft**: exit 1 on a customization | Its default tokens miss a plant's own vocabulary unless `--tokens` supplies it | [graft protocol](protocols/graft.md) |
+| <a id="enf-spec-convert"></a>A plant's spec changes form only through a shape migration the steward ratifies | `tools/spec-convert.py` (seed-side, never placed), `protocols/graft.md`, `tools/graft-audit.py` | **soft** for `--write`, refused without `--steward-ratified` and a spec path, with a timestamped backup kept; **judgment** for the ratification (the steward) and the re-labelling (the plant's architect) | The flag is the caller's declaration: no tool reads the graft record to see that the steward ratified. The tool writes only `Check: test` on each unlabelled contract, so a converted spec says nothing new about how a contract is checked until the architect relabels it | [SPEC-0010](docs/specs/SPEC-0010-spec-conversion.md) |
 | <a id="enf-tier-classification"></a>Each task is classified T0 to T3 before work starts | `core/AGENTS.md`, `core/method/tiers.md` | **judgment**: the session, then whoever reads its delivery | No tool sees a tier chosen too low | [tiers node](core/method/tiers.md) |
 | <a id="enf-protocol-order"></a>Work enters through a named protocol, in order | `core/AGENTS.md`, `protocols/*.md` | **judgment**: the session | Nothing reads which protocol a session entered, or which it skipped | [protocols reference](documentation/protocols-reference.md) |
 | <a id="enf-spec-before-code"></a>A spec is written before the code it covers | `protocols/specify.md`, `templates/knowledge-graph/spec-lint.py` | **judgment** for whether a behavior needed a spec first (the session); **soft** for a written spec's shape | No tool sees whether the spec came before the code | [specify protocol](protocols/specify.md) |
-| <a id="enf-test-before-code"></a>A failing test is written before the code it authorizes | `protocols/test-first.md` | **judgment**: the session, then the reviewer | No tool sees the order in which a test and its code were written | [test-first protocol](protocols/test-first.md) |
+| <a id="enf-test-before-code"></a>A failing test is written before the code it authorizes, and the implementer starts only from each contract's declared evidence | `protocols/test-first.md`, `agents/02-implementer.md`, `core/method/tiers.md` | **judgment**: the session, the implementer, then the reviewer | No tool sees the order in which a test and its code were written. On the merged path one implementer writes both, and the order rests on the two runs its hand-back reports. The implementer's precondition is charter text | [test-first protocol](protocols/test-first.md) |
 | <a id="enf-verify-gates"></a>Gates sized to the change run before work is called done | `protocols/verify.md` | **soft** for each gate that is run; **judgment** for which gates run (the session, which takes `source-index.py affected-tests`, run once after GREEN, as the recommended floor of the focused tests) | A gate that was not run shows no red | [verify protocol](protocols/verify.md) |
 | <a id="enf-canonize"></a>Each T2 or T3 task ends with one close-out spawn | `protocols/canonize.md`, `agents/09-docs-librarian.md` | **judgment**: the session reports the close-out line, and whoever reads the delivery weighs it | Nothing checks that the close-out spawn ran, or what it recorded | [canonize protocol](protocols/canonize.md) |
 | <a id="enf-attribution"></a>Each unit of delivered work names the specialist that produced it | `protocols/deliver.md`, `tools/brief.py` (the spawn log) | **detective**: the assertion runs at delivery, after the work | The top session runs the assertion on its own work. The `Stop` hook that could hold it is not wired, on purpose (ADR-0003) | [deliver protocol](protocols/deliver.md) |
 | <a id="enf-brief-block"></a>Each brief embeds the canonical graph-discipline text verbatim | `templates/prompts/graph-session-bootstrap.md`, `tests/seed-lint.py` | **soft** for byte identity in the seed's templates; **judgment** for a brief a session writes (the session) | Seed-lint compares the templates in the seed, never the briefs a session writes from them | [delegation node](core/method/delegation-briefs.md) |
 | <a id="enf-charter-duties"></a>An agent keeps the duties its charter states, such as the legal agent reasoning only from its corpus | `agents/*.md` | **soft**: a contract in the agent's prose | The model can depart from its charter, and nothing reads its output against it | [agents reference](documentation/agents-reference.md) |
+| <a id="enf-must-reach"></a>A rule that decides what a role does is in that role's loaded prompt (today the restraint rule, for the architect, the tester and the reviewer) | `tools/delivery_rules.py` (seed-side), `tests/seed-lint.py`, `install.sh` (`--check`) | **soft**: the seed's lint fails on a miss, and `install.sh --check` exits non-zero on a plant whose agents lack a rule | It looks for one sentence per rule, whitespace collapsed, so a prompt that keeps that sentence and loses the rest of the section passes. It reads the projected agent files on Claude Code and opencode, not what a host loaded into a running session, and no other host is checked. In a plant it holds only when someone runs `--check` | [SPEC-0005](docs/specs/SPEC-0005-cycle-economy.md) |
 | <a id="enf-lifecycle-gate-rows"></a>Each gate row of the grow, graft and harvest tables declares its class | `protocols/grow.md`, `protocols/graft.md`, `protocols/harvest.md`, `tests/seed-lint.py` | **soft**, **detective** or **judgment**, as each row states | Seed-lint checks each row's class against the vocabulary, not whether the class is true | [graft protocol](protocols/graft.md) |
 | <a id="enf-steward-only"></a>Graft and harvest start only on the steward's word | `protocols/graft.md`, `protocols/harvest.md` | **judgment**: the steward | Nothing stops a model that starts one unprompted | [harvest protocol](protocols/harvest.md) |
 | <a id="enf-seed-gate"></a>The seed's own gate runs before a change counts as done | `tests/run.sh`, `tools/gate-registry.py`, `.github/workflows/gate.yml` | **soft** | It runs in the seed, and an install places no CI into a plant. Seed-lint checks the workflow file's shape. Whether a merge requires a green run is not recorded | [§14 Tests and gates](#14-tests-and-gates) |

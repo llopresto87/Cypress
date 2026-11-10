@@ -148,7 +148,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **tier (graph load-tier):** 2
 - **owns (facts):** `architect.charter`, `architect.spec-sections`, `architect.reversibility-tags`, `architect.legal-checkpoint`
 - **requires:** —
-- **always loads (composed into the Claude Code agent file):** `method.design-posture`, `method.design-governance`, `method.engineering-posture`, `method.decision-economy`
+- **always loads (composed into the Claude Code agent file):** `skill.test-first` section `test-first.proportionate-checks`, `method.design-posture`, `method.design-governance`, `method.engineering-posture`, `method.decision-economy`
 - **peers:** `agent.tester`, `agent.implementer`, `agent.product`, `agent.research-scout`
 - **routing_triggers:**
   - "design the data model for the orders service"
@@ -191,7 +191,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "make the failing test pass and nothing else" — `contract`
   - "the model evaluation harness has a race condition" — `adversarial`
 
-**Charter.** The implementer turns RED into GREEN: it writes the minimum new behavior the spec asked for once the spec, contracts, and failing tests already exist. "Minimum" governs behavior, not diff size: the code is woven into the file's existing design, and it adds abstraction only where the spec's variation demands it. It loads context through the graph context-router before editing. It is a Task-less leaf and stops at any out-of-domain boundary.
+**Charter.** The implementer turns RED into GREEN: it writes the minimum new behavior the spec asked for once the spec, its contracts and each contract's declared evidence exist, a failing test for a `test` contract and the plan's `Run:` or `Review:` for the others; with neither it hands back naming `tester` or `architect`. On the merged path (`tiers.execution-paths`), for a low-band increment off trust paths or a mechanical single-contract T2 RED, it writes the test, sees it fail for the right reason, then writes the code, records both runs in its hand-back, and removes before delivery any test of its own that catches nothing. "Minimum" governs behavior, not diff size: the code is woven into the file's existing design, and it adds abstraction only where the spec's variation demands it. It loads context through the graph context-router before editing. It is a Task-less leaf and stops at any out-of-domain boundary.
 
 ### 7.4 `reviewer`
 
@@ -206,7 +206,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **tier (graph load-tier):** 2
 - **owns (facts):** `reviewer.charter`, `reviewer.spawn-scope`, `reviewer.checklist`, `reviewer.severity-scale`
 - **requires:** `skill.holistic-editing`
-- **always loads (composed into the Claude Code agent file):** `method.engineering-posture`, `method.design-posture`, `method.contract-posture`
+- **always loads (composed into the Claude Code agent file):** `skill.test-first` section `test-first.proportionate-checks`, `method.engineering-posture`, `method.design-posture`, `method.contract-posture`
 - **peers:** `agent.implementer`, `agent.security`, `agent.reliability`, `agent.devils-advocate`
 - **routing_triggers:**
   - "audit this diff against the spec"
@@ -220,7 +220,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "checking the change is integrated and not bolted on" — `contract`
   - "go over yesterday's merge and tell me what will break" — `paraphrase`
 
-**Charter.** The reviewer only reads: it writes no files, and its structured review goes in the report body. It compares a diff against the plan, the architecture, the library wiki, and project conventions, and returns findings tagged by severity: critical blocks the increment, major gates the merge, minor and nit are suggestions. For a hard operations finding it may spawn `reliability` via bounded Task (depth 1) and fold its findings in; the security pass follows the review as its own spawn (`test-first.security-path`).
+**Charter.** The reviewer only reads: it writes no files, and its structured review goes in the report body. It compares a diff against the plan, the architecture, the library wiki, and project conventions, and returns findings tagged by severity: critical blocks the increment, major gates the merge, minor and nit are suggestions. It loads the restraint rule (`test-first.proportionate-checks`), and its first review checks that code under a `run` or `review` contract holds no logic; logic there is a finding that reopens the contract's kind. For a hard operations finding it may spawn `reliability` via bounded Task (depth 1) and fold its findings in; the security pass follows the review as its own spawn (`test-first.security-path`).
 
 ### 7.5 `tester`
 
@@ -235,7 +235,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **tier (graph load-tier):** 2
 - **owns (facts):** `tester.charter`, `tester.spawn-scope`, `tester.bug-fix-loop`
 - **requires:** `protocol.test-first`, `skill.test-first`
-- **always loads (composed into the Claude Code agent file):** `method.engineering-posture` sections 1, 2, 4, 9, 12, `method.contract-posture`, `skill.holistic-editing`
+- **always loads (composed into the Claude Code agent file):** `skill.test-first` section `test-first.proportionate-checks`, `method.engineering-posture` sections 1, 2, 4, 9, 12, `method.contract-posture`, `skill.holistic-editing`
 - **peers:** `agent.implementer`, `agent.reviewer`
 - **routing_triggers:**
   - "write the failing test that encodes the spec contract"

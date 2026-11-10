@@ -121,8 +121,11 @@ Run `install.sh claude-code` from the seed root in the target project:
 This creates (copies by default; pass `--symlink` for live seed links):
 - `CLAUDE.md` → copy of `core/AGENTS.md`, and `AGENTS.md` → a symlink to `CLAUDE.md`
 - `.claude/agents/*.md` → copies of `agents/*.md`; a charter that names
-  `always_loads:` is composed with those nodes' bodies, and `--check` names
-  one that drifted. `install.sh claude-code --recompose-agents` rewrites
+  `always_loads:` is composed with those nodes' bodies (a whole node, numbered
+  sections, or one section named by its slug, as
+  `skill.test-first#test-first.proportionate-checks`), and `--check` names
+  one that drifted, and one whose loaded prompt lacks a rule that must reach
+  its role (`tools/delivery_rules.py`, run from the seed). `install.sh claude-code --recompose-agents` rewrites
   `.claude/agents/` and `.claude/skills/` from the nodes on disk and writes no
   node (SPEC-0005 ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES; `--check` also
   names a skill projection that differs from its node,
@@ -203,7 +206,11 @@ case: both guard commands test that the file exists and, when it does not,
 allow the call with one stderr line, `cypress: hook script missing: <path>;
 the guard is off. Re-run install.sh to restore it.` `install.sh claude-code
 --check` fails naming the event, matcher and path of a missing guard script,
-and does not run the guard. The pattern list is a commented constant at
+and does not run the guard. A plant still wired by an earlier seed runs the
+guard with no existence test, so a missing script makes the interpreter exit 2
+and the host blocks every call of that tool; `--check` says so plainly and
+names the remedy, a re-install that restores the script and the guarded
+wiring. The pattern list is a commented constant at
 the top of the file; extending it is a one-line change. The doctrine behind
 the guard is `core/method/bounded-execution.md` (`toolcraft.bounded-execution`); the test is
 `tests/test-bound-hook.sh`. What the pattern match can miss is listed in the
