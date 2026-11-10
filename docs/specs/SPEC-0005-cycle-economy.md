@@ -523,7 +523,8 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   labelled medium-hard or hard (never above medium), so one labelled medium
   or medium-low or unlabelled is low, a tester `red`
   labelled hard is high, an implementer `flow` is medium and a `fix` low, an
-  architect `ruling` is medium, a `--security-path` brief is high, a
+  architect `ruling` is medium, a `--security-path` brief is high, other than a
+  tester's `findings` (RED for a security pass's findings), which is medium, a
   `first` review of trust-path files is high, and no kind gives the
   definition's default; of several kinds, `fix`, `mechanical` or `amend`
   wins, so an implementer `trust,fix` is low while `trust` alone is medium,
@@ -2989,3 +2990,9 @@ kept outside the seed.
   `mechanical` or `amend` now wins over `trust` and `red-trust`; a
   trust-surface GREEN stays medium. BRIEF_DERIVES_THE_SPAWN_EFFORT reads it
   (seen red first).
+- 2026-11-10 — a measured run's tester writing RED for a security pass's
+  findings ran at high because its brief carried `--security-path`. The
+  tester gains a `findings` row at medium, starting from the probe and
+  control files the security pass wrote; high stays for RED of a security
+  contract before its GREEN and for the `security` role.
+  BRIEF_DERIVES_THE_SPAWN_EFFORT reads it (seen red first).

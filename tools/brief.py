@@ -12,7 +12,8 @@ whose spawn has no agent type to carry it (Prime Agent). Step 1 routes with
 `--role`, so the worker's route leaves out what its system prompt carries, and
 a task line whose route loads no expertise.* or subsystem.* node is named on
 stderr. A `security` brief, and
-any brief composed with `--security-path` (a RED for a security contract), also
+any brief composed with `--security-path` (a RED for a security contract, or for the security
+pass's findings), also
 carries the SECURITY PATH block of method/security-controls.md byte for byte
 (`test-first.security-path`). A `reviewer` brief checks the files changed
 (uncommitted, in the plant and in each repository directly under it) and the
@@ -97,8 +98,9 @@ def effort_rows() -> dict:
 
 
 def derive_effort(role: str, kind: str, label: str, security_path: bool, trust: list) -> str:
-    """`<value> (<reason>)` by `delegation.effort`'s three rules; exit 2 on an unknown kind or label."""
-    if role == "security" or security_path:
+    """`<value> (<reason>)` by `delegation.effort`'s three rules; exit 2 on an unknown kind or label.
+    A tester's RED for the security pass's findings (`findings`) takes its row, not rule 1."""
+    if role == "security" or (security_path and kind != "findings"):
         return "high (security path)"
     rows = effort_rows()
     if kind == "first" and trust and (role, "first-trust") in rows:
@@ -237,7 +239,7 @@ def main() -> int:
     ap.add_argument("--out", default="", help="write the brief here and print only a pointer prompt")
     ap.add_argument("--plan", default=str(GRAPH / "plans" / "grill.md"))
     ap.add_argument("--security-path", action="store_true",
-                    help="embed the SECURITY PATH block (a RED for a security contract)")
+                    help="embed the SECURITY PATH block (a RED for a security contract or its findings)")
     ap.add_argument("--emulated", default="",
                     help="this spawn runs a generic host type wearing --role; the reason")
     a = ap.parse_args()
