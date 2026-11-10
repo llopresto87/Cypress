@@ -161,8 +161,9 @@ top of the frontmatter key is likewise not recorded
 ⁸ The plugin passes the session id to the same `route-hook.py`, and fixtures
 hold the ledger, but no live run has yet sent a second prompt in one host
 process. A cell rises only on a live observation (ADR-0033), so the class
-stays until check 7 of the live procedure passes (see "Per-session injection
-dedup" below and the [defects](#defects-to-close)).
+stays **unsupported**. The owner closed the item on 2026-11-10 and chose not to
+run the live check (check 7 of the live procedure); a later release may run it
+(see "Per-session injection dedup" below).
 
 ## Per-capability evidence
 
@@ -618,10 +619,17 @@ close it. The adapter README lists them by name.
 |---|---|---|---|
 | opencode | No worker-continuation guard. The host can continue a finished child (the subagent tool with a `sessionID`, documented and not run), so the prompt-cache hazard exists wherever the provider's cache has a lifetime. `resume-hook.py` reads Claude Code's transcript layout and cache settings, so the shared core cannot decide on opencode's input as it stands. | Pre-tool guard; Prompt-cache lifetime | A core input contract carrying the child's last-activity time and the provider's cache lifetime, then a third branch in the plugin |
 | opencode | The seed kernel is absent in a compose-kernel plant: the kernel sits in `CLAUDE.md` only, and the host reads `AGENTS.md` (documented, not verified live). | Root kernel loading | The plugin delivers the kernel once per session through its synthetic-message surface without loading it twice, which adds a kernel-delivery duty to the envelope |
-| opencode | Per-session dedup is not verified live; fixtures hold it. | Per-session injection dedup | Check 7 of `docs/skills/opencode-live-verification.md` passing on a release |
-| opencode | Effort is not verified to reach the provider: the host registers a map cell's `#<variant>`, and a per-launch effort is not verified. | Effort override | A live check that the variant changes the request the provider receives |
 | opencode | No compaction reset: OpenCode 2 offers the plugin no compaction event it uses, so the status and ledger reset Prime Agent performs after a compaction does not happen. | Session-start hook | A host compaction event the plugin subscribes to, running `status-hook.py` as Prime Agent's `session_compact` does |
 | Prime Agent | No pre-tool guard: Claude Code and opencode refuse a matched shell command through `bound-hook.py`; Prime Agent's extensions cover routing and status only. | Pre-tool guard | Owner decision D4 in [`docs/plans/owner-decisions-8.4.0-opencode-2.md`](../docs/plans/owner-decisions-8.4.0-opencode-2.md): a tool-call hook in Prime Agent's extension API that can refuse, and a third envelope over `bound-hook.py` |
+
+The owner accepted these differences on 2026-11-10 and asked for none of them
+to be built now: the worker-continuation guard, the kernel in a compose-kernel
+plant, and the compaction reset stay recorded here, and Prime Agent's missing
+guard was set aside for this round. Two items are not defects. The per-session
+dedup check is closed without a live run. Effort stays the user's choice: the
+installer writes a model-map cell's `#<variant>` into the agent, as it writes
+Prime Agent's map cell for `thinking`, and neither the seed nor the matrix claims
+the provider applies it.
 
 ## Measurements
 

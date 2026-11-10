@@ -270,9 +270,12 @@ is the one home of each difference, its evidence and what would close it:
 
 1. No worker-continuation guard.
 2. The seed kernel is absent in a compose-kernel plant.
-3. Per-session dedup is not verified live.
-4. Effort is not verified to reach the provider.
-5. No reset after a compaction.
+3. No reset after a compaction.
+
+The owner accepted these on 2026-11-10 and asked for none to be built now. Two
+other items are not defects: the second-prompt reminder is held by fixtures and
+the owner chose not to run it live, and effort stays the user's choice through
+the model map's `#<variant>`, as it does on Prime Agent.
 
 ## Live verification
 
