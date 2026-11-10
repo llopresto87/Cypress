@@ -161,8 +161,8 @@ from the table above, and to `medium` where the table has no row
 2026-11-09, pending measurement). `brief.py --kind KIND[,KIND]
 [--label LABEL]` prints and logs `effort: <value> (<reason>)` from the first
 match, and the caller passes that value on the spawn: (1) `security`,
-`--security-path`, a harvest's faithful-import review, diagnosing a red gate:
-`high`; (2) the row below (`by label`: the hardest increment label of
+`--security-path` (other than a tester's `findings`), a harvest's faithful-import
+review, diagnosing a red gate: `high`; (2) the row below (`by label`: the hardest increment label of
 `delegation.effort-scale`, low or medium-low → low, medium → medium,
 medium-hard or hard → high; a `first` review of trust-claimed files reads
 `first-trust`; `at most` caps it); (3) the definition's default. The implementer caps at medium (owner, 2026-11-09): replays of a new flow's GREEN graded higher with each step up in effort, high only marginally above medium at half again the cost, and fix sets graded alike at low and medium, low at half the cost. A whole-increment GREEN defaults to low (measured on 2026-11-09): a replay of a whole increment at low cost about a third less than at medium and graded no worse, while a single feature built alone graded lower at low; so low by default, medium for a medium-hard or hard increment. Where several kinds fit, `fix`, `mechanical` and `amend` win over `trust` and `red-trust` (`--kind trust,fix` reads low): a follow-up or fix-round implementer runs at low, while a trust-surface GREEN stays medium.
@@ -175,7 +175,8 @@ medium-hard or hard → high; a `first` review of trust-claimed files reads
 | implementer | `fix`: a contained change or a review-fix set | low |
 | implementer | `mechanical`: an edit, rename or one-line fix | low |
 | tester | `red`: RED for an increment's contracts | by label |
-| tester | `red-trust`: RED for a security or stateful contract | high |
+| tester | `red-trust`: RED for a security or stateful contract, before its GREEN | high |
+| tester | `findings`: RED for the review and security findings of a security pass, from the probe and control files that pass wrote | medium |
 | tester | `amend`: amend one wrong test, or rule on one test question | low |
 | reviewer | `first-trust`: the first review of a trust-surface increment | high |
 | reviewer | `first`: an ordinary first review | medium |

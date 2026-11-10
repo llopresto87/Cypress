@@ -127,6 +127,8 @@ for row in "1|effort: low (reviewer recheck)|--role reviewer --kind recheck" \
            "3|effort: low (implementer increment, label medium-low)|--role implementer --kind increment --label medium-low" \
            "4|effort: medium (architect ruling)|--role architect --kind ruling" \
            "5|effort: high (security path)|--role tester --kind red --security-path" \
+           "5b|effort: medium (tester findings)|--role tester --kind findings --security-path" \
+           "5c|effort: high (security path)|--role security --kind findings" \
            "6|effort: medium (tester definition default)|--role tester"; do
   IFS='|' read -r n want args <<<"$row"
   # shellcheck disable=SC2086

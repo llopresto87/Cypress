@@ -479,6 +479,11 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   trust surface. Where several task kinds fit, `fix`, `mechanical` and
   `amend` now win over `trust` and `red-trust`, and `brief.py --kind
   trust,fix` reads low; a trust-surface GREEN stays medium (SPEC-0005, X502).
+- **RED for a security pass's findings runs at medium.** A measured run's
+  tester for those findings ran at high, since `--security-path` forced it.
+  The tester gains a `findings` kind at medium that starts from the probe and
+  control files the security pass wrote; `security` and a tester's RED of a
+  security contract before GREEN stay high (SPEC-0005, X502).
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 
