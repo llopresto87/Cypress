@@ -152,6 +152,28 @@ Increments are inline; numbers are dependency order. Increment 1 carries the con
 - Phase: GREEN
 - Depends on: increment 4
 
+### Increment 6: E5 generated delivery lines
+- Spec contracts: SPEC-0005/BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS
+- Files touched: `tools/brief.py`, `tests/test-brief.sh`, `tests/fixtures/brief-log/`, `protocols/deliver.md`, `docs/specs/SPEC-0005-cycle-economy.md`
+- Tests to write (RED): X515 in `tests/test-brief.sh`: a hand spawn log and ledger print `tests/fixtures/brief-log/log.out`; the three lines pass `session-metrics.py`; no ledger, a broken ledger line and an empty log; seen red first
+- Behavior added: `brief.py --log` also prints the Spawns, Serial waits and Tokens lines of the Session metrics block
+- Gate: `bash tests/test-brief.sh`, `bash tests/test-session-metrics.sh`, `python3 tests/seed-lint.py`
+- Rollback path: revert the increment's commit
+- Effort: medium-low
+- Phase: GREEN
+- Depends on: increment 5
+
+### Increment 7: E6 batch-size notice at brief time
+- Spec contracts: SPEC-0005/BRIEF_NOTICES_AN_UNDERSIZED_BATCH
+- Files touched: `tools/brief.py`, `tests/test-brief.sh`, `core/method/delegation-cycle-economy.md`, `docs/specs/SPEC-0005-cycle-economy.md`
+- Tests to write (RED): X516 in `tests/test-brief.sh`: an undersized batch with more ready, an exact batch, a security and a concurrency batch of one, a wave with nothing else ready, an unknown increment; seen red first
+- Behavior added: `brief.py --increments N[,N] --unit U` prints one notice and logs it when the batch is smaller than the table gives while more of its phase is ready; never a refusal
+- Gate: `bash tests/test-brief.sh`, `bash tests/test-cycle.sh`, `python3 tests/seed-lint.py`
+- Rollback path: revert the increment's commit
+- Effort: medium-low
+- Phase: GREEN
+- Depends on: increment 6
+
 **Delegation and parallelism.** The static schedule is `python3 templates/knowledge-graph/grill-lint.py --plan docs/plans/grill-8.3.1-token-efficiency.md --specs docs/specs --decisions docs/decisions --waves`. A file two increments write (`docs/specs/SPEC-0005-cycle-economy.md`) is ordered by `Depends on:`.
 
 ## 10. Verification Plan
@@ -202,3 +224,4 @@ Land the next mechanism's increment, then run the release pass, `docs/skills/see
 - 2026-11-10: §12 row 3 resolved by the round brief's anti-pattern against a resume guard that assumes a long cache lifetime when it cannot tell, not by the owner: the guard counts a resolved `1h` only when the worker's transcript shows the host's latest cache write was a one-hour one (X507, new cases seen red first). §11 row 3's refutation is answered for the four cases the press named, since each leaves a 5m-only write or none.
 - 2026-11-10: §12 row 5 resolved by E3's acceptance: the Claude Code environment-variables and prompt-caching pages, read 2026-11-10, document `FORCE_PROMPT_CACHING_5M` and `ENABLE_PROMPT_CACHING_1H`, each set to `1`; increment 3's line that the pages read did not document them is superseded. The README and the capability matrix state the lead default; the hook counts the enable variable only at `1` (X507 case seen red first).
 - 2026-11-10: increment 5 (E4) landed: `cycle.py` prints the state of a build cycle from the plan, the spawn log, the batch record, the question files and git, and writes only through `record-red` and `record-tip`. The batch record's location and line format now live in `delegation.green-self-test`. A commit counts an increment as committed when its message names it, so `test-first.cycle`'s commit message names the increment.
+- 2026-11-10: increments 6 (E5) and 7 (E6) landed: `brief.py --log` prints the Spawns, Serial waits and Tokens lines from the spawn log and the ledger, and `brief.py --increments N --unit U` notices an undersized batch and logs the notice. The spawn log holds composition time only, so a serial wait is read as a gap of more than 60 seconds between two compositions.
