@@ -1494,7 +1494,9 @@ def lint_experts(plant, seed, rec, templates, findings):
                                         f"the source that earned this expert; "
                                         f"a roster cannot be its own evidence"))
         for tool, pattern, verbatim in (projections or []):
-            projected = pattern.replace("{name}", name)
+            # a transformed projection (opencode's, Copilot's) is named by the
+            # callable name; a verbatim one by the file stem
+            projected = pattern.replace("{name}", name if verbatim else spawn_name(name))
             proj = plant / projected
             if Path(projected).is_absolute() or ".." in Path(projected).parts:
                 continue          # a stamp is plant-written; never follow it out

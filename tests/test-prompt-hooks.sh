@@ -12,7 +12,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 FO="$(mktemp -d)"
 trap 'rm -rf "$FO"' EXIT
 
-# --- route-hook.py and status-hook.py (X101-X134, X142-X149, X151, X161-X162, X167-X172, X177-X178, X471)
+# --- route-hook.py and status-hook.py (X101-X134, X142-X149, X151, X161-X162, X167-X172, X177-X178, X471), OC1 (opencode)
 # One case per SPEC-0003 §4 contract and §7 failure, bound by the §10 labels.
 # Each case prints `X1NN <SLUG>: … — OK`. The shipped hooks are copied into
 # `.claude/` of a temp plant (`.git/`, `.cypress/`, a stub
@@ -1451,6 +1451,77 @@ def x171(base):
         collect(problems, routed)
     check(not problems, " || ".join(problems))
     return "each marker (stdin, argv) and --origin=agent: nothing, ledger untouched; human, absent, off-pattern: routed"
+
+
+OC_SID = "ses_0zq1oc2e87ffeoREbQppZjRpW6S"            # the shape of an OpenCode 2 session id
+
+
+def opencode_plant(base, name, register=True):
+    """A plant laid out as `install.sh opencode` places the cores: route-hook.py
+    and status-hook.py in `.opencode/hooks/`, none under `.claude/`."""
+    p = Plant(base, name=name, hooks=(), register=register)
+    (p.dir / ".opencode" / "hooks").mkdir(parents=True)
+    for h in ("route-hook.py", "status-hook.py"):
+        shutil.copy(HOOKS / h, p.dir / ".opencode" / "hooks" / h)
+    return p
+
+
+def opencode_run(plant, name, args):
+    """A core run as cypress-plugin.ts runs it: `python3 -S <core> <argv>`, from
+    `.opencode/hooks/`, cwd the project directory, stdin closed and empty."""
+    hook = plant.dir / ".opencode" / "hooks" / name
+    r = subprocess.run([sys.executable, "-S", str(hook), *args], input="", capture_output=True,
+                       text=True, timeout=30, cwd=str(plant.dir))
+    return Run(r.returncode, r.stdout, r.stderr)
+
+
+@case("OC1", "opencode: HOOK_ARGV_ENVELOPE_EQUALS_STDIN_ENVELOPE, CHILD_SESSION_GETS_NO_INJECTION")
+def oc1(base):
+    # The argv the OpenCode 2 plugin builds: the prompt as typed (untrimmed) in one
+    # `--prompt=` element, the host's session id, the parentID depth. On a root
+    # session it must equal what Claude Code's stdin envelope gets; on a child
+    # (`--depth=1`) both cores emit nothing and write nothing.
+    prompt = "zq-sentinel-oc1 widget ledger work\n"
+    root = [f"--session-id={OC_SID}", "--depth=0"]
+    problems = []
+
+    def root_session():
+        ref = Plant(base / "ref", register=True)
+        oc = opencode_plant(base / "oc", "plant")
+        for i in range(2):                              # a first prompt, then a second in the same session
+            s_ref = status(ref, sid=OC_SID, source="startup") if i == 0 else None
+            s_oc = opencode_run(oc, "status-hook.py", ["--source=startup", *root]) if i == 0 else None
+            if i == 0:
+                check(s_oc.rc == 0 and s_oc.inj is not None and SUMMARY in s_oc.inj,
+                      f"status-hook from .opencode/hooks: no summary — {s_oc.ctx()}")
+                check((s_oc.out, s_oc.err) == (s_ref.out, s_ref.err),
+                      f"status-hook: the opencode run differs from the stdin run:\n  stdin {s_ref.ctx()}\n  oc    {s_oc.ctx()}")
+            r_ref = route(ref, prompt, sid=OC_SID)
+            r_oc = opencode_run(oc, "route-hook.py", [f"--prompt={prompt}", *root])
+            check(r_oc.rc == 0, f"route-hook from .opencode/hooks did not exit 0 — {r_oc.ctx()}")
+            if i == 0:
+                expect_full(r_oc, "route-hook, opencode envelope, first prompt")
+            else:
+                check(is_reminder(r_oc), f"route-hook, opencode envelope, second prompt: not the reminder — {r_oc.ctx()}")
+            check((r_oc.out, r_oc.err, session_files(oc)) == (r_ref.out, r_ref.err, session_files(ref)),
+                  f"route-hook prompt {i + 1}: the opencode run differs from the stdin run:"
+                  f"\n  stdin {r_ref.ctx()}\n  oc    {r_oc.ctx()}")
+    collect(problems, root_session)
+
+    def child_session():
+        oc = opencode_plant(base / "child", "plant")
+        led = write_ledger(oc, sid=OC_SID, prompt_count=3)
+        before = snapshot(oc.dir / ".cypress")
+        child = [f"--session-id={OC_SID}", "--depth=1"]
+        emits_nothing(opencode_run(oc, "status-hook.py", ["--source=startup", *child]), before, oc,
+                      "status-hook, opencode child")
+        emits_nothing(opencode_run(oc, "route-hook.py", [f"--prompt={prompt}", *child]), before, oc,
+                      "route-hook, opencode child")
+        check(read_ledger(oc, sid=OC_SID)["prompt_count"] == 3, "an opencode child session touched the ledger")
+    collect(problems, child_session)
+    check(not problems, " || ".join(problems))
+    return ("from .opencode/hooks with -S: status and two prompts equal the stdin envelope byte for byte "
+            "(full, then reminder); --depth=1: both cores emit and write nothing")
 
 
 SESSION_FIXTURE = SEED / "tests" / "fixtures" / "session-injection" / "scripted-session.json"

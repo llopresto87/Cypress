@@ -13,10 +13,12 @@
 #
 # <tool> is one of:
 #   claude-code        — Drop CLAUDE.md + .claude/ into the project.
-#   opencode           — Drop AGENTS.md + .opencode/ + opencode.json.
-#                         (one config file; opencode auto-discovers
-#                          .opencode/{agents,commands,skills}/ by convention;
-#                          each agent's model: line comes from docs/graph/models.md)
+#   opencode           — OpenCode 2 only. Drop AGENTS.md + .opencode/ + opencode.json.
+#                         (one config file; the host auto-discovers
+#                          .opencode/{agents,commands,skills,plugins}/ by convention;
+#                          each agent is rendered in the host's native form, its
+#                          model from docs/graph/models.md; the hook cores and the
+#                          plugin envelope go under .opencode/hooks/ and plugins/)
 #   codex              — DEPRECATED (frozen, ADR-0009). Drop AGENTS.md + .codex/;
 #                         print ~/.codex/config.toml hints.
 #   github-copilot     — DEPRECATED (frozen, ADR-0009). Generate .github/ from
@@ -26,8 +28,9 @@
 #   all                — Run claude-code, opencode and prime-agent. Name codex or
 #                         github-copilot as well to install a frozen host.
 #
-# Hosts sit in three support tiers (docs/decisions/adr-0009-host-support-tiers.md):
-# first-class claude-code, prime-agent; supported opencode; frozen codex,
+# Hosts sit in three support tiers (docs/decisions/adr-0009-host-support-tiers.md;
+# opencode's row superseded by adr-0033: first-class, OpenCode 2 only):
+# first-class claude-code, opencode, prime-agent; supported none; frozen codex,
 # github-copilot. A frozen host still installs when named and prints a
 # DEPRECATED notice on stderr.
 #
@@ -104,10 +107,11 @@
 #                        (a file the plant deleted is placed again). Needs
 #                        the ledger's base; without one the run stops before
 #                        writing anything.
-#   --recompose-agents   With `claude-code`: rewrite .claude/agents/ and
-#                        .claude/skills/ from the charters, always-loaded
-#                        nodes and skills on disk, the output style with
-#                        them, and write nothing else (no node): the remedy
+#   --recompose-agents   With `claude-code`, `opencode` or both: rewrite
+#                        .claude/agents/ and .claude/skills/ (the output style
+#                        with them) and .opencode/agents/ and .opencode/skills/
+#                        from the charters, always-loaded nodes and skills on
+#                        disk, and write nothing else (no node): the remedy
 #                        when --check names an agent or a skill STALE because
 #                        a node was edited.
 #   --print-config       For `codex`: print the config.toml lines with
@@ -1111,26 +1115,38 @@ project_skills() {
 }
 
 # render_opencode_agents DEST_DIR
-# The opencode projection of the roster (SPEC-0001 §6, ADR-0022). opencode
-# takes a `provider/model` selector where Claude Code takes the alias, so each
-# graph agent is rendered with its `model:` line written from the plant's
-# model map, docs/graph/models.md: `opus` reads the authoring row of the
-# agent's effort, `sonnet` the investigation row, `haiku` the investigation-low
-# row. Where the map names no model (a `-` or placeholder cell, a missing row,
-# no effort, no map, or `inherit`), the line is removed and the agent runs on
-# its caller's model. Every other byte is the graph home's. The map is read
-# once, before the first agent is rendered, so a map that breaks the grammar
-# stops the run here, naming the file and the line, with every projection as it
-# was (MODEL_MAP_UNREADABLE). Renders into DEST_DIR under $STAGE, for
-# project_agents to place or --check to compare, and prints
-# "<agents with no model: line> <agents>". Values are read with the one
-# frontmatter reader's scalar rule; -B keeps its bytecode out of the seed.
+# The opencode projection of the roster (SPEC-0001
+# OPENCODE_AGENT_IS_NATIVE, ADR-0022, ADR-0033). OpenCode 2 reads an agent from
+# its own fields and drops a file whose frontmatter it cannot read, so each
+# graph agent is TRANSFORMED, not copied: a file named by the agent's callable
+# name (the filename is the host's id, so `02-implementer.md` becomes
+# `implementer.md`), carrying `description`, `mode: subagent` (the orchestrator
+# is `primary`: the session plays it, and no other agent may launch it),
+# `model:` from the plant's model map, and `permissions:`, then the charter's
+# body and, as render_claude_agents composes them, each always-loaded node
+# (tools/agent_compose.py, one composer for both hosts). The tool bound is
+# host permissions: integrations/opencode/tool-permissions.json maps each tool
+# name a charter lists to a host action, deny-all first, and a name it does not
+# carry stops the run; `delegates_to` is a deny-all `subagent` rule followed by
+# one allow per listed agent. The model comes from docs/graph/models.md:
+# `opus` reads the authoring row of the agent's effort, `sonnet` the
+# investigation row, `haiku` the investigation-low row; a cell may end in
+# `#<variant>`, which is how the plant's map expresses the effort on a model
+# that has one. Where the map names no model (a `-` or placeholder cell, a
+# missing row, no effort, no map, or `inherit`), the line is left out and the
+# agent runs on its caller's model. The map is read once, before the first
+# agent is rendered, so a map that breaks the grammar stops the run here,
+# naming the file and the line, with every projection as it was
+# (MODEL_MAP_UNREADABLE). Renders into DEST_DIR under $STAGE, for the placer or
+# --check to compare, and prints "<agents with no model: line> <agents>".
 render_opencode_agents() {
-    run_python -B - "$PROJECT_DIR/docs/graph" "$1" "$SEED_ROOT/templates/knowledge-graph" <<'PYEOF'
-import os, re, sys
-graph, dest, reader = sys.argv[1:4]
-sys.path.insert(0, reader)
-from frontmatter import scalar
+    run_python -B - "$PROJECT_DIR/docs/graph" "$1" "$SEED_ROOT/tools" \
+        "$SEED_ROOT/integrations/opencode/tool-permissions.json" <<'PYEOF'
+import json, os, re, sys
+graph, dest, tools, table_path = sys.argv[1:5]
+sys.path.insert(0, tools)
+from agent_compose import ComposeError, node_bodies, sections
+from frontmatter import parse, scalar, FrontmatterError
 
 MAP = "docs/graph/models.md"
 HEADER = ["Class", "Effort", "Prime Agent", "opencode"]
@@ -1209,34 +1225,96 @@ if os.path.isfile(path):
                    "or -", n + 1, line)
         cells[(cls, effort)] = filled.group(1) if filled else None
 
-home = os.path.join(graph, "agents")
-names = sorted(n for n in os.listdir(home)
+
+TABLE = json.load(open(table_path, encoding="utf-8"))
+home_nodes = node_bodies(graph)
+agents_dir = os.path.join(graph, "agents")
+names = sorted(n for n in os.listdir(agents_dir)
                if n.endswith(".md") and not n.startswith(("_", "."))
                and n not in ("index.md", "README.md")
-               and os.path.isfile(os.path.join(home, n)))
+               and os.path.isfile(os.path.join(agents_dir, n)))
 os.makedirs(dest, exist_ok=True)
-inherits = 0
+
+
+def fail(msg):
+    sys.stderr.write(f"ERROR: {msg}\n  Fix the charter and re-run; the opencode "
+                     f"projections are unchanged.\n")
+    sys.exit(1)
+
+
+def rule(r):
+    return '- {action: "%s", resource: "%s", effect: %s}' % (r["action"], r["resource"], r["effect"])
+
+
+def permissions(name, meta):
+    """The host rules for one charter: deny all, then one allow per mapped
+    action, the default secret guard restored after `read`, and the delegation
+    allowlist. The last matching rule wins, so the broad rule is first."""
+    tools_list = meta.get("tools") or []
+    if not isinstance(tools_list, list):
+        fail(f"docs/graph/agents/{name}: tools: is not a list")
+    rules = list(TABLE["start"])
+    seen = set()
+    for t in tools_list:
+        if t not in TABLE["tools"]:
+            fail(f"docs/graph/agents/{name}: the tool {t!r} is not in "
+                 f"integrations/opencode/tool-permissions.json, so its host action is unknown")
+        for action in TABLE["tools"][t]:
+            if action in seen:
+                continue
+            seen.add(action)
+            if action == "subagent":
+                continue
+            rules.append({"action": action, "resource": "*", "effect": "allow"})
+            if action == "read":
+                rules.extend(TABLE["after_read"])
+    if tools_list:
+        rules.extend(TABLE["with_any_tool"])
+    if "subagent" in seen:
+        rules.append(TABLE["launch_none"])
+        for target in meta.get("delegates_to") or []:
+            rules.append({"action": "subagent", "resource": str(target), "effect": "allow"})
+    return rules
+
+
+projected, inherits = {}, 0
 for name in names:
-    raw = open(os.path.join(home, name), "rb").read()
-    head = re.match(rb"\A---\n.*?\n---\n", raw, re.S)
-    token = head and re.search(rb"^model:([^\n]*)\n", raw[:head.end()], re.M)
-    carries = False
-    if token:
-        alias = scalar(token.group(1).decode("utf-8", "replace"))
-        effort = re.search(rb"^effort:([^\n]*)\n", raw[:head.end()], re.M)
-        effort = scalar(effort.group(1).decode("utf-8", "replace")) if effort else None
+    path = os.path.join(agents_dir, name)
+    try:
+        meta, body = parse(open(path, encoding="utf-8").read(), path)
+    except (FrontmatterError, UnicodeDecodeError) as e:
+        fail(f"docs/graph/agents/{name}: {e}")
+    stem = name[:-3]
+    callable_name = re.sub(r"^\d+-", "", stem)
+    if callable_name in projected:
+        fail(f"docs/graph/agents/{name} and docs/graph/agents/{projected[callable_name]} "
+             f"are both callable as {callable_name!r}")
+    projected[callable_name] = name
+    alias = meta.get("model")
+    effort = meta.get("effort")
+    model = None
+    if isinstance(alias, str):
         row = {"opus": ("authoring", effort), "sonnet": ("investigation", effort),
                "haiku": ("investigation", "low")}.get(alias)
-        if alias in ("opus", "sonnet", "haiku", "inherit"):
-            cell = cells.get(row) if row else None
-            line = f"model: {cell}\n".encode() if cell else b""
-            raw = raw[:token.start()] + line + raw[token.end():]
-            carries = bool(cell)
-        else:
-            carries = True        # a value outside the aliases is copied as is
-    inherits += not carries
-    rendered = os.path.join(dest, name)
-    open(rendered, "wb").write(raw)
+        model = cells.get(row) if row else None
+        if alias not in ("opus", "sonnet", "haiku", "inherit"):
+            model = alias          # a value outside the aliases is copied as is
+    inherits += not model
+    description = " ".join(str(meta.get("description") or "").split())
+    head = ["---", "description: " + json.dumps(description, ensure_ascii=False),
+            "mode: " + ("primary" if meta.get("name") == "orchestrator" else "subagent")]
+    if model:
+        head.append("model: " + model)
+    head.append("permissions:")
+    head.extend("  " + rule(r) for r in permissions(name, meta))
+    head.append("---")
+    try:
+        parts = [body.strip("\n")] + sections(meta, name, home_nodes)
+    except ComposeError as e:
+        fail(str(e))
+    target = os.path.join(dest, callable_name + ".md")
+    with open(target, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(head) + "\n\n" + "\n\n".join(parts) + "\n")
 print(inherits, len(names))
 PYEOF
 }
@@ -1259,54 +1337,14 @@ PYEOF
 # docs/graph/{method,skills,protocols}/ stops the run before the first agent is
 # placed, naming the charter and the id.
 render_claude_agents() {
-    run_python -B - "$PROJECT_DIR/docs/graph" "$1" "$SEED_ROOT/templates/knowledge-graph" <<'PYEOF'
-import os, re, sys
-graph, dest, reader = sys.argv[1:4]
-sys.path.insert(0, reader)
+    run_python -B - "$PROJECT_DIR/docs/graph" "$1" "$SEED_ROOT/tools" <<'PYEOF'
+import os, sys
+graph, dest, tools = sys.argv[1:4]
+sys.path.insert(0, tools)
+from agent_compose import ComposeError, node_bodies, sections
 from frontmatter import parse, FrontmatterError
 
-home = {}
-for sub in ("method", "skills", "protocols"):
-    d = os.path.join(graph, sub)
-    for name in sorted(os.listdir(d)) if os.path.isdir(d) else []:
-        f = os.path.join(d, name)
-        if not (name.endswith(".md") and os.path.isfile(f)):
-            continue
-        try:
-            meta, body = parse(open(f, encoding="utf-8").read(), f)
-        except (FrontmatterError, UnicodeDecodeError):
-            continue
-        if isinstance(meta.get("id"), str):
-            home.setdefault(meta["id"], body)
-
-def composed(body, wanted):
-    """A node body as a role composes it: the text before its first `## `
-    section, then each section except `## Neighbours` and one whose next line
-    is `<!-- reference-only -->`; with `wanted`, only the `## <n>.` sections
-    it names. Returns (text, the wanted numbers no section carries)."""
-    chunks = re.split(r"(?m)^(?=## )", body.strip("\n"))
-    pre = [] if chunks[0].startswith("## ") else [chunks.pop(0)]
-    keep, seen = [], set()
-    for c in chunks:
-        num = re.match(r"## (\d+)\.", c)
-        seen.add(num.group(1) if num else None)
-        lines = c.split("\n")
-        if lines[0].strip() == "## Neighbours" or (len(lines) > 1 and lines[1].strip() == "<!-- reference-only -->"):
-            # the heading and its list go; text after the list (a plant's own line) stays
-            n = 1
-            while n < len(lines) and (not lines[n].strip() or lines[n].startswith(("- ", "  "))
-                                      or lines[n].strip() == "<!-- reference-only -->"):
-                n += 1
-            rest = "\n".join(lines[n:])
-            if rest.strip():
-                keep.append("\n" + rest)
-            continue
-        if wanted and not (num and num.group(1) in wanted):
-            continue
-        keep.append(c)
-    text = "".join(pre + keep).strip("\n")
-    return text, [n for n in wanted if n not in seen]
-
+home = node_bodies(graph)
 
 agents = os.path.join(graph, "agents")
 STYLE = "_output-style-orchestrator.md"   # placed as .claude/output-styles/orchestrator.md
@@ -1321,25 +1359,13 @@ for name in sorted(os.listdir(agents)) if os.path.isdir(agents) else []:
         meta, body = parse(text, f)
     except FrontmatterError:
         continue
-    ids = meta.get("always_loads") or []
-    if not isinstance(ids, list) or not ids:
+    try:
+        parts = [text.rstrip("\n")] + sections(meta, name, home)
+    except ComposeError as e:
+        sys.stderr.write(f"ERROR: {e} Fix the charter and re-run; the Claude Code agents are unchanged.\n")
+        sys.exit(1)
+    if len(parts) == 1:
         continue
-    parts = [text.rstrip("\n")]
-    for entry in ids:
-        i, _, sel = str(entry).partition("#")
-        if i not in home:
-            sys.stderr.write(f"ERROR: docs/graph/agents/{name}: always_loads names {i!r}, "
-                             f"which no node in docs/graph/{{method,skills,protocols}}/ carries. "
-                             f"Fix the charter and re-run; the Claude Code agents are unchanged.\n")
-            sys.exit(1)
-        part, missing = composed(home[i], [n.strip() for n in sel.split(",") if n.strip()])
-        if missing:
-            sys.stderr.write(f"ERROR: docs/graph/agents/{name}: always_loads entry {entry!r}: "
-                             f"{i} has no section {', '.join(missing)}. Fix the charter and "
-                             f"re-run; the Claude Code agents are unchanged.\n")
-            sys.exit(1)
-        head = f"## Always loaded: {i}" + (f" (sections {', '.join(sel.split(','))})" if sel else "")
-        parts.append(head + "\n\n" + part)
     out[name] = "\n\n".join(parts) + "\n"
     if meta.get("name") == "orchestrator":
         # The main session is no subagent: it plays the orchestrator through
@@ -1418,6 +1444,38 @@ check_claude_skill_projections() {
     return 1
 }
 
+# project_opencode_agents RENDERED_DIR: place each rendered opencode agent as
+# .opencode/agents/<callable name>.md (OPENCODE_AGENT_IS_NATIVE) and the routing
+# corpus beside them. An earlier seed projected the graph home's own file name
+# (`02-implementer.md`), which OpenCode 2 reads as the id `02-implementer` and
+# which carries a `tools:` list it drops silently; each such file is retired to
+# a timestamped backup beside itself first, so a re-install leaves a roster the
+# host loads and loses none of a plant's edits (OPENCODE_REINSTALL_RETIRES_OLD_SHAPE).
+project_opencode_agents() {
+    local rendered="$1" dest="$PROJECT_DIR/.opencode/agents" home="$PROJECT_DIR/docs/graph/agents"
+    local f name stem bak
+    ensure_dir "$dest"
+    for f in "$home"/*.md; do
+        [[ -f "$f" ]] || continue
+        name="${f##*/}"
+        case "$name" in _*|index.md|README.md) continue ;; esac
+        stem="${name%.md}"
+        [[ -f "$rendered/${stem#[0-9][0-9]-}.md" && "$stem" != "${stem#[0-9][0-9]-}" ]] || continue
+        [[ -e "$dest/$name" || -L "$dest/$name" ]] || continue
+        bak="$(bak_path "$dest/$name")"
+        mv "$dest/$name" "$bak" || die "could not retire $dest/$name"
+        BACKUPS_MADE+=("$bak")
+        log "  retired .opencode/agents/$name (the earlier shape OpenCode 2 does not load) -> $(basename "$bak")"
+    done
+    for f in "$rendered"/*.md; do
+        [[ -f "$f" ]] || continue
+        place_generated "$f" "$dest/${f##*/}"
+    done
+    [[ -f "$home/_routes.golden.tsv" ]] && \
+        place_file "$home/_routes.golden.tsv" "$dest/_routes.golden.tsv"
+    return 0
+}
+
 # check_opencode_projections: --check for the opencode projections
 # (OPENCODE_CHECK_DETECTS_DRIFT). Renders what an install would place and
 # compares it, name by name, with .opencode/agents/, backups excluded: a
@@ -1443,12 +1501,48 @@ check_opencode_projections() {
         [[ "$name" == _routes.golden.tsv && -f "$home/$name" ]] && continue
         stale+=("$name")
     done
+    local rc=0
+    check_opencode_skill_projections || rc=1
+    check_opencode_config_shape || rc=1
     if [[ ${#stale[@]} -eq 0 ]]; then
         log "opencode projections up to date."
-        return 0
+        return $rc
     fi
-    warn "opencode projections are STALE: ${stale[*]}. Re-run: install.sh opencode"
+    warn "opencode projections are STALE: ${stale[*]}. Recompose them from the nodes on disk: install.sh opencode --recompose-agents (it writes .opencode/agents/ and .opencode/skills/ only; a file in the earlier shape is moved to a backup beside it)"
     return 1
+}
+
+# check_opencode_skill_projections: the skills half of --check for opencode
+# (OPENCODE_CHECK_DETECTS_DRIFT). .opencode/skills/<name>/SKILL.md is the
+# projection of docs/graph/skills/<name>.md, project_skills' rule; one that
+# differs from its node or is missing is stale. Writes nothing.
+check_opencode_skill_projections() {
+    local dest="$PROJECT_DIR/.opencode/skills" home="$PROJECT_DIR/docs/graph/skills" f name stale=()
+    [[ -d "$dest" && -d "$home" ]] || return 0
+    for f in "$home"/*.md; do
+        [[ -f "$f" ]] || continue
+        name="${f##*/}"; name="${name%.md}"
+        case "$name" in _*|index|README) continue ;; esac
+        cmp -s "$f" "$dest/$name/SKILL.md" || stale+=("$name/SKILL.md")
+    done
+    [[ ${#stale[@]} -eq 0 ]] && return 0
+    warn "opencode skills are STALE: ${stale[*]}. Re-project them from the nodes on disk: install.sh opencode --recompose-agents (it writes .opencode/agents/ and .opencode/skills/ only; no node under docs/graph/ is touched)"
+    return 1
+}
+
+# check_opencode_config_shape: a placed opencode.json that still carries a key
+# OpenCode 2 reports as an unsupported legacy setting (the top-level
+# `subagent_depth` an earlier seed shipped) is in the earlier shape; the host
+# omits it with a warning, which would silently cap delegation at one level.
+# Writes nothing.
+check_opencode_config_shape() {
+    local cfg="$PROJECT_DIR/opencode.json"
+    [[ -f "$cfg" ]] || return 0
+    if run_python -B -c 'import json, sys; sys.exit(0 if "subagent_depth" in json.load(open(sys.argv[1])) else 1)' "$cfg" 2>/dev/null; then
+        warn "opencode.json is in the earlier shape: its top-level subagent_depth is an unsupported legacy setting on OpenCode 2, which omits it. Re-run: install.sh opencode (the file is replaced and the old one kept as a backup)"
+        return 1
+    fi
+    return 0
 }
 
 # place_docs_skeleton: install every knowledge artifact beneath the one
@@ -2331,7 +2425,7 @@ install_opencode() {
     local rendered counts
     rendered="$(stage opencode/agents)"
     counts="$(render_opencode_agents "$rendered")" || exit 1
-    project_agents "$PROJECT_DIR/.opencode/agents" "$rendered"
+    project_opencode_agents "$rendered"
     log "opencode: ${counts%% *} of ${counts##* } agents carry no model: line, because docs/graph/models.md names no opencode model for their class and effort; each runs on its caller's model"
     project_skills "$PROJECT_DIR/.opencode/skills"
     # Slash commands — the same generated projections as every other harness.
@@ -2342,12 +2436,31 @@ install_opencode() {
     # tests/seed-lint.py and tests/test-full-install.sh can parse; the rationale
     # for what this file does NOT declare lives in integrations/opencode/README.md.
     place_file "$SEED_ROOT/integrations/opencode/opencode.json" "$PROJECT_DIR/opencode.json"
-    log "opencode install done."
+    # The hook core: the same route-hook.py, status-hook.py and bound-hook.py
+    # Claude Code runs, byte-identical, so every hooked host keeps one decision
+    # (ADR-0024). The plugin below is the OpenCode 2 envelope that runs them
+    # from here: it finds this directory beside its own.
+    ensure_dir "$PROJECT_DIR/.opencode/hooks"
+    place_file "$SEED_ROOT/integrations/claude-code/route-hook.py" \
+               "$PROJECT_DIR/.opencode/hooks/route-hook.py"
+    place_file "$SEED_ROOT/integrations/claude-code/status-hook.py" \
+               "$PROJECT_DIR/.opencode/hooks/status-hook.py"
+    place_file "$SEED_ROOT/integrations/claude-code/bound-hook.py" \
+               "$PROJECT_DIR/.opencode/hooks/bound-hook.py"
+    # Route suggestion, status register and the bounded-execution guard through
+    # the cores. OpenCode 2 loads .opencode/plugins/ by convention; the plugin
+    # imports only the host's bundled package, so no install step follows.
+    ensure_dir "$PROJECT_DIR/.opencode/plugins"
+    place_hook "$SEED_ROOT/integrations/opencode/cypress-plugin.ts" \
+               "$PROJECT_DIR/.opencode/plugins/cypress.ts"
+    log "opencode install done. This adapter targets OpenCode 2 (run it as opencode2); OpenCode 1 is not supported."
     log "  AGENTS.md             -> core/AGENTS.md (bootstrap kernel)"
     log "  docs/graph/           -> the ONE knowledge system (method surface + project graph)"
     log "  .opencode/agents/     (projection of docs/graph/agents/, model: lines from the map)"
     log "  .opencode/skills/     (harness projection of docs/graph/skills/)"
     log "  .opencode/commands/   (tool-specific slash commands)"
+    log "  .opencode/hooks/      (route-hook.py, status-hook.py, bound-hook.py — the hook core the plugin runs)"
+    log "  .opencode/plugins/    (cypress.ts — route suggestion, status register, bounded execution)"
     log "  opencode.json         (commit to share with team)"
     log_registration_notice ".opencode/agents/"
 }
@@ -2834,8 +2947,8 @@ fi
 # these arrays and `all` to the first two. `all` below is written out rather
 # than concatenated from them: the concatenation would put prime-agent ahead of
 # opencode and change install order for no reason.
-FIRST_CLASS_TOOLS=(claude-code prime-agent)
-SUPPORTED_TOOLS=(opencode)
+FIRST_CLASS_TOOLS=(claude-code opencode prime-agent)
+SUPPORTED_TOOLS=()
 FROZEN_TOOLS=(codex github-copilot)
 
 # Expand 'all'
@@ -3005,7 +3118,7 @@ adapter_dirs() {
         claude-code)    printf '%s\n' docs docs/graph \
                              .claude .claude/agents .claude/skills .claude/commands ;;
         opencode)       printf '%s\n' docs docs/graph \
-                             .opencode .opencode/agents .opencode/skills .opencode/commands ;;
+                             .opencode .opencode/agents .opencode/skills .opencode/commands .opencode/hooks .opencode/plugins ;;
         codex)          printf '%s\n' docs docs/graph \
                              .codex .codex/agents .codex/skills ;;
         github-copilot) printf '%s\n' docs docs/graph \
@@ -3348,9 +3461,25 @@ for ext, event, script in (("route-extension.ts", "UserPromptSubmit", "route-hoo
         hooks.append((event, ".prime/agent/hooks/" + script, "argv",
                       runner.group(1) if runner else "python3"))
 
+# opencode: one plugin envelope runs the two context cores and asks the bound
+# guard. A plant that carries .opencode/agents/ and no plugin is the earlier
+# shape: nothing routes and nothing is bounded, so it is named.
+oc_plugin = root / ".opencode/plugins/cypress.ts"
+oc_guards = []
+if oc_plugin.is_file():
+    runner = TS_RUNNER.search(oc_plugin.read_text(encoding="utf-8", errors="replace"))
+    for event, script in (("UserPromptSubmit", "route-hook.py"), ("SessionStart", "status-hook.py")):
+        hooks.append((event, ".opencode/hooks/" + script, "argv", runner.group(1) if runner else "python3"))
+    oc_guards.append(("shell", ".opencode/hooks/bound-hook.py"))
+elif (root / ".opencode/agents").is_dir():
+    print("[seed] WARNING: --check: .opencode/plugins/cypress.ts is missing; opencode routes, "
+          "reports status and bounds shell commands through it, so none of the three happens; "
+          "re-run install.sh opencode to restore it", file=sys.stderr)
+    failed = 1
+
 # Blocking hooks (PreToolUse) are guards: looked for, never run
 # (CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT).
-guards = []
+guards = list(oc_guards)
 settings = root / ".claude/settings.json"
 if settings.is_file():
     try:
@@ -3432,20 +3561,33 @@ check_harness_homes() {
     printf '%s\n' "$out" | sed 's/^/[seed] --check: /'
 }
 
-# --recompose-agents: the Claude Code agents and skills, from the charters and the
-# always-loaded nodes on disk (render_claude_agents), so a node a graft kept
-# or merged is composed as it stands rather than fast-forwarded first.
+# --recompose-agents: the Claude Code and opencode agents and skills, from the
+# charters and the always-loaded nodes on disk (render_claude_agents,
+# render_opencode_agents), so a node a graft kept or merged is composed as it
+# stands rather than fast-forwarded first. It takes claude-code, opencode, or
+# both, and writes only their projections.
 if [[ ${RECOMPOSE_AGENTS:-0} -eq 1 ]]; then
-    [[ ${CHECK:-0} -eq 0 && " ${expanded[*]} " == " claude-code " ]] \
-        || die "--recompose-agents takes claude-code alone and no --check. Nothing has been written."
+    [[ ${CHECK:-0} -eq 0 ]] && case " ${expanded[*]} " in
+        " claude-code "|" opencode "|" claude-code opencode "|" opencode claude-code ") true ;;
+        *) false ;;
+    esac || die "--recompose-agents takes claude-code, opencode or both, and no --check. Nothing has been written."
     [[ -d "$PROJECT_DIR/docs/graph/agents" ]] \
         || die "--recompose-agents: $PROJECT_DIR has no docs/graph/agents/ to compose from. Nothing has been written."
-    _rendered="$(stage claude/agents)"
-    render_claude_agents "$_rendered" || exit 1
-    project_agents "$PROJECT_DIR/.claude/agents" "$_rendered"
-    place_orchestrator_style "$_rendered"
-    project_skills "$PROJECT_DIR/.claude/skills"
-    log "recomposed .claude/agents/, .claude/output-styles/orchestrator.md and .claude/skills/ from docs/graph/; nothing else was written."
+    if [[ " ${expanded[*]} " == *" claude-code "* ]]; then
+        _rendered="$(stage claude/agents)"
+        render_claude_agents "$_rendered" || exit 1
+        project_agents "$PROJECT_DIR/.claude/agents" "$_rendered"
+        place_orchestrator_style "$_rendered"
+        project_skills "$PROJECT_DIR/.claude/skills"
+        log "recomposed .claude/agents/, .claude/output-styles/orchestrator.md and .claude/skills/ from docs/graph/; nothing else was written."
+    fi
+    if [[ " ${expanded[*]} " == *" opencode "* ]]; then
+        _rendered="$(stage opencode/agents)"
+        render_opencode_agents "$_rendered" >/dev/null || exit 1
+        project_opencode_agents "$_rendered"
+        project_skills "$PROJECT_DIR/.opencode/skills"
+        log "recomposed .opencode/agents/ and .opencode/skills/ from docs/graph/; nothing else was written."
+    fi
     exit 0
 fi
 

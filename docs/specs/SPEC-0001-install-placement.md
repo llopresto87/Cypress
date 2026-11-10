@@ -300,7 +300,7 @@ jurisdiction undecided.
 - **Then:** the write passes through one of four named operations —
   `place_file`, `place_generated`, `place_if_missing`, `place_state`
 - **And:** no adapter has a private placement path
-- **Except:** 11 writes into the target are authored rather than placed, and are
+- **Except:** 12 writes into the target are authored rather than placed, and are
   recorded here because a contract with unnamed exceptions is a contract that is
   simply false. `record_instruction_migration` (4) moves a symlink off the note
   path, moves a HARD LINK off it for the same reason — `cat >` and `>>` write
@@ -326,6 +326,11 @@ jurisdiction undecided.
   skipped those hooks when `settings.json` was present, but that guard ran in
   one direction only — adopting Copilot first and Claude Code second left both
   sets wired, and VS Code reads both, so every hook fired twice.
+  `project_opencode_agents` (1) moves an earlier-shape agent file
+  (`<digits>-<name>.md`, which OpenCode 2 drops without a diagnostic) to a
+  timestamped backup beside itself before the native file is placed
+  (OPENCODE_REINSTALL_RETIRES_OLD_SHAPE): a removal, which none of the four
+  operations expresses, and a plant's edit survives in the backup.
 - **And:** that list is DERIVED from `install.sh` on every run rather than read
   from this page: `seed-lint`'s `check_install_write_sites()` attributes every
   raw write to the function that holds it and compares the set outside the four
@@ -360,7 +365,7 @@ jurisdiction undecided.
   from the target (SPEC-0007 §6 "Build report"), and the cache that run writes under `.cypress/source-index/` is the
   tool's own atomic write under adr-0029. The run adds no raw write to
   `install.sh`, so it is neither a placer write nor a row of
-  `INSTALL_WRITE_EXCEPTIONS`, and the count of 11 above is unchanged.
+  `INSTALL_WRITE_EXCEPTIONS`, and the count of 12 above is unchanged.
 
 ### Contract: BACKUP_BEFORE_REPLACE
 - **Given:** a destination that exists and differs from what is being placed
@@ -822,10 +827,12 @@ its own record, and that slug stays as written in §12's history.
   graph holds an agent with `model: opus` and `effort: high` and one with
   `model: sonnet` and `effort: medium`
 - **When:** `install.sh opencode --project-dir <target>` runs
-- **Then:** each of the two agents' `.opencode/agents/<name>.md` equals its
-  graph home `docs/graph/agents/<name>.md` with the `model:` line replaced by
-  `model: provider-a/model-x` and `model: provider-b/model-y` respectively,
-  and with no other byte changed
+- **Then:** each of the two agents' `.opencode/agents/<callable name>.md`
+  (OPENCODE_AGENT_IS_NATIVE) carries the line `model: provider-a/model-x` and
+  `model: provider-b/model-y` respectively, and the charter's body unchanged
+- **And:** a cell may end in `#<variant>` (`provider-a/model-x#high`): the
+  host reads the variant as the model's effort, so the plant's map expresses
+  an effort on a model that has one, and the installer guesses no variant name
 - **And:** the projection is written through `place_generated`, so it is a
   real file under `--symlink` as well, and `SINGLE_WRITER`'s exception count
   is unchanged
@@ -838,8 +845,8 @@ its own record, and that slug stays as written in §12's history.
 - **Given:** a fresh target, so `docs/graph/models.md` is the unfilled
   template
 - **When:** `install.sh opencode --project-dir <target>` runs
-- **Then:** it exits 0, and each `.opencode/agents/<name>.md` equals its graph
-  home with the `model:` line removed and no other byte changed
+- **Then:** it exits 0, and each `.opencode/agents/<callable name>.md` carries
+  no `model:` line and the charter's body unchanged
 - **And:** the same holds, in a map whose other rows are filled, for an agent
   whose class and effort have no row, for one whose row's opencode cell is
   `-`, and for a plant agent with `model: inherit`, whatever the map says
@@ -860,8 +867,8 @@ its own record, and that slug stays as written in §12's history.
 - **Given:** an opencode plant, its record carrying opencode, installed with a
   map that fills the opencode cell of the `authoring | high` row
 - **When:** `install.sh opencode --check --project-dir <target>` runs
-- **Then:** after a hand edit to one `.opencode/agents/<name>.md`, it exits
-  non-zero and names that projection as stale
+- **Then:** after a hand edit to one `.opencode/agents/<callable name>.md`, it
+  exits non-zero and names that projection as stale
 - **And:** after an edit of the map's filled cell with no re-run, which
   changes only `model:` lines, it exits non-zero and names each projection
   whose `model:` line the edit changes
@@ -875,6 +882,107 @@ its own record, and that slug stays as written in §12's history.
   stamp is written
 - **And:** `install.sh all --check` checks the same projections, because
   `all` names opencode and the record carries it
+
+### Contract: OPENCODE_AGENT_IS_NATIVE
+- **Given:** a plant whose graph holds the seed's roster and a plant agent
+- **When:** `install.sh opencode --project-dir <target>` runs
+- **Then:** `.opencode/agents/` holds one file per graph agent, named by the
+  agent's callable name (the graph file name without its `<digits>-` prefix),
+  because OpenCode 2 reads the file name as the agent's id
+- **And:** its frontmatter carries only the host's own fields: `description`,
+  `mode` (`subagent`; `primary` for the orchestrator, which the session plays
+  and no other agent may launch), `model` where the map names one, and
+  `permissions`; none of the seed's `tools:` list, `effort`, `can_delegate`,
+  `routing_triggers` or graph fields reaches the host, and no deprecated
+  version 1 field is written
+- **And:** the body is the charter's body, followed by each always-loaded
+  section (OPENCODE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES)
+- **And:** the file is written through `place_generated`, and the routing
+  corpus `_routes.golden.tsv` rides beside the agents
+
+### Contract: OPENCODE_TOOL_BOUND_IS_HOST_PERMISSIONS
+- **Given:** a charter listing `tools:` and `delegates_to:`
+- **When:** `install.sh opencode` renders its agent
+- **Then:** the agent's `permissions:` open with a rule denying every action,
+  then allow each host action the charter's tool names map to in
+  `integrations/opencode/tool-permissions.json` (the one home of that map),
+  with the host's default secret-file guard restored after `read`, so the last
+  matching rule is the narrow one
+- **And:** an agent without `Write`/`Edit` cannot edit, one without `Bash`
+  cannot run a shell command, and one without `Task` cannot launch a
+  subagent; an agent with `Task` may launch exactly the agents in its
+  `delegates_to:`
+- **And:** a tool name the table does not carry stops the render before any
+  projection is placed, naming the charter and the tool, with every
+  projection as it was; an unknown name is never read as allowed
+
+### Contract: OPENCODE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES
+- **Given:** a charter whose frontmatter names `always_loads:`
+- **When:** `install.sh opencode` renders it
+- **Then:** the agent's body is byte-identical to the body Claude Code's
+  composition of the same charter carries after its own frontmatter, because
+  both hosts call `tools/agent_compose.py`; a node that no longer exists, or a
+  section it lacks, stops the run naming the charter
+- **And:** `install.sh opencode --check` names an agent whose composition is
+  stale, and `install.sh opencode --recompose-agents` rewrites
+  `.opencode/agents/` and `.opencode/skills/` only, so no node under
+  `docs/graph/` changes and an edit to a node survives
+
+### Contract: OPENCODE_HOOK_CORE_AND_PLUGIN_ARE_PLACED
+- **Given:** a fresh target directory
+- **When:** `install.sh opencode --project-dir <target>` runs
+- **Then:** `.opencode/hooks/route-hook.py`, `status-hook.py` and
+  `bound-hook.py` exist byte-identical to the seed's
+  `integrations/claude-code/` cores (ADR-0024), and
+  `.opencode/plugins/cypress.ts` exists, the envelope that runs them
+  (SPEC-0003); both are placed through `place_file` and `place_hook`, so
+  `SINGLE_WRITER`'s census is unchanged
+- **And:** the plugin imports only the host's bundled package and `node:`
+  built-ins, so no install step and no network follow the placement
+- **And:** the installer prints one line saying the adapter targets OpenCode 2
+  and names the command that runs it
+
+### Contract: OPENCODE_REINSTALL_RETIRES_OLD_SHAPE
+- **Given:** an opencode plant installed by an earlier seed: agent files named
+  `<digits>-<name>.md` with a `tools:` list (which OpenCode 2 drops without a
+  diagnostic), a top-level `subagent_depth` in `opencode.json` (which it omits
+  as an unsupported legacy setting), and no plugin
+- **When:** `install.sh opencode --project-dir <target>` runs again
+- **Then:** it exits 0, moves each old-shape agent file to a timestamped backup
+  beside it (a plant's edit survives there), writes the OpenCode 2 agents,
+  replaces `opencode.json` with a backup, and places the plugin and cores
+- **And:** the plant then passes `install.sh opencode --check`
+- **And:** the installer neither detects nor branches on OpenCode 1
+
+### Contract: OPENCODE_CHECK_NAMES_THE_EARLIER_SHAPE
+- **Given:** an opencode plant whose record carries opencode
+- **When:** `install.sh opencode --check --project-dir <target>` runs
+- **Then:** it exits non-zero, with a remedy, for each of: a projected agent
+  or skill that differs from what the installer would project (including a
+  file in the earlier numbered shape); an `opencode.json` still carrying the
+  top-level `subagent_depth`; a missing `.opencode/plugins/cypress.ts`; a
+  missing or unusable hook core the plugin runs
+- **And:** it runs the two context cores once on the interpreter they name,
+  looks for the bound guard and never runs it, and needs no OpenCode 2
+  installed
+
+### Contract: OPENCODE_CONFIG_IS_OPENCODE_2
+- **Given:** the seed's `integrations/opencode/opencode.json`
+- **When:** `seed-lint` runs
+- **Then:** it fails when the file carries a key outside the set the seed has
+  verified on OpenCode 2 (`$schema`, `experimental`), when the top-level
+  `subagent_depth` of the earlier shape is present, when `instructions` is
+  present (the host accepts it and loads none of its entries, and the kernel
+  would load twice), or when `experimental.subagent_depth` does not reach the
+  roster's deepest `max_spawn_depth`
+
+### Contract: OPENCODE_VERSION_HAS_ONE_HOME
+- **Given:** `integrations/opencode/verified-version`, the OpenCode 2 version
+  the adapter was last verified against live
+- **When:** `seed-lint` runs
+- **Then:** it fails when the file is not a bare version, or when
+  `integrations/opencode/README.md` or `documentation/host-capability-matrix.md`
+  does not cite that version
 
 ### Contract: PRIME_HOOK_SCRIPTS_ARE_PLACED
 - **Given:** a fresh target directory
@@ -2101,6 +2209,14 @@ $ head -1 /p/docs/graph/libraries/rxjs.md
 | MODEL_MAP_UNREADABLE | E10, the closing arms of case_opencode_check_drift (the same arms hold the refusal and the untouched projections) | tests/test-full-install.sh | integration | green |
 | OPENCODE_SELECTOR_UNRESOLVED | (no behavioural test: the installer has no host catalog to check a cell against; §7) | — | — | pending |
 | OPENCODE_CHECK_DETECTS_DRIFT | E11 case_opencode_check_drift: over an opencode plant with a filled authoring-high cell, `install.sh opencode --check` exits 0 and says up to date; after a hand edit to one projection, and after a cell edit with no re-run, it exits non-zero naming the stale projections; `install.sh all --check` fails the same way; the plant's file digest is unchanged by every run | tests/test-full-install.sh | integration | green |
+| OPENCODE_AGENT_IS_NATIVE | E19 case_opencode_native_agent: after `install.sh claude-code opencode`, `.opencode/agents/` holds one file per graph agent named by its callable name, frontmatter keys within `description`, `mode`, `model`, `permissions`, mode `primary` for the orchestrator only | tests/test-full-install.sh | integration | green |
+| OPENCODE_TOOL_BOUND_IS_HOST_PERMISSIONS | E19 case_opencode_native_agent: each agent's rules, evaluated last-match-wins, allow edit/shell/search/fetch/read exactly for the tools its charter lists, allow `subagent` exactly for its `delegates_to` (none without `Task`), deny any other action and ask on `.env`; a plant agent listing the tool `Teleport` makes the run exit non-zero naming it with `.opencode/agents/` unchanged | tests/test-full-install.sh | integration | green |
+| OPENCODE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | E19, composition arm: each opencode agent body equals Claude Code's composed body after its frontmatter; E20 arms (f) and (g): an edited always-loaded node makes `--check` name the agent with the recompose remedy, `--recompose-agents` clears it, the node keeps the edit and `docs/` is unchanged | tests/test-full-install.sh | integration | green |
+| OPENCODE_HOOK_CORE_AND_PLUGIN_ARE_PLACED | E19 case_opencode_native_agent: the three cores are byte-identical to the seed's and the plugin exists after a fresh install; tests/test-opencode-plugin.sh holds the plugin's static shape | tests/test-full-install.sh | integration | green |
+| OPENCODE_REINSTALL_RETIRES_OLD_SHAPE | E20 case_opencode_reinstall_old_shape arms (b) and (c): over a plant in the earlier shape the install exits 0, the numbered files are gone, a plant's edit is in a backup, `opencode.json` has `experimental.subagent_depth` and a backup, and `--check` is then green | tests/test-full-install.sh | integration | green |
+| OPENCODE_CHECK_NAMES_THE_EARLIER_SHAPE | E20 arms (a), (d) and (e): over the earlier shape `--check` exits non-zero naming the old file, the earlier-shape config and the missing plugin; with a core removed it names the core; with the plugin removed it names the plugin | tests/test-full-install.sh | integration | green |
+| OPENCODE_CONFIG_IS_OPENCODE_2 | E21 opencode-stale-schema, opencode-invalid-key, opencode-legacy-depth-key, opencode-double-load and opencode-depth-cap rows of test-seed-lint: each mutated config fails `check_opencode_config` with its message | tests/test-seed-lint.sh | integration | green |
+| OPENCODE_VERSION_HAS_ONE_HOME | E22 opencode-version-uncited row of test-seed-lint: a verified version the adapter README does not cite fails `check_opencode_version` | tests/test-seed-lint.sh | integration | green |
 | MODEL_MAP_UNREADABLE | E11 case_opencode_check_drift, its arm (f): a map row with class `premium` makes `install.sh opencode --check` exit non-zero with stderr naming `docs/graph/models.md` | tests/test-full-install.sh | integration | green |
 | SEED_ONLY_FILES_NEVER_PLACED | X393 check_seed_only_stays_home: a copied `manifest.json` whose `tools` map gains `tools/prepare-release.py` is a finding naming that path as a seed-only file | tests/test-seed-lint.sh | unit | green |
 | SEED_ONLY_FILES_NEVER_PLACED | X394 check_seed_only_stays_home: a copied `install.sh` that places a file from `$SEED_ROOT/docs/` that is not itself seed-only (`docs/decisions/index.md`) is a finding naming `install.sh` that says it sources a file under `$SEED_ROOT/docs` | tests/test-seed-lint.sh | unit | green |
@@ -2730,7 +2846,7 @@ only version surface it has, and it moves with each entry here.
   would otherwise be false about that write, so the text changes and the code
   is to follow it. §2 names the write in scope and the build itself as
   SPEC-0007's. SINGLE_WRITER gains an And clause: the build is a tool run of a
-  placed file, not an installer write, and the count of 11 exceptions is
+  placed file, not an installer write, and the count of 12 exceptions is
   unchanged. IDENTICAL_RERUN_IS_INERT gains an Except clause: the cache is
   replaced on every install into a Git work tree, with equal bytes when
   nothing moved (SPEC-0007 `BUILD_IS_DETERMINISTIC`) and no backup. No §10 row
@@ -2848,3 +2964,16 @@ only version surface it has, and it moves with each entry here.
   graph-home skill passed. Added CHECK_FLAGS_A_DRIFTED_SKILL_PROJECTION (M28,
   seen red first). The remedy extends `--recompose-agents` to re-project skills
   and leaves the node alone; links in place of copies were not needed.
+- 2026-11-10 — the owner decided that opencode is a first-class host and that
+  the seed targets OpenCode 2 only (ADR-0033). Measured on OpenCode 2: the
+  projection dropped every seed agent (a `tools:` list voids the file) and the
+  `subagent_depth` key was an unsupported legacy setting. Added
+  OPENCODE_AGENT_IS_NATIVE, OPENCODE_TOOL_BOUND_IS_HOST_PERMISSIONS,
+  OPENCODE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES,
+  OPENCODE_HOOK_CORE_AND_PLUGIN_ARE_PLACED, OPENCODE_REINSTALL_RETIRES_OLD_SHAPE,
+  OPENCODE_CHECK_NAMES_THE_EARLIER_SHAPE, OPENCODE_CONFIG_IS_OPENCODE_2 and
+  OPENCODE_VERSION_HAS_ONE_HOME (E19, E20 seen red on the 8.3.2 tree first).
+  OPENCODE_MODEL_FROM_MAP, OPENCODE_NO_MAP_ROW_NO_MODEL_LINE and
+  OPENCODE_CHECK_DETECTS_DRIFT now speak of the native file named by its
+  callable name, not a copy of the graph home with one line changed; a map cell
+  may end in `#<variant>`.

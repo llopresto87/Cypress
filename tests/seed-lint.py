@@ -856,7 +856,9 @@ INSTALL_WRITE_EXCEPTIONS = {
     ("write_seed_stamp", ">"): (1, "temp", "writes the stamp into $tmp before place_state"),
     ("install_codex", "embedded"): (1, "temp", "renders the config snippet into $tmp"),
     ("render_opencode_agents", "embedded"): (1, "temp",
-        "renders each opencode agent with its map model: line into $tmp, then placed"),
+        "renders each opencode agent in its native form into $tmp, then placed"),
+    ("project_opencode_agents", "mv"): (1, "target",
+        "moves an earlier-shape agent file to a timestamped backup beside it"),
     ("install_github_copilot", "embedded"): (4, "temp",
         "renders the four Copilot projections into $tmp, each then placed"),
     ("<main>", "cp"): (1, "temp", "copies the graph into the verification tree under $tmp"),
@@ -1149,7 +1151,8 @@ def check_install_write_sites() -> None:
                  f"which is how a derived claim goes stale in prose.")
 
 # ADR-0021: the seed's own procedures and tools, which no plant receives.
-SEED_ONLY = ("tools/prepare-release.py", "docs/skills/seed-release.md", "docs/skills/lever-trial.md")
+SEED_ONLY = ("tools/prepare-release.py", "docs/skills/seed-release.md", "docs/skills/lever-trial.md",
+             "docs/skills/opencode-live-verification.md")
 
 
 def check_seed_only_stays_home() -> None:
@@ -1318,48 +1321,62 @@ def misattributed_eager_figures(text: str, surfaces: dict) -> list:
 
 
 def check_opencode_config() -> None:
-    """opencode's always-loaded instructions stay in budget and never re-load the
-    kernel, its keys are in opencode's closed config schema, and its
-    subagent_depth reaches the roster's deepest delegation chain."""
+    """SPEC-0001 OPENCODE_CONFIG_IS_OPENCODE_2: opencode.json carries only keys
+    OpenCode 2 accepts and the seed has verified (live, at the version in
+    integrations/opencode/verified-version), never re-declares the kernel, and
+    its experimental.subagent_depth reaches the roster's deepest delegation
+    chain. The top-level subagent_depth an earlier seed shipped is an
+    unsupported legacy setting on OpenCode 2, which omits it."""
     oc = ROOT / "integrations/opencode/opencode.json"
     if not oc.exists():
         return
-    session_budget = 10_000     # bytes: the auto-loaded kernel plus a small overlay
     cfg = json.loads(oc.read_text(encoding="utf-8"))
-    instructions = cfg.get("instructions", [])
-    total = KERNEL.stat().st_size
-    for rel in instructions:
-        if rel in ("AGENTS.md", "CLAUDE.md"):
-            fail(f"opencode.json: instructions re-declares {rel!r}, which "
-                 f"opencode already auto-loads — the kernel would load twice")
-        elif not (ROOT / rel).exists():
-            fail(f"opencode.json: instructions file not found: {rel}")
-        else:
-            total += (ROOT / rel).stat().st_size
-    if total > session_budget:
-        fail(f"opencode.json: always-loaded instructions total {total} bytes "
-             f"> {session_budget} budget (auto-loaded AGENTS.md + {instructions})")
-    # The schema sets additionalProperties: false; keys pinned, never fetched.
     schema_url = "https://opencode.ai/config.json"
-    valid = {"$schema", "agent", "attachment", "autoupdate", "command", "compaction",
-             "default_agent", "disabled_providers", "enabled_providers", "enterprise",
-             "experimental", "formatter", "instructions", "logLevel", "lsp", "mcp",
-             "model", "permission", "plugin", "provider", "references", "server",
-             "share", "shell", "skills", "small_model", "snapshot", "subagent_depth",
-             "tool_output", "tools", "username", "watcher"}
     if cfg.get("$schema") != schema_url:
         fail(f"opencode.json: $schema must be {schema_url!r} "
              f"(got {cfg.get('$schema')!r}; the old config-schema.json URL 404s)")
-    for key in sorted(set(cfg) - valid):
-        fail(f"opencode.json: {key!r} is not a key in opencode's config "
-             f"schema, which sets additionalProperties:false — the whole "
-             f"config is rejected, not just this key")
+    # The keys the seed places. Adding one means verifying it on OpenCode 2 first
+    # and recording that in the live procedure, not extending this set on trust.
+    placed = {"$schema", "experimental"}
+    for key in sorted(set(cfg) - placed):
+        if key == "subagent_depth":
+            fail("opencode.json: top-level 'subagent_depth' is an unsupported legacy "
+                 "setting on OpenCode 2, which omits it; the key is experimental.subagent_depth")
+        elif key == "instructions":
+            fail("opencode.json: 'instructions' is accepted by OpenCode 2 but its entries "
+                 "are not loaded; the kernel reaches the session as AGENTS.md and the "
+                 "kernel would load twice if it were listed")
+        else:
+            fail(f"opencode.json: {key!r} is not a key the seed places on OpenCode 2 "
+                 f"(placed keys: {sorted(placed)}); a deprecated version 1 field is "
+                 f"never placed")
     depths = [int(a["fm"]["max_spawn_depth"]) for a in load_agents().values()
               if str(a["fm"].get("max_spawn_depth", "")).isdigit()]
-    if depths and cfg.get("subagent_depth") != max(depths):
-        fail(f"opencode.json: subagent_depth={cfg.get('subagent_depth')!r} "
+    have = (cfg.get("experimental") or {}).get("subagent_depth")
+    if depths and have != max(depths):
+        fail(f"opencode.json: experimental.subagent_depth={have!r} "
              f"but the roster's deepest max_spawn_depth is {max(depths)} — "
              f"the seed's delegation topology would be capped on opencode")
+
+
+def check_opencode_version() -> None:
+    """SPEC-0001 OPENCODE_VERSION_HAS_ONE_HOME: the OpenCode 2 version the
+    adapter was last verified against live has one home, and the adapter README
+    and the host matrix cite it."""
+    vf = ROOT / "integrations/opencode/verified-version"
+    if not vf.is_file():
+        fail("integrations/opencode/verified-version is missing: the OpenCode 2 "
+             "version the adapter was verified against has lost its one home")
+        return
+    version = vf.read_text(encoding="utf-8").strip()
+    if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+        fail(f"integrations/opencode/verified-version: {version!r} is not a bare version")
+        return
+    for rel in ("integrations/opencode/README.md", "documentation/host-capability-matrix.md"):
+        p = ROOT / rel
+        if p.is_file() and version not in p.read_text(encoding="utf-8"):
+            fail(f"{rel} does not cite the verified OpenCode 2 version {version} "
+                 f"(integrations/opencode/verified-version is its one home)")
 
 
 # (file, required text, forbidden text, message key) for the two workflows;
@@ -2463,7 +2480,7 @@ def check_published_counts() -> None:
 
 CHECKS = (check, check_corpus_stack, check_agent_spawn_grants, check_body_ceiling, check_leaf_body_ceiling,
           check_adopted_rule_homes, check_text_rules, check_eager_surface,
-          check_opencode_config, check_spec_test_mapping, check_spec_rows_name_their_contract,
+          check_opencode_config, check_opencode_version, check_spec_test_mapping, check_spec_rows_name_their_contract,
           check_frontmatter_reader_is_one_reader, check_source_paths_is_one_module,
           check_frontmatter_is_portable_yaml,
           check_install_write_sites, check_seed_only_stays_home, check_host_tiers,
