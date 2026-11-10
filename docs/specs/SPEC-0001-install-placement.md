@@ -1227,6 +1227,26 @@ its own record, and that slug stays as written in §12's history.
 - **And:** the checks of the context hooks, their lines and exit codes are
   unchanged (CHECK_EXECUTES_EACH_WIRED_HOOK)
 
+### Contract: CHECK_FLAGS_A_DRIFTED_SKILL_PROJECTION
+- **Given:** a `claude-code` plant whose `.claude/skills/<name>/SKILL.md` is the
+  projection of the graph home `docs/graph/skills/<name>.md`
+- **When:** a graph-home skill node is edited (or a projection is edited by
+  hand, or deleted) and `install.sh claude-code --check --project-dir <target>`
+  runs
+- **Then:** it exits non-zero and prints on stderr one line naming every
+  projection that differs from its node, `[seed] WARNING: claude-code skills are
+  STALE: <name>/SKILL.md ... Re-project them from the nodes on disk:
+  install.sh claude-code --recompose-agents (it writes .claude/agents/,
+  .claude/output-styles/orchestrator.md and .claude/skills/ only; no node under
+  docs/graph/ is touched)`
+- **And:** the remedy rewrites the projections from the nodes and never a
+  node: the edited node is byte-identical afterwards, the projection equals it,
+  a differing projection is backed up before it is replaced, and `--check`
+  then exits 0
+- **And:** a skill with no graph home is not flagged here (it is an ORPHAN,
+  CHECK_FLAGS_ORPHAN_HARNESS_ENTRY), and the agents' STALE line and its remedy
+  text are unchanged
+
 ### Contract: CHECK_FLAGS_RETIRED_HARNESS_ENTRY
 - **Given:** a plant carrying an `origin: seed` agent or skill that the
   running seed does not ship (no `agents/<name>.md`, no
@@ -2113,6 +2133,7 @@ $ head -1 /p/docs/graph/libraries/rxjs.md
 | CHECK_EXECUTES_EACH_WIRED_HOOK | M12 case_hook_check: over a copy of the every-host install, `claude-code --check` exits 0, keeps CHECK_WITHOUT_COPILOT_SAYS_SO's line, prints a ran line for the two Claude Code and the two Prime Agent hooks, and leaves the tree byte-identical; with `.claude/route-hook.py` removed it exits non-zero naming `UserPromptSubmit .claude/route-hook.py`; over a copy of the Copilot-only install with `.github/hooks/status-hook.py` removed, `github-copilot --check` exits non-zero naming `SessionStart .github/hooks/status-hook.py` | tests/test-install-placement.sh | integration; red on arrival (no ran line: `--check` ran no hook) | green |
 | BLOCKING_HOOK_WIRING_FAILS_OPEN_ON_A_MISSING_SCRIPT | M27 case_guard_wiring: the wired Bash and SendMessage commands of an installed plant, run with the script present on a blocked input (exit 2, the refusal) and with it absent, a dangling link or a directory (exit 0, the one stderr line naming the path) | tests/test-install-placement.sh | integration; red on arrival (python3 exited 2 on the missing script) | green |
 | CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT | M27 case_guard_wiring: `claude-code --check` with each blocking script removed in turn exits non-zero naming event, matcher, path and remedy, runs neither, and exits 0 with both present | tests/test-install-placement.sh | integration; red on arrival (exit 0, the path unnamed) | green |
+| CHECK_FLAGS_A_DRIFTED_SKILL_PROJECTION | M28 case_skill_projection_drift: after an edit of a graph-home skill, a hand edit of a projection and a deleted projection, `claude-code --check` exits non-zero naming each; `--recompose-agents` leaves the node byte-identical, backs up the differing projection, equals the node; `--check` then exits 0 | tests/test-install-placement.sh | integration; red on arrival (exit 0 on a drifted skill) | green |
 | CHECK_FLAGS_RETIRED_HARNESS_ENTRY | M13 case_retired_flag: over a copy of the every-host install carrying an `origin: seed` `docs/graph/skills/from-scratch-bootstrap.md` the seed does not ship and its `.claude/skills/` projection, plus an `origin: seed` `.claude/agents/legacy-steward.md` with no graph node (added at the tip), `graft-audit.py` keeps its clean-copy exit code and names the lone agent `RETIRED`, and `claude-code --check` exits 0, names all three `RETIRED` and leaves the tree byte-identical; after the projection gains a line and a re-install backs it up, `graft-audit.py` counts the backup `RETIRED`, reports no `UNMAPPED` backup and names the projection `RETIRED`; both entries are still on disk | tests/test-install-placement.sh | integration; red on arrival (`--check` printed no harness line, not even over the clean copy) | green |
 | CHECK_FLAGS_ORPHAN_HARNESS_ENTRY | M14 case_orphan_flag: over a copy of the every-host install, `claude-code --check` says every harness entry has a graph home (inside M13); with a skill in `.claude/skills/deploy-notes/` and an agent in `.prime/agent/agents/` and no graph node, it exits 0, names each `ORPHAN` with the graph home it lacks and leaves the tree byte-identical; `graft-audit.py` names the skill `ORPHAN` with its clean-copy exit code (asserted since the tip) | tests/test-install-placement.sh | integration; red on arrival (`--check` did not name the orphan skill) | green |
 | CHECK_FLAGS_RETIRED_GRAPH_NODE | M13 case_retired_flag, graph-node arm (8.1.2, graft finding F1): the every-host install copy also carries an `origin: seed` `docs/graph/protocols/<name>.md` the seed does not ship and an `origin: project` protocol of another name: `claude-code --check` exits 0, names the seed one `RETIRED` and not the project one, and leaves the tree byte-identical; `graft-audit.py` names it `RETIRED` with its clean-copy exit code; the node is still on disk | tests/test-install-placement.sh | integration | green |
@@ -2822,3 +2843,8 @@ only version surface it has, and it moves with each entry here.
   and CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT (M27, seen red first), and
   reworded the `bound-hook.py is not run` line of CHECK_EXECUTES_EACH_WIRED_HOOK,
   which stays true: a guard is looked for and never run.
+- 2026-11-10 — the same review found that `--check` compared the Claude Code
+  agents with their nodes but left `.claude/skills/` unchecked, so an edit of a
+  graph-home skill passed. Added CHECK_FLAGS_A_DRIFTED_SKILL_PROJECTION (M28,
+  seen red first). The remedy extends `--recompose-agents` to re-project skills
+  and leaves the node alone; links in place of copies were not needed.

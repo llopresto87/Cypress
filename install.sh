@@ -104,10 +104,12 @@
 #                        (a file the plant deleted is placed again). Needs
 #                        the ledger's base; without one the run stops before
 #                        writing anything.
-#   --recompose-agents   With `claude-code`: rewrite .claude/agents/ from the
-#                        charters and always-loaded nodes on disk, and write
-#                        nothing else: the remedy when --check names a
-#                        composed agent STALE because a node was edited.
+#   --recompose-agents   With `claude-code`: rewrite .claude/agents/ and
+#                        .claude/skills/ from the charters, always-loaded
+#                        nodes and skills on disk, the output style with
+#                        them, and write nothing else (no node): the remedy
+#                        when --check names an agent or a skill STALE because
+#                        a node was edited.
 #   --print-config       For `codex`: print the config.toml lines with
 #                         resolved paths instead of editing anything.
 #   --check              Verify the generated views are in sync; write
@@ -1368,25 +1370,51 @@ place_orchestrator_style() {
 # Returns 1 when one is stale.
 check_claude_projections() {
     local dest="$PROJECT_DIR/.claude/agents" home="$PROJECT_DIR/docs/graph/agents"
-    local rendered f name want stale=()
+    local rendered f name want stale=() rc=0
+    if [[ -d "$dest" && -d "$home" ]]; then
+        rendered="$(stage claude-check/agents)"
+        render_claude_agents "$rendered" || exit 1
+        for f in "$home"/*.md; do
+            [[ -f "$f" ]] || continue
+            name="${f##*/}"
+            case "$name" in _*|index.md|README.md) continue ;; esac
+            want="$f"; [[ -f "$rendered/$name" ]] && want="$rendered/$name"
+            cmp -s "$want" "$dest/$name" || stale+=("$name")
+        done
+        [[ -f "$rendered/_output-style-orchestrator.md" ]] \
+            && ! cmp -s "$rendered/_output-style-orchestrator.md" "$PROJECT_DIR/.claude/output-styles/orchestrator.md" \
+            && stale+=(".claude/output-styles/orchestrator.md")
+        if [[ ${#stale[@]} -eq 0 ]]; then
+            log "claude-code agents up to date."
+        else
+            warn "claude-code agents are STALE: ${stale[*]}. Recompose them from the nodes on disk: install.sh claude-code --recompose-agents (it writes .claude/agents/ and .claude/output-styles/orchestrator.md only)"
+            rc=1
+        fi
+    fi
+    check_claude_skill_projections || rc=1
+    return $rc
+}
+
+# check_claude_skill_projections: the skills half of check_claude_projections
+# (CHECK_FLAGS_A_DRIFTED_SKILL_PROJECTION). .claude/skills/<name>/SKILL.md is the
+# projection of docs/graph/skills/<name>.md, project_skills' rule; one that
+# differs from its node or is missing is stale. A skill directory with no graph
+# home is the ORPHAN flag's business (check_harness_homes). Writes nothing.
+# The remedy re-projects from the nodes and never writes one.
+check_claude_skill_projections() {
+    local dest="$PROJECT_DIR/.claude/skills" home="$PROJECT_DIR/docs/graph/skills" f name stale=()
     [[ -d "$dest" && -d "$home" ]] || return 0
-    rendered="$(stage claude-check/agents)"
-    render_claude_agents "$rendered" || exit 1
     for f in "$home"/*.md; do
         [[ -f "$f" ]] || continue
-        name="${f##*/}"
-        case "$name" in _*|index.md|README.md) continue ;; esac
-        want="$f"; [[ -f "$rendered/$name" ]] && want="$rendered/$name"
-        cmp -s "$want" "$dest/$name" || stale+=("$name")
+        name="${f##*/}"; name="${name%.md}"
+        case "$name" in _*|index|README) continue ;; esac
+        cmp -s "$f" "$dest/$name/SKILL.md" || stale+=("$name/SKILL.md")
     done
-    [[ -f "$rendered/_output-style-orchestrator.md" ]] \
-        && ! cmp -s "$rendered/_output-style-orchestrator.md" "$PROJECT_DIR/.claude/output-styles/orchestrator.md" \
-        && stale+=(".claude/output-styles/orchestrator.md")
     if [[ ${#stale[@]} -eq 0 ]]; then
-        log "claude-code agents up to date."
+        log "claude-code skills up to date."
         return 0
     fi
-    warn "claude-code agents are STALE: ${stale[*]}. Recompose them from the nodes on disk: install.sh claude-code --recompose-agents (it writes .claude/agents/ and .claude/output-styles/orchestrator.md only)"
+    warn "claude-code skills are STALE: ${stale[*]}. Re-project them from the nodes on disk: install.sh claude-code --recompose-agents (it writes .claude/agents/, .claude/output-styles/orchestrator.md and .claude/skills/ only; no node under docs/graph/ is touched)"
     return 1
 }
 
@@ -3404,7 +3432,7 @@ check_harness_homes() {
     printf '%s\n' "$out" | sed 's/^/[seed] --check: /'
 }
 
-# --recompose-agents: the Claude Code agents alone, from the charters and the
+# --recompose-agents: the Claude Code agents and skills, from the charters and the
 # always-loaded nodes on disk (render_claude_agents), so a node a graft kept
 # or merged is composed as it stands rather than fast-forwarded first.
 if [[ ${RECOMPOSE_AGENTS:-0} -eq 1 ]]; then
@@ -3416,7 +3444,8 @@ if [[ ${RECOMPOSE_AGENTS:-0} -eq 1 ]]; then
     render_claude_agents "$_rendered" || exit 1
     project_agents "$PROJECT_DIR/.claude/agents" "$_rendered"
     place_orchestrator_style "$_rendered"
-    log "recomposed .claude/agents/ and .claude/output-styles/orchestrator.md from docs/graph/; nothing else was written."
+    project_skills "$PROJECT_DIR/.claude/skills"
+    log "recomposed .claude/agents/, .claude/output-styles/orchestrator.md and .claude/skills/ from docs/graph/; nothing else was written."
     exit 0
 fi
 

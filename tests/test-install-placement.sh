@@ -550,6 +550,39 @@ PY
     echo "  M27 guard wiring: both PreToolUse guards pass their exit code through and fail open, one stderr line, when the script is absent, dangling or a directory; --check names each, runs neither — OK"
 }
 
+# M28, SPEC-0001 CHECK_FLAGS_A_DRIFTED_SKILL_PROJECTION: a skill projection that
+# differs from its graph home is stale to --check, and the remedy re-projects
+# from the node without touching it.
+case_skill_projection_drift() {
+    local P="$WORK/skill-drift" out rc why="CHECK_FLAGS_A_DRIFTED_SKILL_PROJECTION" node proj before
+    plant_base claude-code --copy || fail "$why: the install failed"
+    plant_copy "$P"
+    node="$P/docs/graph/skills/test-first.md"; proj="$P/.claude/skills/test-first/SKILL.md"
+    rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || fail "$why: --check over a clean plant exited $rc: $out"
+    printf '\nA plant edit of the node.\n' >> "$node"
+    rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -ne 0 ]] || fail "$why: --check passed after the graph-home skill was edited: $out"
+    grep -qF "claude-code skills are STALE: test-first/SKILL.md." <<<"$out" \
+        || fail "$why: the stale line does not name test-first/SKILL.md: $out"
+    grep -qF "install.sh claude-code --recompose-agents" <<<"$out" || fail "$why: no remedy named: $out"
+    printf '\nhand edit\n' >> "$P/.claude/skills/adr-writer/SKILL.md"
+    rm "$P/.claude/skills/toolcraft/SKILL.md"
+    rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$P" 2>&1)" || rc=$?
+    grep -qF "claude-code skills are STALE: adr-writer/SKILL.md test-first/SKILL.md toolcraft/SKILL.md." <<<"$out" \
+        || fail "$why: the three drifted projections are not named, sorted, on one line: $out"
+    before="$(cksum < "$node")"
+    rc=0; out="$("$ROOT/install.sh" claude-code --recompose-agents --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || fail "$why: the remedy exited $rc: $out"
+    [[ "$(cksum < "$node")" == "$before" ]] || fail "$why: the remedy changed the plant's node"
+    grep -qF "A plant edit of the node." "$node" || fail "$why: the node lost its edit"
+    cmp -s "$node" "$proj" || fail "$why: the projection does not equal the node after the remedy"
+    ls "$P/.claude/skills/adr-writer/" | grep -q "SKILL.md.bak-" || fail "$why: the hand-edited projection was not backed up"
+    rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || fail "$why: --check after the remedy exited $rc: $out"
+    echo "  M28 skill projection drift: an edited node, a hand-edited and a deleted projection are named; --recompose-agents re-projects without touching the node; --check is clean after — OK"
+}
+
 # M13, SPEC-0001 CHECK_FLAGS_RETIRED_HARNESS_ENTRY: an origin: seed skill the
 # seed no longer ships (it folded skill.from-scratch-bootstrap into
 # protocol.from-scratch), still in the graph and still projected, is named
@@ -1287,7 +1320,7 @@ export BASE BASECOPILOT ESEED
 SCN="$(mktemp)"
 for c in case_recover case_symchurn case_m2 case_m4 case_m10 case_cond case_hook_check case_retired_flag case_orphan_flag \
          case_expertise_propose case_expertise_place case_expertise_refused case_expertise_silence \
-         case_expertise_plant_edits case_expertise_check case_retired_stamp_keys case_agents_compose case_agents_recompose case_orchestrator_style case_agents_sections case_prompt_cache_ttl case_guard_wiring; do
+         case_expertise_plant_edits case_expertise_check case_retired_stamp_keys case_agents_compose case_agents_recompose case_orchestrator_style case_agents_sections case_prompt_cache_ttl case_guard_wiring case_skill_projection_drift; do
     printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0

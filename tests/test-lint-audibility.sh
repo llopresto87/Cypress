@@ -86,9 +86,16 @@ status_date: 2026-09-13
 |---|---|---|---|---|
 | DO_THING | test_do_thing | tests/test_thing.py | unit | green |
 MD
+# spec-lint reads with errors="replace", so the invalid-UTF-8 fallback of
+# make_unreadable cannot fail it; only a mode that denies the read can. Where
+# chmod denies nothing (uid 0), the case cannot make its condition and says so.
 make_unreadable "$SPEC/tests/test_thing.py"
-unread_fails spec-lint test_thing.py 1 -- \
-  bash -c 'cd "$1" && python3 docs/graph/spec-lint.py' _ "$SPEC"
+if [ -r "$SPEC/tests/test_thing.py" ]; then
+  echo "  spec-lint: SKIPPED the unreadable-test-file case — chmod 000 denies nothing under uid $(id -u), and spec-lint decodes with errors=replace"
+else
+  unread_fails spec-lint test_thing.py 1 -- \
+    bash -c 'cd "$1" && python3 docs/graph/spec-lint.py' _ "$SPEC"
+fi
 
 # agnosticism-lint: DEFAULT_GLOBS is *.md, so a skipped read was always a page.
 mkdir -p "$T/agn"
