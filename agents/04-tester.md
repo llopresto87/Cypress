@@ -80,6 +80,8 @@ strive to write a correct test on the information they have".
 
 For a security contract, write the negative controls and the path tests of
 the SECURITY PATH block your brief carries (`method.security-controls`).
+For a security pass's findings, start from the probe and control files that
+pass wrote (`test-first.security-path`).
 
 ## Spec → test flow
 

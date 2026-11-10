@@ -511,6 +511,9 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   than `true` or `false`, is a lint error
 - **And:** `protocol.test-first` holds reviewer findings on the covered files
   for the security pass, which is their one fix round
+- **And:** `protocol.test-first` sends the pass's findings to one `tester`
+  for their RED and then one `implementer` for their GREEN, so no implementer
+  writes a test
 
 ### Contract: BRIEF_DERIVES_THE_SPAWN_EFFORT
 - **Test file:** `tests/test-brief.sh`
@@ -2996,3 +2999,9 @@ kept outside the seed.
   control files the security pass wrote; high stays for RED of a security
   contract before its GREEN and for the `security` role.
   BRIEF_DERIVES_THE_SPAWN_EFFORT reads it (seen red first).
+- 2026-11-10 — the security path sent its findings to one implementer while
+  `delegation.green-self-test` keeps the implementer off test files. The
+  findings now go to one tester (RED, medium, from the security pass's probe
+  and control files), then one implementer (GREEN, low), then the light
+  re-check. TRUST_PATH_TAKES_THE_SECURITY_PASS gains the route, held by
+  seed-lint (seen red first).

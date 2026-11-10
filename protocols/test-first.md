@@ -109,7 +109,7 @@ the mutation pass, is `docs/graph/method/delegation-cycle-economy.md`.
 | RED | `tester` | the §9 row, the contract text, the target test paths | failing tests that fail for the right reason; spec §10 rows `red` |
 | GREEN → REFACTOR | `implementer` | the RED handback (test paths, contract slugs, files) | a green, integrated diff; the RED tests run by the implementer itself, with no separate tester spawn and no test or fixture file edited, and a test that looks wrong written up as a question (`delegation.green-self-test`); affected gates run locally; spec §10 rows `green` |
 | REVIEW | `reviewer` | the diff, the §9 row | severity-tagged findings; a Critical/Major goes to a fresh `implementer` briefed with the finding and the diff, then a fresh light `reviewer` checks only the fix diff; each round is an attempt under `protocol.recover` |
-| SECURITY | `security`, once, after REVIEW, when the increment takes the security path (`test-first.security-path`; `brief.py` prints `SECURITY PASS REQUIRED` when it composes a review of a trust path) | why the pass is required, the diff and files, every reviewer finding on the covered files whatever its rating | each attempt, blocked or bypass, with the test that pins it; its findings go to one fresh `implementer`, then one light `security` re-check of that fix |
+| SECURITY | `security`, once, after REVIEW, when the increment takes the security path (`test-first.security-path`; `brief.py` prints `SECURITY PASS REQUIRED` when it composes a review of a trust path) | why the pass is required, the diff and files, every reviewer finding on the covered files whatever its rating | each attempt, blocked or bypass, with the test that pins it, and its probe and control files left in the tree; its findings go to one fresh `tester` (RED), then one fresh `implementer` (GREEN), then one light `security` re-check of that fix |
 | COMMIT | the session | a clean review | grill.md §15 entry with the `spawn_id`s in issue order; the commit; the spec's status advanced |
 
 An increment whose §9 row reads `Tests to write (RED): none — …` was
@@ -141,12 +141,16 @@ After REVIEW the session spawns `security` once (`brief.py --role security`,
 which embeds the same block) with why the pass is required and every reviewer
 finding on the covered files whatever its rating; it confirms the controls and
 runs each class against the diff. Its findings and those reviewer findings go
-to one fresh `implementer`, and one light `security` re-check of that fix
+to one fresh `tester` (`brief.py --role tester --kind findings
+--security-path`, medium), which writes their RED starting from the probe and
+control files the security spawn wrote; then one fresh `implementer` (`--kind
+fix`, low) greens them, writing production files only
+(`delegation.green-self-test`); and one light `security` re-check of that fix
 closes the pass: one round, then COMMIT, or `protocol.recover` for what the
 re-check still breaks. The session holds reviewer findings on the covered files
 for this pass: the security pass is their one fix round. When the increment's
 RED predates the security path, the security spawn writes the missing controls
-and that one implementer greens them.
+as probe files, and that tester and implementer take them the same way.
 
 ### RED — write the failing test
 

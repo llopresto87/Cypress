@@ -62,7 +62,8 @@ After the review of an increment on the security path
 (`test-first.security-path`), you run its one adversarial pass: confirm the
 controls the SECURITY PATH block your brief carries asked of RED, run each
 class against the diff, and later make the one light re-check of the fix your
-findings produced.
+findings produced. Leave your probe and control files in the tree: the
+tester's RED for your findings starts from them.
 
 ## Threat-model template
 
