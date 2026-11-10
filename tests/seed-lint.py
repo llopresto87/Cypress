@@ -1561,6 +1561,21 @@ TEXT_RULES = (
     # the reviewer reads the builder's gate evidence and leaves the builds to it
     ("REVIEWER_RUNS_NO_BUILD", "require", lambda: ["agents/03-reviewer.md"],
      re.escape("the builder runs the builds and test suites"), {"collapse": True}),
+    # a command that outlasts a worker's cache leaves its turn: one home, the reviewer points
+    ("SLOW_COMMAND_LEAVES_THE_WORKER_TURN", "require", lambda: ["core/method/bounded-execution.md"],
+     re.escape("outlast the worker's cache lifetime"), {"collapse": True}),
+    ("SLOW_COMMAND_LEAVES_THE_WORKER_TURN", "require", lambda: ["agents/03-reviewer.md"],
+     re.escape("test suites (`toolcraft.bounded-execution`)"), {"collapse": True}),
+    # a gate returns failing ids and a summary, keeps its exit status and its full log
+    ("GATE_OUTPUT_KEEPS_STATUS_AND_LOG", "require", lambda: ["protocols/verify.md"],
+     re.escape("keeps the command's exit status"), {"collapse": True}),
+    # neither rule is copied where every session or every brief pays for it
+    *[(slug, "forbid", lambda: ["core/AGENTS.md", "templates/prompts/graph-session-bootstrap.md",
+                                "templates/prompts/handback-payload.md"]
+       + [f"core/method/{n}.md" for n in ("tiers", "delegation", "delegation-continuation",
+                                           "decision-economy", "minimum-sufficient-work")],
+       pat, {}) for slug, pat in (("SLOW_COMMAND_LEAVES_THE_WORKER_TURN", r"outlast the worker's cache"),
+                                  ("GATE_OUTPUT_KEEPS_STATUS_AND_LOG", r"keeps the command's exit status"))],
     # the implementer codes a new flow to a written ownership and transition note
     ("IMPLEMENTER_WRITES_A_DESIGN_NOTE", "require", lambda: ["agents/02-implementer.md"],
      re.escape("restart of the component that holds state"), {"collapse": True}),
