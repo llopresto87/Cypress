@@ -221,8 +221,8 @@ configured, and exit 0.
 Stdlib Python on the seed's Python floor, no third-party parser and no model.
 The tool reads `TEST_GLOBS` and `SKIP_DIRS` with `ast.literal_eval` from the
 plant's `spec-lint.py`, as `source-index.py` does, and never imports it. It
-adds no configuration to any graph engine, so `tools/graft-graph-engine.py`'s
-table is unchanged. It adds nothing to the kernel or to any always-loaded
+adds no configuration of its own to any graph engine; the table in
+`tools/graft-graph-engine.py` keeps the plant's `TEST_GLOBS` and `SKIP_DIRS`. It adds nothing to the kernel or to any always-loaded
 prompt.
 
 ## 6. Data shapes
@@ -289,8 +289,8 @@ shrinks after the first write.
 ### Failure: ADOPTED_SUITE_FLAGS_ON_DAY_ONE
 - **Trigger:** a project adopted with an existing suite holds many read-back
   tests
-- **Response:** graft lists them as one judgment item; graft and grow remove
-  no test
+- **Response:** graft records them once as the plant's baseline and reports
+  how many it holds; graft and grow remove no test
 - **Recovery:** the owner decides per plant to record a baseline, keep tests
   with reasons, or leave them flagged
 
@@ -355,7 +355,7 @@ tool. Every row was `red` on the missing tool first.
 | WORTH_REMOVAL_LIST_HOLDS_BACK_THE_NEVER_AUTOMATIC_KINDS | X601 bug, security control, a legacy row with no origin, no §10 row | tests/test-worth-check.sh | integration (fixture) | green |
 | WORTH_REMOVAL_LIST_FOR_A_REOPENED_SPEC | X602 --spec narrows to the spec's tests, baseline included; an unknown spec exits 2 | tests/test-worth-check.sh | integration (fixture) | green |
 | HEURISTIC_SPARES_A_READ_BACK | none: the check errs toward sparing by design | none | none | none |
-| ADOPTED_SUITE_FLAGS_ON_DAY_ONE | none: graft's judgment item is advice, and the owner decides | none | none | none |
+| ADOPTED_SUITE_FLAGS_ON_DAY_ONE | none: graft's baseline step reports the count, and the owner decides on a cleanup | none | none | none |
 
 ## 11. Open questions
 
@@ -376,3 +376,4 @@ tool. Every row was `red` on the missing tool first.
   list, the kinds it holds back, and its narrowing to a reopened spec;
   WORTH_NEVER_EDITS_A_TEST now covers `--removal-list`. X600 to X602 were seen
   failing on the unknown option first, then green.
+- 2026-11-10: graft records the baseline once (D5, T12) instead of listing a judgment item, and `graft-graph-engine.py` keeps `SKIP_DIRS`; the two lines that said otherwise are corrected in place.

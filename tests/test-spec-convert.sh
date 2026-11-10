@@ -133,6 +133,10 @@ PY
   ( cd "$p" && python3 docs/graph/spec-lint.py ) >"$TMP/x642.lint" 2>&1 || true
   grep -q '^contracts by kind: test 4, run 1, review 0, covered 0, legacy-test 0$' "$TMP/x642.lint" \
     || { echo "the plant's spec-lint does not read the converted kinds: $(flat "$TMP/x642.lint")"; return 1; }
+  # a converted spec keeps its legacy §10 as the link until a risk table is written (CONVERTED_SPEC_FAILS_THE_PLANT_LINT)
+  if grep -q 'no §10 row covers it' "$TMP/x642.lint"; then
+    echo "the converted spec fails the plant's lint on its legacy §10: $(flat "$TMP/x642.lint")"; return 1
+  fi
 }
 
 case_unrecognised_shape_is_named() {

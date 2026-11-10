@@ -177,13 +177,14 @@ excludes both from its engine-currency comparison.
 ## 7. Failure modes
 
 ### Failure: CONVERTED_SPEC_FAILS_THE_PLANT_LINT
-- **Trigger:** a converted spec keeps its legacy §10, and the plant's
+- **Trigger:** a converted spec keeps its legacy §10 while the plant's
   spec-lint links a test-kind contract of a kinds-form spec by a §10 Covers row
   only
-- **Response:** the plant's spec-lint names each such contract as covered by
-  no §10 row
-- **Recovery:** the architect writes the risk-based §10 in the work the
-  steward ratified, or the engine accepts the legacy row (§11)
+- **Response:** none now: while a kinds-form spec has no risk table, spec-lint
+  keeps the legacy row and the slug in the test as the link, so a converted
+  spec lints as it did before conversion; the Covers link applies once the
+  architect writes a risk-based §10
+- **Recovery:** not needed
 
 ### Failure: BASELINE_HOLDS_A_TEST_THAT_CATCHES_NOTHING
 - **Trigger:** the first baseline records the read-back tests a plant has
@@ -241,7 +242,6 @@ plant's own test layout; the engine cases read the v8.4.0 engines from the tag.
 
 | Question | Why it matters | Current assumption | Owner | Resolves by |
 |---|---|---|---|---|
-| Should the plant's spec-lint accept a legacy §10 row as the link of a test-kind contract while a kinds-form spec has no risk table? | the surface definition keeps the legacy §10 valid after the mechanical conversion, and the engine reads only a Covers row in a kinds-form spec | the architect writes the risk-based §10 in the ratified work | owner | the round's review |
 | Should an independent tester review these cases? | they were written by the spawn that built the tool | each was seen failing for its own reason first | tester | the round's review |
 
 ## 12. Changelog
@@ -251,3 +251,4 @@ plant's own test layout; the engine cases read the v8.4.0 engines from the tag.
   of 2026-11-10 (the seed's own specs converted in a later round; a grafted
   plant's baseline decided per plant). Nine contracts; each case written first
   and seen failing for its own reason, then green.
+- 2026-11-10: the owner-facing question of §11 resolved in the engine: `spec-lint.py` keeps the legacy §10 link while a kinds-form spec has no risk table (seen red in X642 first). CONVERTED_SPEC_FAILS_THE_PLANT_LINT no longer occurs.

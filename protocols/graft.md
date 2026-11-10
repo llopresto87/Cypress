@@ -1103,6 +1103,16 @@ domains that seed never gathered evidence for: a `ui-ux-designer` with no
 examples, and they are the reason an upgraded plant is re-audited rather than
 assumed complete because it was grown once.
 
+`--plan` also prints a `PLANT NEED <id>` line for each capability that is only
+text until the plant supplies its own facts (`grow.plant-needs`): gate output,
+cache lifetime and the model map, the token reader, trust paths, the test
+layout the worth check reads, a language's testing idiom. Grow each as that
+node says. `models.md` is the plant's and is never replaced, so copy the seed
+template's billing section into it and fill it. Each need left open is named
+under "Grafted but not yet grown" with its reason, and until it closes the
+capability reports that it is not configured, reports nothing as clean, and
+blocks no work.
+
 An expertise row is usually grown from facts the plant already holds. Where its
 `stack.*` node already carries the routing prose (when this stack is in play,
 what goes wrong without it, which sub-expertises apply under which

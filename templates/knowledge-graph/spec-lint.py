@@ -447,7 +447,7 @@ def read_form(spec: Path, text: str, status: str, secs: dict[int, str],
     checks = contract_checks(text)
     form = {"uses": kinds_spec or any(v is not None for v in checks.values()),
             "kinds_spec": kinds_spec, "kind": {}, "display": {}, "refs": {},
-            "rows": set(), "declared": None}
+            "rows": set(), "declared": None, "risk_table": False}
     if not form["uses"]:
         return form
     live = status in LIVE_STATUSES
@@ -483,7 +483,11 @@ def read_form(spec: Path, text: str, status: str, secs: dict[int, str],
                              f"as a whole by one run or review Check line, and a "
                              f"value that holds logic is a contract of kind test")
     known = set(checks) | set(FAILURE_RE.findall(text))
-    for row in risk_rows(section_lines(text, 10)):
+    rrows = risk_rows(section_lines(text, 10))
+    # A converted spec keeps its legacy §10 until the architect designs one by
+    # risk: with no risk table, a test contract keeps the legacy link.
+    form["risk_table"] = bool(rrows)
+    for row in rrows:
         where = f"{spec.name}:{row['line']}"
         covers = [t.strip().strip("`").strip() for t in row["covers"].split(",")]
         covers = [t for t in covers if t and not t.startswith("DV:")]
@@ -582,7 +586,7 @@ def shape(spec: Path, text: str, status: str, fails: list[str], warns: list[str]
             s for s in declared if kind.get(s) == "legacy-test"}
         for slug in sorted(declared):
             if kind.get(slug) == "test" and slug not in form["rows"] and (
-                    form["kinds_spec"] or slug not in rows):
+                    (form["kinds_spec"] and form["risk_table"]) or slug not in rows):
                 form_fails.append(
                     f"{spec.name}: contract {slug} has kind test but no §10 row "
                     f"covers it; add a row whose Covers cell names {slug}")
@@ -861,7 +865,7 @@ def main() -> int:
         live_specs += 1
         for slug in CONTRACT_RE.findall(text):
             k = kind.get(slug, "legacy-test")
-            if k == "legacy-test" or (k == "test" and not form["kinds_spec"]):
+            if k == "legacy-test" or (k == "test" and not (form["kinds_spec"] and form["risk_table"])):
                 contracts[slug] = spec.name
                 if form["refs"].get(slug):
                     by_covers[slug] = form["refs"][slug]
