@@ -1,0 +1,9 @@
+# batch record (delegation.green-self-test): written by cycle.py record-red and record-tip
+red 1 a1832c32a42927b6e6cd6ea9c30bdec53f0e5cbdc97c6736498421d12bc44652 tests/test_alpha.sh
+red 2 cdd2f37440bbb8b24de566949349c5f985f15f18fe3b499eeb690a5428b8eb1d tests/test_beta.sh
+test 1 alpha.case_one
+test 2 beta.case_one
+wrong 8 fails on a missing fixture, not the contract
+expected-red alpha.case_one
+expected-red beta.case_one
+fail 7 guide.links

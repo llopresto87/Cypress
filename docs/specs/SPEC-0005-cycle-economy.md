@@ -941,6 +941,110 @@ report reads §9 alone and never changes an exit status.
 - **And:** on a dependency defect it prints `batches: not computed`, and the exit
   status equals the plain lint's
 
+### Cycle driver (added for 8.3.1)
+
+`cycle.py`, placed at `docs/graph/cycle.py` beside `grill-lint.py`, prints the
+live state of a build cycle in one read, so the lead stops working
+`delegation.waves` and `delegation.green-self-test` out by hand. It reads §9
+through `grill-lint.py`'s own `plan_graph` and `pack`, the spawn log
+(`spawns.jsonl` beside the plan), the batch record and the question files
+(`docs/graph/plans/<unit>/batch-record.txt` and `questions/batch-<N>.md`), and
+git: an increment is committed when a commit message from the commit that added
+the plan up to `HEAD` names it (`increment N`, `increments N, M`, `N-M`). It
+never spawns, and it decides no tier, ruling or acceptance. Invocation:
+`cycle.py --unit UNIT [--plan P]`; `cycle.py record-red N --unit UNIT --file
+PATH... --test ID... [--ruling RID]` or `record-red N --unit UNIT --wrong
+REASON`; `cycle.py record-tip --unit UNIT [--not-run ID]... [--fail N ID]...`.
+The report goes to stdout, a refusal to stderr. What the lead does next: spawns
+each ready batch through `brief.py`; on a mismatch, re-briefs the GREEN from the
+recorded RED; on `ruling pass: owed`, spawns the architect once the cycle's
+GREEN wave has handed back.
+
+### Contract: CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE
+- **Test file:** `tests/test-cycle.sh`
+- **Given:** a plant whose plan §9 holds REDs, GREENs and a prose increment,
+  with nothing recorded and nothing committed
+- **When:** `cycle.py --unit u` runs
+- **Then:** stdout carries, in this order, `cycle: <plan>, unit <unit> — <n>
+  increment(s): <c> committed, <r> RED observed, <f> in flight, <h> held`; one
+  `ready RED tester:`, `ready prose writer:` and `ready GREEN implementer:` line
+  per batch, packed by `pack` over the increments ready now; `in flight:` per
+  increment a logged spawn of its worker names that has no recorded outcome;
+  `waits:` per increment whose files meet a live lane; `held:` lines;
+  `expected-red:` per test id, or `expected-red: none`; `not run:` per id of
+  the last tip; `mismatch:` lines; `question:` per unruled entry that touches
+  no increment by number, file or contract; and `ruling pass: owed — ...` or
+  `ruling pass: not owed — no unruled question entry and nothing held`; exit 0
+- **And:** a GREEN is ready only once its own RED is recorded and neither is
+  held; a RED's other dependents only once its own GREEN is committed
+- **And:** when no increment is ready the ready lines are one line, `ready:
+  nothing is ready to spawn`, and the exit is 0
+
+### Contract: CYCLE_DRIVER_NAMES_THE_HOLD_CONDITION
+- **Test file:** `tests/test-cycle.sh`
+- **Given:** an unruled question entry naming a file of increment 4, a RED
+  recorded `--wrong`, a tip failure attributed to an increment, and increments
+  that depend on a held one
+- **When:** `cycle.py --unit u` runs
+- **Then:** each held increment prints one line naming the one
+  `delegation.waves` condition that holds it: `held: increment N — condition 1:
+  unruled Q<id> in questions/<file> touches it`, `— condition 2: its RED failed
+  for the wrong reason: <reason>` (or `unruled Q<id> ... questions its test
+  <path>`), `— condition 3: tip failure <id> attributed to it`; a dependent
+  prints `held: increment N — with increment M, which it depends on`
+- **And:** a held increment is in no ready line; a provisional entry holds
+  nothing but makes the ruling pass owed
+
+### Contract: CYCLE_DRIVER_CHECKS_THE_RED_HASHES
+- **Test file:** `tests/test-cycle.sh`
+- **Given:** a RED recorded with `record-red`, and one of its files changed or
+  removed before its own GREEN commits
+- **When:** `cycle.py --unit u` runs
+- **Then:** the report carries `mismatch: <path> — increment N recorded
+  <12 hex>, now <12 hex|missing>` and the exit is 1
+- **And:** once the RED's own GREEN is committed its files are no longer
+  checked
+
+### Contract: CYCLE_DRIVER_REFUSES_MALFORMED_INPUT
+- **Test file:** `tests/test-cycle.sh`
+- **Given:** a batch record line of an unknown kind, a spawn log line that is
+  not a JSON object, a §9 with a dependency defect, or a `record-red` for an
+  increment that is not a RED
+- **When:** `cycle.py` runs
+- **Then:** it prints no report, writes nothing, and exits 2 with one stderr
+  line `cycle: <file>[:<line>]: <reason>`
+
+### Contract: CYCLE_DRIVER_IS_DETERMINISTIC_AND_READ_ONLY
+- **Test file:** `tests/test-cycle.sh`
+- **Given:** one plant state
+- **When:** `cycle.py --unit u` runs twice
+- **Then:** both outputs are byte-identical, and the plant's files and git
+  state are unchanged; the report reads no clock and no random source, and
+  sorts every list
+
+### Contract: CYCLE_DRIVER_RECORDS_ATOMICALLY
+- **Test file:** `tests/test-cycle.sh`
+- **Given:** a RED observed red for the right reason
+- **When:** `record-red N --file PATH... --test ID...` and then `record-tip`
+  run
+- **Then:** the batch record holds `red N <sha256> <path>` per file and `test
+  N <id>` per id, and after `record-tip` one `expected-red <id>` line per test
+  id of a recorded RED whose own GREEN is not committed, `not-run <id>` and
+  `fail N <id>` lines, sorted, written through a temporary file and a rename;
+  stdout carries one `recorded:` line, exit 0
+- **And:** re-recording an increment with other hashes is refused (exit 2)
+  unless `--ruling RID` names the ruling, which keeps `ruled RID N <old sha256>
+  <path>` per changed file (`delegation.waves`, a ruling that amends an encoded
+  contract)
+
+### Contract: CYCLE_DRIVER_RUNS_IN_A_FRESH_PLANT
+- **Test file:** `tests/test-cycle.sh`
+- **Given:** a fresh install of the seed with a plan, a spawn log written by
+  `brief.py`, and git history
+- **When:** `python3 docs/graph/cycle.py --unit u` runs from the plant root
+- **Then:** it loads the placed `docs/graph/grill-lint.py` and prints the
+  report; `manifest.json` names `tools/cycle.py` and `install.sh` places it
+
 ## 5. Non-functional requirements
 
 Global posture is the plan's §4; only what binds these checks is listed.
@@ -2591,6 +2695,13 @@ gives.
 | TOKEN_LEDGER_RECORDS_HOST_USAGE | X505 a full, a partial and an empty usage are stored as given or `not recorded`; an unknown spawn, a second record, a fractional count and an unknown key are refused; seen red first | tests/test-brief.sh | fixture | green |
 | TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT | X506 a hand transcript with a repeated message id, a 1h write and a `<synthetic>` record sums once per message; an empty transcript records `not recorded`; seen red first | tests/test-brief.sh | fixture | green |
 | RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME | X507 workers idle 4, 30 and 90 minutes against `5m`, `1h`, an invalid value and unset through the variable, the project setting and the agent frontmatter, plus each precedence step; a configured `1h` with a 5m-only last write, a one-hour last write and no write; seen red first | tests/test-resume-hook.sh | fixture | green |
+| CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE | X508 a fresh plan prints the ready RED and prose batches in order; with every increment committed it prints `ready: nothing is ready to spawn`, exit 0; seen red first | tests/test-cycle.sh | integration (installed plant) | green |
+| CYCLE_DRIVER_NAMES_THE_HOLD_CONDITION | X509 a hand fixture holds one increment under each of the three conditions and two by dependency; the report matches `tests/fixtures/cycle/held.out` byte for byte; seen red first | tests/test-cycle.sh | integration (installed plant) | green |
+| CYCLE_DRIVER_CHECKS_THE_RED_HASHES | X510 a recorded RED file changed and one removed print `mismatch:` lines, exit 1; seen red first | tests/test-cycle.sh | integration (installed plant) | green |
+| CYCLE_DRIVER_REFUSES_MALFORMED_INPUT | X511 an unknown record kind, a spawn log line that is not JSON, a forward dependency and a `record-red` of a GREEN each exit 2 with one `cycle:` stderr line and no report; seen red first | tests/test-cycle.sh | integration (installed plant) | green |
+| CYCLE_DRIVER_IS_DETERMINISTIC_AND_READ_ONLY | X512 two runs give byte-identical output and leave the tree and git status unchanged; seen red first | tests/test-cycle.sh | integration (installed plant) | green |
+| CYCLE_DRIVER_RECORDS_ATOMICALLY | X513 `record-red` and `record-tip` write the lines `tests/fixtures/cycle/record.out` holds; a re-record with other hashes is refused without `--ruling` and keeps `ruled` lines with it; seen red first | tests/test-cycle.sh | integration (installed plant) | green |
+| CYCLE_DRIVER_RUNS_IN_A_FRESH_PLANT | X514 the placed `docs/graph/cycle.py` runs from a fresh install with a spawn log `brief.py` wrote; seen red first | tests/test-cycle.sh | integration (installed plant) | green |
 | REVIEW_BRIEF_NAMES_THE_SECURITY_PASS | X503 a review naming `app/trusted/session.py` with `app/trusted/gate.py` uncommitted prints both; a review of `app/ui/page.py` prints nothing; `--log` blocks until a security spawn follows; seen red first | tests/test-brief.sh | fixture | green |
 | IMPLEMENTER_WRITES_A_DESIGN_NOTE | (none) the `IMPLEMENTER_WRITES_A_DESIGN_NOTE` row of seed-lint's `TEXT_RULES`; red id: `IMPLEMENTER_WRITES_A_DESIGN_NOTE: agents/02-implementer.md does not hold 'restart of the component that holds state'`; seen red first | tests/seed-lint.py | real-tree | green |
 | RED_TEST_HOLDS_ITS_EVIDENCE | (none) the `RED_TEST_HOLDS_ITS_EVIDENCE` row of seed-lint's `TEXT_RULES`; red id: `RED_TEST_HOLDS_ITS_EVIDENCE: skills/test-first/SKILL.md does not hold 'again after rebuilding the component that holds the state'`; seen red first | tests/seed-lint.py | real-tree | green |
@@ -3118,3 +3229,16 @@ kept outside the seed.
   `ENABLE_PROMPT_CACHING_1H`, each "Set to `1`"; the earlier line calling
   them unverified is superseded. The hook counts the enable variable only at
   `1` (X507 case seen red first).
+- 2026-11-10 — the owner's brief of 2026-11-10 asks for one deterministic
+  command that prints the state of a build cycle in place of the lead's hand
+  bookkeeping. Added the cycle driver, `cycle.py`, and its seven contracts
+  (CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE, CYCLE_DRIVER_NAMES_THE_HOLD_CONDITION,
+  CYCLE_DRIVER_CHECKS_THE_RED_HASHES, CYCLE_DRIVER_REFUSES_MALFORMED_INPUT,
+  CYCLE_DRIVER_IS_DETERMINISTIC_AND_READ_ONLY, CYCLE_DRIVER_RECORDS_ATOMICALLY,
+  CYCLE_DRIVER_RUNS_IN_A_FRESH_PLANT; X508 to X514, seen red first). The method
+  named "the batch record" in prose only; its location and line format now
+  have one home, `delegation.green-self-test` in
+  `core/method/delegation-cycle-economy.md`, and what the lead records is
+  unchanged. `grill-lint.py` gains `plan_graph` and `pack`, the reading of §9
+  and the batch packing it already did, so the driver loads them instead of
+  keeping a second copy; its reports are byte-identical.

@@ -395,6 +395,51 @@ def increments(body: str, errs: list | None = None,
     return out
 
 
+def plan_graph(incs: list[tuple[int, str, str]], fails: list):
+    """(graph, efforts, dependency_defect, lib_needed, contract_refs) of the §9
+    increments; each field defect is appended to `fails`. A graph row is
+    (number, title, increment deps, library deps, contracts, Phase:, Files touched:).
+    The one reading of §9's fields: the gate, `--waves`, `--batches` and
+    `cycle.py` all take it from here."""
+    numbers = [n for n, _, _ in incs]
+    known = set(numbers)
+    lib_needed: dict[str, list[int]] = {}
+    contract_refs: dict[str, dict[str, list[int]]] = {}
+    graph: list[tuple[int, str, list[int], list[str], list[str], str, str]] = []
+    efforts: dict[int, str] = {}
+    dependency_defect = False
+    for n, title, block in incs:
+        f = fields(block)
+        for name in REQUIRED_FIELDS:
+            if not f.get(name, "").strip():
+                fails.append(f"§9 increment {n}: `{name}:` is blank (`none` is a value; blank is not)")
+        dep = f.get("Depends on", "")
+        inc_deps = [int(x) for x in INC_REF_RE.findall(dep)]
+        for d in inc_deps:
+            if d not in known:
+                fails.append(f"§9 increment {n}: depends on increment {d}, which does not exist")
+            elif d == n:
+                fails.append(f"§9 increment {n}: depends on itself")
+            elif numbers.index(d) > numbers.index(n):
+                fails.append(f"§9 increment {n}: depends on increment {d}, listed after it — "
+                             f"rows are in dependency order; an orchestrator reads a later row as independent")
+            else:
+                continue
+            dependency_defect = True            # every branch above; --waves will not level over it
+        libs = LIB_REF_RE.findall(dep)
+        for lib in libs:
+            lib_needed.setdefault(lib, []).append(n)
+        refs = CONTRACT_REF_RE.findall(f.get("Spec contracts", ""))
+        for spec, slug in refs:
+            contract_refs.setdefault(spec, {}).setdefault(slug, []).append(n)
+        efforts[n] = f.get("Effort", "")
+        graph.append((n, title, inc_deps, libs, [f"{s}/{c}" for s, c in refs],
+                      f.get("Phase", "").strip(), f.get("Files touched", "")))
+        if "[verify]" in mask_fences(block):
+            fails.append(f"§9 increment {n}: carries `[verify]` — an assumption with no home; resolve it or move it to §12")
+    return graph, efforts, dependency_defect, lib_needed, contract_refs
+
+
 def spec_files(specs: Path = SPECS) -> dict[str, tuple[Path, str]]:
     """SPEC-NNNN -> (path, status) for every spec on disk."""
     out: dict[str, tuple[Path, str]] = {}
@@ -529,6 +574,85 @@ EFFORT_RE = re.compile(r"^\s*(medium-low|medium-hard|low|medium|hard)\b", re.I)
 WORKER = {"RED": "tester", "GREEN": "implementer", "prose": "writer"}
 
 
+def effort_labels(graph: list[tuple], efforts: dict[int, str]) -> dict[int, str | None]:
+    """Each increment's `Effort:` label, or None when it carries none."""
+    label: dict[int, str | None] = {}
+    for n, *_ in graph:
+        m = EFFORT_RE.match(efforts.get(n, ""))
+        label[n] = m.group(1).lower() if m else None
+    return label
+
+
+def pack(members: list[int], ph: str, tokens: dict[int, list[str]],
+         label: dict[int, str | None], order: dict[int, int],
+         warns: list[str]) -> list[tuple[list[int], str]]:
+    """The batches the effort table gives `members` of one phase, in §9 order:
+    (increments, `increments 1, 4 (hardest low, size 7)`) per spawn. The one
+    packing of `delegation.effort-scale`: `--batches` packs a wave, `cycle.py`
+    the increments ready now."""
+    # units: increments joined by a shared file, in §9 order
+    parent = {n: n for n in members}
+
+    def root(x: int) -> int:
+        while parent[x] != x:
+            x = parent[x]
+        return x
+    for i, a in enumerate(members):
+        for b in members[i + 1:]:
+            if any(shared_file(x, y) for x in tokens[a] for y in tokens[b]):
+                parent[root(b)] = root(a)
+    units: dict[int, list[int]] = {}
+    for n in members:
+        units.setdefault(root(n), []).append(n)
+    ordered = sorted(units.values(), key=lambda u: order[u[0]])
+
+    def cap(unit: list[int]) -> int:
+        if ph == "prose":
+            return len(unit)
+        sizes = [BATCH_SIZE[ph][label[n]] if label[n] else 1 for n in unit]
+        return min(sizes)
+
+    # A unit larger than its size runs as consecutive batches, each a fresh
+    # spawn: a shared file means one writer at a time, never a bigger spawn.
+    batches: list[list[int]] = []
+    after_prev: set[int] = set()            # batch index that waits for the one before
+    if ph == "prose":
+        batches = ordered
+    else:
+        for unit in ordered:
+            for n in unit:
+                if label[n] is None:
+                    warns.append(f"§9 increment {n}: no Effort: label "
+                                 f"({', '.join(BATCH_SIZE['RED'])}) — batched alone")
+            if len(unit) > cap(unit):
+                chunks, cur = [], []
+                for n in unit:
+                    if cur and len(cur) + 1 > cap(cur + [n]):
+                        chunks.append(cur)
+                        cur = []
+                    cur.append(n)
+                chunks.append(cur)
+                for i, c in enumerate(chunks):
+                    if i:
+                        after_prev.add(len(batches))
+                    batches.append(c)
+            elif batches and len(batches) - 1 not in after_prev \
+                    and len(batches[-1]) + len(unit) <= min(cap(batches[-1]), cap(unit)):
+                batches[-1].extend(unit)
+            else:
+                batches.append(list(unit))
+    out = []
+    rank = list(BATCH_SIZE["RED"])
+    for bi, b in enumerate(batches):
+        hard = [label[n] for n in b if label[n]]
+        hardest = max(hard, key=rank.index) if hard else "unlabelled"
+        size = "" if ph == "prose" else f", size {cap(b)}"
+        over = " — after the batch above: they share files" if bi in after_prev else ""
+        out.append((b, f"increment{'s' if len(b) > 1 else ''} "
+                       f"{', '.join(map(str, sorted(b, key=order.get)))} (hardest {hardest}{size}){over}"))
+    return out
+
+
 def batch_report(graph: list[tuple], efforts: dict[int, str],
                  dependency_defect: bool) -> tuple[list[str], list[str]]:
     """The `--batches` report: the spawns the effort table gives each wave.
@@ -547,10 +671,7 @@ def batch_report(graph: list[tuple], efforts: dict[int, str],
     tokens = file_tokens(graph)
     order = {n: i for i, (n, *_) in enumerate(graph)}
     warns: list[str] = []
-    label: dict[int, str | None] = {}
-    for n, *_ in graph:
-        m = EFFORT_RE.match(efforts.get(n, ""))
-        label[n] = m.group(1).lower() if m else None
+    label = effort_labels(graph, efforts)
     cells: dict[tuple[int, str], list[int]] = {}
     for n, *_, phase, _files in graph:
         ph = phase.split()[0] if phase else ""
@@ -559,65 +680,9 @@ def batch_report(graph: list[tuple], efforts: dict[int, str],
     lines: list[str] = []
     counts = {"RED": 0, "GREEN": 0, "prose": 0}
     for (w, ph), members in sorted(cells.items(), key=lambda kv: (kv[0][0], PHASES.index(kv[0][1]))):
-        # units: increments joined by a shared file, in §9 order
-        parent = {n: n for n in members}
-        def root(x: int) -> int:
-            while parent[x] != x:
-                x = parent[x]
-            return x
-        for i, a in enumerate(members):
-            for b in members[i + 1:]:
-                if any(shared_file(x, y) for x in tokens[a] for y in tokens[b]):
-                    parent[root(b)] = root(a)
-        units: dict[int, list[int]] = {}
-        for n in members:
-            units.setdefault(root(n), []).append(n)
-        ordered = sorted(units.values(), key=lambda u: order[u[0]])
-
-        def cap(unit: list[int]) -> int:
-            if ph == "prose":
-                return len(unit)
-            sizes = [BATCH_SIZE[ph][label[n]] if label[n] else 1 for n in unit]
-            return min(sizes)
-
-        # A unit larger than its size runs as consecutive batches, each a fresh
-        # spawn: a shared file means one writer at a time, never a bigger spawn.
-        batches: list[list[int]] = []
-        after_prev: set[int] = set()            # batch index that waits for the one before
-        if ph == "prose":
-            batches = ordered
-        else:
-            for unit in ordered:
-                for n in unit:
-                    if label[n] is None:
-                        warns.append(f"§9 increment {n}: no Effort: label "
-                                     f"({', '.join(BATCH_SIZE['RED'])}) — batched alone")
-                if len(unit) > cap(unit):
-                    chunks, cur = [], []
-                    for n in unit:
-                        if cur and len(cur) + 1 > cap(cur + [n]):
-                            chunks.append(cur)
-                            cur = []
-                        cur.append(n)
-                    chunks.append(cur)
-                    for i, c in enumerate(chunks):
-                        if i:
-                            after_prev.add(len(batches))
-                        batches.append(c)
-                elif batches and len(batches) - 1 not in after_prev \
-                        and len(batches[-1]) + len(unit) <= min(cap(batches[-1]), cap(unit)):
-                    batches[-1].extend(unit)
-                else:
-                    batches.append(list(unit))
-        for bi, b in enumerate(batches):
+        for b, describe in pack(members, ph, tokens, label, order, warns):
             counts[ph] += 1
-            hard = [label[n] for n in b if label[n]]
-            rank = list(BATCH_SIZE["RED"])
-            hardest = max(hard, key=rank.index) if hard else "unlabelled"
-            size = "" if ph == "prose" else f", size {cap(b)}"
-            over = " — after the batch above: they share files" if bi in after_prev else ""
-            lines.append(f"  wave {w} {ph} {WORKER[ph]}: increment{'s' if len(b) > 1 else ''} "
-                         f"{', '.join(map(str, sorted(b, key=order.get)))} (hardest {hardest}{size}){over}")
+            lines.append(f"  wave {w} {ph} {WORKER[ph]}: {describe}")
     total = sum(counts.values())
     header = (f"batches: {total} spawn(s) for {sum(len(v) for v in cells.values())} increment(s) — "
               f"{counts['RED']} tester, {counts['GREEN']} implementer, {counts['prose']} prose "
@@ -754,43 +819,7 @@ def main() -> int:
     if 9 in secs and not incs and not any(NA_RE.match(ln) for ln in populated.get(9, [])):
         fails.append("§9: no `### Increment N — title` rows, and no index rows "
                      f"pointing at files under {plan.parent.name}/{plan.stem}/")
-    numbers = [n for n, _, _ in incs]
-    known = set(numbers)
-    lib_needed: dict[str, list[int]] = {}
-    contract_refs: dict[str, dict[str, list[int]]] = {}
-    # (number, title, increment deps, library deps, contracts, Phase:, Files touched:)
-    graph: list[tuple[int, str, list[int], list[str], list[str], str, str]] = []
-    efforts: dict[int, str] = {}
-    dependency_defect = False
-    for n, title, block in incs:
-        f = fields(block)
-        for name in REQUIRED_FIELDS:
-            if not f.get(name, "").strip():
-                fails.append(f"§9 increment {n}: `{name}:` is blank (`none` is a value; blank is not)")
-        dep = f.get("Depends on", "")
-        inc_deps = [int(x) for x in INC_REF_RE.findall(dep)]
-        for d in inc_deps:
-            if d not in known:
-                fails.append(f"§9 increment {n}: depends on increment {d}, which does not exist")
-            elif d == n:
-                fails.append(f"§9 increment {n}: depends on itself")
-            elif numbers.index(d) > numbers.index(n):
-                fails.append(f"§9 increment {n}: depends on increment {d}, listed after it — "
-                             f"rows are in dependency order; an orchestrator reads a later row as independent")
-            else:
-                continue
-            dependency_defect = True            # every branch above; --waves will not level over it
-        libs = LIB_REF_RE.findall(dep)
-        for lib in libs:
-            lib_needed.setdefault(lib, []).append(n)
-        refs = CONTRACT_REF_RE.findall(f.get("Spec contracts", ""))
-        for spec, slug in refs:
-            contract_refs.setdefault(spec, {}).setdefault(slug, []).append(n)
-        efforts[n] = f.get("Effort", "")
-        graph.append((n, title, inc_deps, libs, [f"{s}/{c}" for s, c in refs],
-                      f.get("Phase", "").strip(), f.get("Files touched", "")))
-        if "[verify]" in mask_fences(block):
-            fails.append(f"§9 increment {n}: carries `[verify]` — an assumption with no home; resolve it or move it to §12")
+    graph, efforts, dependency_defect, lib_needed, contract_refs = plan_graph(incs, fails)
 
     # --- §5 is derived from §9; every library page named exists -------------
     body5 = secs.get(5, "")

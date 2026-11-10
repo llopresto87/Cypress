@@ -1,0 +1,6 @@
+cycle: grill.md, unit u — 8 increment(s): 0 committed, 0 RED observed, 1 in flight, 0 held
+ready RED tester: increments 2, 8 (hardest low, size 7)
+ready prose writer: increment 7 (hardest low)
+in flight: increment 1 — orchestrator.1 (tester), no RED recorded
+expected-red: none
+ruling pass: not owed — no unruled question entry and nothing held
