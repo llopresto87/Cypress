@@ -278,9 +278,9 @@ of the spec's §10 tests this increment turns red, as the test design states
 them (`test-first.proportionate-checks`). A test the design shares between
 contracts is cited once, by the first increment whose behaviour it needs;
 later increments that rely on it cite it as already written. The planner
-adds, merges or drops no case: a case the plan seems to need and §10 lacks
-goes back to the tester as a design question before the increment is
-written.
+cites the cases as §10 designed them: a case the plan seems to need and
+§10 lacks goes back to the tester as a design question before the
+increment is written.
 
 An increment is ready when it names its spec contracts, its cited §10 tests
 (or its `none` and the run that proves it), its rollback, and its

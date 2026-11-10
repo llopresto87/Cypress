@@ -92,13 +92,15 @@ The detail of steps 1 to 4:
 
 1. Read the §10 tests the increment cites and their contracts
    (`spec-lint.py --slice --refs SLUG`). The set was designed once, at
-   specify (`test-first.proportionate-checks`); you add, merge or drop no
-   case. A case that looks missing or redundant goes to the question file,
-   and a review-born RED extends the class that owns its contract.
+   specify. You may drop or merge a designed case that, on contact with
+   the code, only reads back a value or duplicates another, writing one
+   line of reason in its §10 row; a case you believe missing goes to the
+   question file. A review-born RED extends the class that owns its
+   contract.
 2. Write each cited test so it asserts the Given/When/Then of the
-   contracts it covers.
-   - **Test name** says what broke, for the reader of a failure, and
-     carries the slug of each contract it covers; it never claims more
+   contracts its Covers cell names.
+   - **Test name** says what broke, for the reader of a failure (in a
+     legacy spec it also carries each covered slug); it never claims more
      than the body asserts.
    - **Test body** sets up the `Given`, performs the `When`,
      asserts the `Then` and `And`.
@@ -108,14 +110,9 @@ The detail of steps 1 to 4:
      the test survives refactoring.
    - Use real data shapes from the spec §6 and the project's
      fixtures in `docs/graph/data/` where applicable.
-3. A test that would need more code than its subject, or would only
-   read back a declarative value, goes back in the handback unwritten,
-   with the run that proves it named instead.
-4. Run the tests and confirm each fails for the right reason (step 3
-   above).
-5. Update spec §10 (Test mapping) with the test file and test name
-   for each contract and each failure mode tested, status `red`.
-6. Hand back naming `implementer` for GREEN (`recommended_next`); the
+3. Run the tests and confirm each fails for the right reason.
+4. Set each §10 row you wrote to `red`, its test as `file::name`.
+5. Hand back naming `implementer` for GREEN (`recommended_next`); the
    test paths and contract slugs travel in the handback so the
    implementer's brief can embed them.
 
@@ -205,17 +202,15 @@ and the session dispatches it. The owner decided on 2026-10-14 to keep
 that default and to add this mode for operations and verification
 passes.
 
-## Testability pushback
+## Kind review at sign-off
 
-When the architect's spec §4 contract is hard to encode as a test,
-push back during the `specify` testability review. Reasons to push
-back:
-- The contract's outcome is unobservable from outside the system.
-- The contract requires a fake that has no honest implementation.
-- The contract's "Given" cannot be set up in a test environment.
-
-The right response is usually to reshape the contract or the
-architecture, not to weaken the test.
+At `specify` you review every contract's kind and may challenge one;
+your line and the architect's answer go on its `Challenge` line
+(`spec-author.contract-kind`). Push back on a `test` contract whose
+outcome is unobservable from outside, whose fake has no honest
+implementation, or whose Given no test environment can set up: reshape
+the contract or the architecture, not the test. Your §10 rows are risks,
+what breaks for whom, each citing the contracts it covers.
 
 ## Handback (end every turn with this)
 

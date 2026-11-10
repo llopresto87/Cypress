@@ -228,7 +228,7 @@ change that lands its RED tests.
 This node owns **the spec rule** (`rule.spec`): specs are the source of
 truth for *behavior*. Every non-trivial behavior has a spec, written
 before the code, with stable section numbers; every functional contract
-maps to at least one test; superseded specs stay on disk with a link
+names what proves it by its kind (`test`, `run`, `review`, `covered`); superseded specs stay on disk with a link
 forward. The one exception is the **T2 contained lane**: a change whose
 contract is the RED test that pins it (or, for a declarative edit, the run
 that proved it) and whose why is the close-out's why-record. It enters `specify` only if it leaves the lane, and it holds
@@ -260,15 +260,18 @@ and the work goes on.
 | 1 | §3 | `product` | §2 | — |
 | 2 | §4 §5 §6 §7 §8 | `architect` | §3 | — |
 | 3 | §9 (maps to §4 slugs) | `product` | §4 | 4 |
-| 4 | §10; testability review of §4 | `tester` | §4 §7 §8 | 3 |
+| 4 | §10; review of every §4 kind | `tester`, only where a test is owed | §4 §7 §8 | 3 |
 | 5 | adversarial §7 / §5 | `security`, sensitive surface only | §4 §7 | 3–4 |
 | 6 | §11; sign-offs in §0; §12; grill.md §3/§9 links | orchestrator; signers tick §0 | 3–5 | — |
 
 Notes: the identifier is the next free number on disk, and the catalog
 row is the librarian's at close-out. §3 before §4, §4 before §9 — a §9
-written beside §3 maps to nothing. §10 carries one `pending` row per
-contract and failure mode; a contract that fails the testability review
-returns to `architect` as an attempt under `recover`'s three-attempt
+written beside §3 maps to nothing. §10 is a risk-based test design made
+after a survey of the existing suite: one row per risk, its Covers cell
+naming the `test` contracts it covers, and a contract an existing test
+already asserts is `covered`. A spec with no `test` or `covered` contract
+and no trust path gets no test-design spawn and no tester sign-off. A
+contract that fails the tester's review returns to `architect` as an attempt under `recover`'s three-attempt
 boundary. **Sign-off is not promotion**: the ticks land in §0 while the
 spec is `draft`; `active` lands with the first RED (`test-first`
 COMMIT, owned by `verify.status-evidence`), `implemented` when every
@@ -292,8 +295,9 @@ when and why.
 ### Exit conditions
 
 "Populated" = content or an explicit `not applicable — <reason>`. The
-file exists, populated, `draft` with product ✓ architect ✓ tester ✓
-(security ✓ where reviewed) in §0; every §4 contract has a §10 row;
+file exists, populated, `draft` with product ✓ architect ✓ (tester ✓
+where phase 4 ran, security ✓ where reviewed) in §0; every §4 contract
+has a `Check` kind and every `test` contract a §10 row;
 every §9 criterion maps to a real slug; §11 is empty or flagged in
 grill.md §12; grill.md links the spec from §3 and §9;
 `python3 docs/graph/spec-lint.py` exits 0 (the shape checks,

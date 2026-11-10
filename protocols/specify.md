@@ -35,15 +35,15 @@ Use this when the goal is clear and you need to produce an executable
 specification before planning the implementation. The deliverable is a
 new (or refreshed) file in `docs/graph/specs/` populated through every
 section of `docs/graph/templates/spec.template.md`, signed off by
-product, architect, and tester.
+product, architect and, where a test is owed, tester.
 
 This node owns **the spec rule**: specs are the source of truth for
 *behavior*. Every non-trivial behavior (feature, endpoint, job,
 significant function, LLM/VLM interaction) has a spec in
 `docs/graph/specs/`, written before the code, using the template with
 stable section numbers. Specs are executable: every functional
-contract maps to at least one test (the test-first rule enforces
-this). Superseded specs stay on disk with status `superseded` and a
+contract names what proves it, by its kind (the template's §4).
+Superseded specs stay on disk with status `superseded` and a
 link forward, catalogued in `docs/graph/specs/index.md`. If wiki and
 spec disagree about how a library *can* be used, the wiki is right;
 if product and spec disagree about what to build, fix the spec.
@@ -91,7 +91,7 @@ pass (`delegation.harness-registration`).
 | 1 | §3 User-facing behavior | `product` | §2 | — |
 | 2 | §4 Contracts, §5 NFRs, §6 Data shapes, §7 Failure modes, §8 Examples | `architect` | §3 | — |
 | 3 | §9 Acceptance criteria | `product` — each criterion maps to §4 slugs | §4 | phase 4 |
-| 4 | §10 Test mapping; testability review of §4 | `tester` | §4, §7, §8 | phase 3 |
+| 4 | §10 Test design; review of every §4 kind | `tester`, only when the bullet below owes one | §4, §7, §8 | phase 3 |
 | 5 | adversarial failure modes into §7, abuse cases into §5 | `security`, when the surface is sensitive | §4, §7 | phases 3–4 |
 | 6 | §11 Open questions; sign-offs in §0; §12 entry; grill.md §3/§9 links | orchestrator, in-session; the signers tick §0 | phases 3–5 | — |
 
@@ -112,13 +112,18 @@ What the table cannot hold:
   failure modes, and three real examples; only then can `product` map
   each acceptance criterion to the slugs it accepts. A §9 written
   beside §3 maps to nothing.
-- **§10 is the test design**, made once before any increment by `tester`
-  (`test-first.proportionate-checks`): one `pending` row per contract and
-  failure mode names its covering case. It checks §4 is testable: observable from outside, measurable in §9, fixtures
-  writable from §6, failure modes triggerable in a test environment. A
-  contract that fails the review goes to a fresh `architect` (phase 2
-  again for that contract, briefed with the review), an attempt under
-  `protocol.recover`'s three-attempt boundary.
+- **§10 is a risk-based test design**, made once before any increment by
+  `tester` (`test-first.proportionate-checks`) after surveying the existing
+  suite: a contract an existing test already asserts is `covered`. Each row
+  is a risk (what breaks, for whom) and its lowest-level test; its Covers
+  cell, not a slug in test code, links the test to its `test` contracts.
+  The tester reviews every kind (`spec-author.contract-kind`) and checks each
+  `test` contract is observable, measurable in §9, fixturable from §6 and
+  triggerable. A failed contract goes to a fresh `architect` (phase 2 for it,
+  with the review), an attempt under `protocol.recover`'s three-attempt
+  boundary. A spec with no `test` or `covered` contract and no trust path
+  (`test-first.security-path`) gets no test-design spawn and no tester
+  sign-off: phase 4 is skipped.
 - **Sensitive surface** (auth, secrets, payments, file uploads,
   external integrations, LLM/VLM behavior that acts on data) adds a
   `security` review: abuse cases become failure modes in §7 or
@@ -167,9 +172,10 @@ explicit one-line `not applicable — <reason>`; a template placeholder
 is neither.
 
 - `docs/graph/specs/SPEC-NNNN-<slug>.md` exists, populated, status
-  `draft` with product ✓ architect ✓ tester ✓ (security ✓ where it
-  reviewed) in §0.
-- Every §4 contract has a §10 row; every §9 criterion maps to a slug
+  `draft` with product ✓ architect ✓ (tester ✓ where phase 4 ran,
+  security ✓ where it reviewed) in §0.
+- Every §4 contract has a `Check` line; every `test` contract is in a
+  §10 Covers cell; every §9 criterion maps to a slug or declared value
   that exists; every failure mode in §7 names its contract.
 - §11 is empty, or every row's current assumption is a flagged
   assumption in grill.md §12.
