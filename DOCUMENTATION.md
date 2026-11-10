@@ -1117,7 +1117,7 @@ docs/                 The seed's own records
   decisions/            ADR records, listed in index.md
   specs/                the seed's executable specs (SPEC-NNNN)
   plans/                the seed's plans of record, one per round, with their leaves
-  skills/               seed-only procedures (seed-release), never installed
+  skills/               seed-only procedures (seed-release, lever-trial), never installed
 tests/                run.sh + its shell suites + python linters/regressions
 install.sh            Drops the seed into a target project
 manifest.json         Machine-readable catalog of all seed files
@@ -1253,8 +1253,8 @@ holds:
   documented version (`check_published_counts`);
 - the ADR catalog: `docs/decisions/index.md` links every ADR file, and every
   link resolves (`check_decision_index`);
-- the seed-only files, `docs/skills/seed-release.md` and
-  `tools/prepare-release.py`, which `manifest.json` and `install.sh` never
+- the seed-only files, `docs/skills/seed-release.md`,
+  `docs/skills/lever-trial.md` and `tools/prepare-release.py`, which `manifest.json` and `install.sh` never
   name and no plant receives (`check_seed_only_stays_home`).
 
 `agent-lint.py --lint` holds two frontmatter rules on every agent file, a

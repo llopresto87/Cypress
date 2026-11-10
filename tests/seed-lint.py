@@ -1149,7 +1149,7 @@ def check_install_write_sites() -> None:
                  f"which is how a derived claim goes stale in prose.")
 
 # ADR-0021: the seed's own procedures and tools, which no plant receives.
-SEED_ONLY = ("tools/prepare-release.py", "docs/skills/seed-release.md")
+SEED_ONLY = ("tools/prepare-release.py", "docs/skills/seed-release.md", "docs/skills/lever-trial.md")
 
 
 def check_seed_only_stays_home() -> None:

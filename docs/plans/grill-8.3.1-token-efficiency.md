@@ -196,6 +196,17 @@ Increments are inline; numbers are dependency order. Increment 1 carries the con
 - Phase: GREEN
 - Depends on: increment 8
 
+### Increment 10: E8 lever trial protocol
+- Spec contracts: SPEC-0001/SEED_ONLY_FILES_NEVER_PLACED
+- Files touched: `docs/skills/lever-trial.md`, `tests/seed-lint.py`, `DOCUMENTATION.md`, `CLAUDE.md`
+- Tests to write (RED): none new; `check_seed_only_stays_home` holds the file through its place in `SEED_ONLY`
+- Behavior added: a seed-only procedure by which a steward compares two settings of one lever on a fixed task set across tiers, at least five runs per arm, blind-graded against a written rubric, costed from the token ledger, failing closed outside the agreed quality margin, with its evidence under `docs/graph/evaluations/<lever>/` in the plant
+- Gate: `python3 tests/seed-lint.py`
+- Rollback path: revert the increment's commit
+- Effort: low
+- Phase: GREEN
+- Depends on: increment 9
+
 **Delegation and parallelism.** The static schedule is `python3 templates/knowledge-graph/grill-lint.py --plan docs/plans/grill-8.3.1-token-efficiency.md --specs docs/specs --decisions docs/decisions --waves`. A file two increments write (`docs/specs/SPEC-0005-cycle-economy.md`) is ordered by `Depends on:`.
 
 ## 10. Verification Plan
@@ -249,3 +260,4 @@ Land the next mechanism's increment, then run the release pass, `docs/skills/see
 - 2026-11-10: increments 6 (E5) and 7 (E6) landed: `brief.py --log` prints the Spawns, Serial waits and Tokens lines from the spawn log and the ledger, and `brief.py --increments N --unit U` notices an undersized batch and logs the notice. The spawn log holds composition time only, so a serial wait is read as a gap of more than 60 seconds between two compositions.
 - 2026-11-10: increment 8 (E7) landed: the slow-command rule joins clause 2 of `toolcraft.bounded-execution`, which now also holds that a reviewer runs no build, and the reviewer charter points there; the gate-output rule joins `protocols/verify.md` beside the line-cap sentence. The kernel, the always-loaded figures and the brief blocks are unchanged.
 - 2026-11-10: increment 9 (E8) landed: a model-class table beside the effort table reproduces each role's `model:`, and `brief.py` prints a class only where a row differs; every brief composes byte for byte as before. The light-variants section moved verbatim to its own leaf to keep `delegation-model-classes.md` under the leaf ceiling.
+- 2026-11-10: increment 10 (E8) landed: `docs/skills/lever-trial.md`, seed-only beside the release procedure, is how a steward compares two settings of one lever before a default moves. No trial ran and no default changed.
