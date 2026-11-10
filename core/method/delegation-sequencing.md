@@ -97,10 +97,9 @@ worker are `method.delegation-wave-integrity`.
 ## Waves: RED ahead of GREEN (`delegation.waves`)
 
 A wave is a set of increments that the plan's §9 `Depends on:` rows allow in
-flight together. The session reads the schedule from `grill-lint.py --waves`.
-That report is a static schedule. Which increments are already satisfied is
-live state, and the session reads it from the plan's §15 entries, the commit
-log and the batch record (the RED hashes and the expected-red list). A RED and
+flight together. `grill-lint.py --waves` prints the static schedule. The live state (what is satisfied,
+ready, in flight, held and why, the expected-red list) is one read, `python3 docs/graph/cycle.py --unit U`,
+of the plan, the spawn log, the batch record, the question files and the commits, each naming its increments. A RED and
 its GREEN are separate §9 increments, and the GREEN names the RED in `Depends
 on:`, so the RED falls in an earlier wave with no rule needed to put it there.
 
@@ -164,12 +163,12 @@ increment in the batch proceeds, its GREEN included.
 When a ruling amends a contract, or reverses a provisional reading, that a RED
 already encodes, the session re-briefs that RED to a tester against the amended
 text. The orchestrator records the old and new `sha256sum` of each test or
-fixture file that changed, in the batch record beside the ruling id, and the
+fixture file that changed, in the batch record beside the ruling id (`cycle.py record-red N ... --ruling RID`), and the
 GREEN is briefed from the new hashes.
 
 **Expected-red at the tip.** At each tip, once per cycle after its GREEN wave
 (`delegation.tip-cadence`), every observed RED whose own GREEN has not
-committed is listed by test id in the batch record as expected-red. A test id
+committed is listed by test id in the batch record as expected-red (`cycle.py record-tip`, with the `not run` ids). A test id
 is the finest name its gate reports: a unittest method, a shell case's
 invariant label, or, for a lint step, the finding line. A failure whose id is
 on the list does not fail the tip. A failure whose id is not on it does, even
