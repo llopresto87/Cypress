@@ -1962,6 +1962,11 @@ place_graph_scaffold() {
     # the brief composer: a delegation brief from the canonical templates, so
     # the bootstrap blocks are verbatim by construction (delegation.briefs).
     place_file "$SEED_ROOT/tools/brief.py" "$g/brief.py"
+    # the cycle driver (SPEC-0005): one read of the plan, the spawn log, the
+    # batch record, the question files and git prints the build cycle's state;
+    # it loads grill-lint.py beside it. Config-free, so it fast-forwards like
+    # the router.
+    place_file "$SEED_ROOT/tools/cycle.py" "$g/cycle.py"
     # the lifecycle status register: lint + query over every status-bearing
     # artifact. Config-free (vocabulary is the schema's), so it fast-forwards
     # like the router. A session-start hook injects its --summary once.

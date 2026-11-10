@@ -88,6 +88,16 @@ rc=0; out="$(C "$P3" --unit u 2>&1)" || rc=$?
   && ok "X510 CYCLE_DRIVER_CHECKS_THE_RED_HASHES: once the own GREEN commits, the files are not checked" \
   || bad "X510 CYCLE_DRIVER_CHECKS_THE_RED_HASHES (committed)" "rc $rc: $out"
 
+# X510 a RED committed on its own stays a live lane until its own GREEN commits
+P9="$T/p9"; cp -R "$P" "$P9"
+C "$P9" record-red 8 --unit u --file tests/test_delta.sh --test delta.case_one >/dev/null
+G "$P9" commit -q --allow-empty -m "test: RED increment 8"
+echo 'echo changed' > "$P9/tests/test_delta.sh"
+rc=0; out="$(C "$P9" --unit u 2>&1)" || rc=$?
+[[ $rc -eq 1 ]] && grep -qx 'expected-red: delta.case_one' <<<"$out" && grep -q '^mismatch: tests/test_delta.sh ' <<<"$out" \
+  && ok "X510 CYCLE_DRIVER_CHECKS_THE_RED_HASHES: a RED committed alone is still expected-red and still checked" \
+  || bad "X510 CYCLE_DRIVER_CHECKS_THE_RED_HASHES (RED committed alone)" "rc $rc: $out"
+
 # X511 CYCLE_DRIVER_REFUSES_MALFORMED_INPUT
 refused() {   # $1 label, $2 plant, $3 stderr prefix; the rest is the command
   local label="$1" d="$2" want="$3"; shift 3
