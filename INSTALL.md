@@ -75,7 +75,7 @@ other is a symlink to it.
 - `claude-code`: drops `CLAUDE.md` + `.claude/`. A charter that names
   `always_loads:` is composed into `.claude/agents/` with those nodes; after
   editing one of them, `install.sh claude-code --recompose-agents` rewrites
-  `.claude/agents/` alone. The hooks include `.claude/resume-hook.py`, and
+  `.claude/agents/` and `.claude/skills/` from the nodes on disk and no node. The hooks include `.claude/resume-hook.py`, and
   delegated work is logged to `docs/graph/plans/spawns.jsonl`
   ([Claude Code integration](integrations/claude-code/README.md#hooks)).
 - `opencode`: drops `AGENTS.md` + `.opencode/` + `opencode.json`, with each

@@ -543,7 +543,12 @@ PY
             grep -qF "hook PreToolUse[$ev] .claude/$script is wired but the script is missing; the guard is off; re-run install.sh to restore it" <<<"$out" \
                 || fail "CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT: no line names event, matcher, path and remedy for $script ($kind): $out"
         done
-        rm -rf "$G/.claude/$script"; mv "$G/.claude/$script.keep" "$G/.claude/$script"
+        # a project path holding a backslash must not be expanded by the shell's echo: still one line
+        local BS="$WORK/guard\\nwiring"; rm -rf "$BS"; mkdir -p "$BS/.claude"
+        rc=0; out="$(printf '%s' "$blocked" | CLAUDE_PROJECT_DIR="$BS" sh -c "$cmd" 2>&1 >/dev/null)" || rc=$?
+        [[ $rc -eq 0 && "$(printf '%s\n' "$out" | wc -l | tr -d ' ')" == 1 && "$out" == *'guard\nwiring/.claude/'"$script"'; the guard is off.'* ]] \
+            || fail "BLOCKING_HOOK_WIRING_FAILS_OPEN_ON_A_MISSING_SCRIPT: a backslash in the project path changed the $ev line (rc $rc): $out"
+        rm -rf "$BS" "$G/.claude/$script"; mv "$G/.claude/$script.keep" "$G/.claude/$script"
     done
     rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$G" 2>&1)" || rc=$?
     [[ $rc -eq 0 ]] || fail "CHECK_REPORTS_A_MISSING_BLOCKING_HOOK_SCRIPT: --check over both guards present exited $rc: $out"

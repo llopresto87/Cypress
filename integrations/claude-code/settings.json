@@ -31,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=\"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/bound-hook.py\"; if [ -f \"$f\" ]; then python3 -S \"$f\"; else echo \"cypress: hook script missing: $f; the guard is off. Re-run install.sh to restore it.\" >&2; fi"
+            "command": "f=\"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/bound-hook.py\"; if [ -f \"$f\" ]; then python3 -S \"$f\"; else printf '%s\\n' \"cypress: hook script missing: $f; the guard is off. Re-run install.sh to restore it.\" >&2; fi"
           }
         ]
       },
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=\"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/resume-hook.py\"; if [ -f \"$f\" ]; then python3 -S \"$f\"; else echo \"cypress: hook script missing: $f; the guard is off. Re-run install.sh to restore it.\" >&2; fi"
+            "command": "f=\"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/resume-hook.py\"; if [ -f \"$f\" ]; then python3 -S \"$f\"; else printf '%s\\n' \"cypress: hook script missing: $f; the guard is off. Re-run install.sh to restore it.\" >&2; fi"
           }
         ]
       }

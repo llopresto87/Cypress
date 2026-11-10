@@ -1009,7 +1009,7 @@ evidence, mark it `origin: project`, declare its `plant_knowledge:`
 (collections or the expertise nodes it draws on), cite what motivated it, and
 project it to every path this plant's `.cypress/seed.json` records (on
 Claude Code a charter that names `always_loads:` is composed with those nodes;
-`install.sh claude-code --recompose-agents` rewrites `.claude/agents/` alone);
+`install.sh claude-code --recompose-agents` rewrites `.claude/agents/` and `.claude/skills/` from the nodes);
 unprojected it is on disk and unspawnable
 (`delegation.harness-registration`), and on most harnesses spawnable only in
 the next session; say so in the delivery.
