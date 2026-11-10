@@ -624,14 +624,14 @@ Every agent definition declares a default `effort:` of `low`, `medium` or
 value. The [agents reference](documentation/agents-reference.md) lists each
 agent's default.
 
-A spawn's own effort comes from the first matching row of a five-row
-derivation. A security surface, spec contracts, architecture, rulings, one-way
-doors, threat models, a `devils-advocate` pass, a harvest's faithful-import review
-and diagnosing a red gate are `high`. A light variant is `low`. A spawn that
-carries increments takes the hardest label in its batch. Failing those, the
-step kind's default applies, and last the definition's own. The brief records
-one line, `effort: <value> (row <n>: <reason>)`, and `brief.py` writes the
-same value to the spawn log.
+A spawn's own effort follows its role and its task kind. `brief.py --kind`
+prints the value and its reason, writes the same value to the spawn log, and
+the caller passes it on the spawn. A security pass, a harvest's
+faithful-import review and diagnosing a red gate run at `high`. The
+implementer runs at `low` for every kind of task, and at `medium` only for an
+increment labelled hard: the review, the security pass and the tester that
+turns its findings into RED tests are the quality net for low-effort
+implementing. The role-and-kind table lives in the leaf.
 
 Claude Code reads `effort` from agent frontmatter. Whether it offers a
 per-spawn override is not recorded, and neither is whether opencode, Codex or
