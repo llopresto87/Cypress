@@ -1603,8 +1603,12 @@ def x179(base):
                           f"{what}: a missing script prints {r.stdout[:300]!r}, not the missing-script line")
         collect(problems, one)
     bound = wired_commands("integrations/claude-code/settings.json", "PreToolUse")
-    check(bound and all("|| true" not in c and "hook script missing" not in c for c in bound),
-          f"the PreToolUse guard command changed: {bound}")
+    # A PreToolUse guard must block (no `|| true`, its exit code intact) and, unlike
+    # a context hook, must not block when its script is missing: the existence test
+    # sends the missing-script line to stderr (SPEC-0001
+    # BLOCKING_HOOK_WIRING_FAILS_OPEN_ON_A_MISSING_SCRIPT).
+    check(bound and all("|| true" not in c and 'then python3 -S "$f"; else echo' in c and ">&2; fi" in c for c in bound),
+          f"the PreToolUse guard command is not the exit-preserving, missing-script-safe form: {bound}")
     check(not problems, " || ".join(problems))
     return "four wired commands: absent script prints the missing-script line and exits 0; present script prints alone"
 
