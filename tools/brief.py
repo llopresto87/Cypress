@@ -28,7 +28,7 @@ wins; `--effort` given verbatim is logged as it is.
   python3 docs/graph/brief.py --role tester --spawn-id orchestrator.3.tester.1 \
       --task "<exact task line>" --route "<agent-lint line or rationale>" \
       [--kind KIND [--label LABEL] | --effort "<value (reason)>"] [--charter] --part FILE|- [--out PATH]
-      [--emulated "<reason>"] [--plan PATH]
+      [--emulated "<reason>"] [--plan PATH] [--increments N[,N] --unit U [--alone "<reason>"]]
   python3 docs/graph/brief.py --log
 
 Exit 0 and the brief on stdout; exit 2 with one stderr line on an unknown role,
@@ -51,6 +51,16 @@ recorded`, or `not recorded: <reason>`). It exits 1 with no spawn logged, and
 1 with a BLOCK line for each logged review of trust-path files that no later
 `security` spawn follows (`test-first.security-path`).
 
+`--increments N[,N] --unit U` names the §9 increments the brief batches; when
+they are fewer than the batch table gives their phase and hardest label and
+`cycle.py`'s ready increments of that phase would join the batch `pack` makes,
+stderr carries one `brief: batch notice — ...` line naming the table's number
+and the spawn record gains a `notice` field. It never refuses: a security
+brief, `--security-path`, `--alone REASON` (a concurrency GREEN batched alone)
+prints no notice; an unknown increment or unreadable plan prints one
+`brief: batch notice skipped — <reason>` line and logs nothing. Without the
+flags nothing changes.
+
 `--tokens SPAWN_ID --usage FILE|-` appends the spawn's host-reported token
 counts to `tokens.jsonl` beside the spawn log, one record per logged spawn_id
 (keys: spawn_id, model, input, cache_write, cache_write_5m, cache_write_1h,
@@ -64,6 +74,7 @@ spawn_id, a key outside the schema, or a count that is not a whole number.
 
 import argparse
 import datetime
+import importlib.util
 import json
 import re
 import subprocess
@@ -376,6 +387,39 @@ def metrics_lines(plan: Path, rows: list[dict]) -> list[str]:
     return out
 
 
+def batch_notice(plan: Path, unit: str, increments: str) -> str:
+    """One notice when the briefed increments are fewer than the batch the
+    table gives them while more of the same phase are ready to join
+    (`delegation.effort-scale`), else ""; read through cycle.py's own state
+    and grill-lint.py's own `pack`. Never a refusal: a problem is a skip line."""
+    try:
+        sys.dont_write_bytecode = True
+        spec = importlib.util.spec_from_file_location("cypress_cycle", GRAPH / "cycle.py")
+        cy = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cy)
+        c = cy.Cycle(plan, unit)
+        nums = [int(x) for x in increments.split(",") if x.strip()]
+        unknown = [n for n in nums if n not in c.order]
+        if not nums or unknown:
+            return f"batch notice skipped — increment {', '.join(map(str, unknown)) or increments!r} is not in §9"
+        ph = c.phase[nums[0]]
+        if ph not in c.gl.BATCH_SIZE or any(c.label[n] is None for n in nums):
+            return ""
+        ready = c.state()[5].get(ph, [])
+        members = sorted(set(nums) | set(ready), key=c.order.get)
+        batch = next(b for b, _d in c.gl.pack(members, ph, c.tokens, c.label, c.order, []) if nums[0] in b)
+        join = sorted(set(batch) - set(nums), key=c.order.get)
+        hardest = max((c.label[n] for n in nums), key=list(c.gl.BATCH_SIZE["RED"]).index)
+        size = c.gl.BATCH_SIZE[ph][hardest]
+        if not join or len(nums) >= size:
+            return ""
+        return (f"batch notice — increment{'s' if len(nums) > 1 else ''} {', '.join(map(str, nums))} "
+                f"{'are' if len(nums) > 1 else 'is'} {len(nums)} of the batch table's {size} for {ph} {hardest}; "
+                f"ready to join it: {', '.join(map(str, join))} (delegation.effort-scale)")
+    except Exception as e:  # a notice never blocks the brief (cycle.py's Refusal included)
+        return f"batch notice skipped — {e}"
+
+
 def main() -> int:
     if "--tokens" in sys.argv[1:]:
         return record_tokens(sys.argv[1:])
@@ -416,7 +460,13 @@ def main() -> int:
                     help="embed the SECURITY PATH block (a RED for a security contract or its findings)")
     ap.add_argument("--emulated", default="",
                     help="this spawn runs a generic host type wearing --role; the reason")
+    ap.add_argument("--increments", default="", help="the §9 increments of this batch, N[,N]; with --unit")
+    ap.add_argument("--unit", default="", help="the unit of work, for the batch-size notice")
+    ap.add_argument("--alone", default="", help="a security or concurrency GREEN batched alone: the reason")
     a = ap.parse_args()
+    if bool(a.increments) != bool(a.unit):
+        print("brief: --increments and --unit go together", file=sys.stderr)
+        return 2
     try:
         body = charter(a.role)
         part = sys.stdin.read() if a.part == "-" else Path(a.part).read_text(encoding="utf-8")
@@ -472,11 +522,20 @@ def main() -> int:
         print("brief: the task line routes no expertise.* or subsystem.* node; name the files it "
               "touches or their stack in --task, so the worker loads that expertise "
               "(graph-session-bootstrap.md, Stack expertise)", file=sys.stderr)
+    notice = ""
+    if a.increments and not (a.alone or a.security_path or a.role == "security"):
+        notice = batch_notice(Path(a.plan), a.unit, a.increments)
+        if notice:
+            print(f"brief: {notice}", file=sys.stderr)
+        if notice.startswith("batch notice skipped"):
+            notice = ""
     log = spawn_log(Path(a.plan))
     log.parent.mkdir(parents=True, exist_ok=True)
     rec = {"spawn_id": a.spawn_id, "role": a.role, "task": a.task, "route": a.route,
            "effort": a.effort, "emulated": a.emulated, "trust": trust,
            "brief": a.out, "at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
+    if notice:
+        rec["notice"] = notice
     with open(log, "a", encoding="utf-8") as fh:
         fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
     if a.out:
