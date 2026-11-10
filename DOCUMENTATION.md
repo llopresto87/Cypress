@@ -538,13 +538,14 @@ on all three ways a turn can end: `complete`, `blocked-out-of-domain`, or
 
 ### 6.8 The delegation leaves
 
-The delegation doctrine is eight files: the branch node `delegation.md` and
-seven sibling leaves. Open the one that answers the question in hand.
+The delegation doctrine is nine files: the branch node `delegation.md` and
+eight sibling leaves. Open the one that answers the question in hand.
 
 | File | What it owns |
 |---|---|
-| [`delegation.md`](core/method/delegation.md) | the roster, mechanical routing, the knowledge-or-judgment question on a LOW band, and shared spec authoring; its Neighbours list is the menu of the other seven |
-| [`delegation-model-classes.md`](core/method/delegation-model-classes.md) | the model class and reasoning effort each step kind runs on, the model map (`delegation.model-map`), light variants, and the `effort:` key |
+| [`delegation.md`](core/method/delegation.md) | the roster, mechanical routing, the knowledge-or-judgment question on a LOW band, and shared spec authoring; its Neighbours list is the menu of the other eight |
+| [`delegation-model-classes.md`](core/method/delegation-model-classes.md) | the model class and reasoning effort each step kind runs on, the model map (`delegation.model-map`), the `effort:` key, and the model class per role and task kind |
+| [`delegation-light-variants.md`](core/method/delegation-light-variants.md) | a low-budget variant of a specialist for small mechanical work, and when it escalates to the full agent |
 | [`delegation-cycle-economy.md`](core/method/delegation-cycle-economy.md) | one step per spawn, effort labels and batch sizes, GREEN running its own tests, the tip cadence, mutation at the end, the question file and the ruling pass |
 | [`delegation-briefs.md`](core/method/delegation-briefs.md) | what every brief carries across the spawn boundary, and that every worker runs its own route |
 | [`delegation-sequencing.md`](core/method/delegation-sequencing.md) | spawn order by dependency, RED waves ahead of GREEN, and one writer per file set |
@@ -1313,7 +1314,7 @@ beside the plant's routing corpus, and `--eval` then gates the plant on it;
 graft records it at the graft that brings the routing corpus or changes the
 roster (SPEC-0002).
 
-Routable body sizes, computed by `tests/seed-lint.py` from the method files on every run: the largest routable body is 1 706 lines (`protocols/graft.md`) and the median is 164 lines, against a ceiling of 1 000 lines for any routable node and 2 500 lines for the three cross-project protocols, `graft`, `grow` and `harvest`. Those three are the only protocols that write into a repository the seed does not own, and a session loads one only while it performs that operation ([ADR-0007](docs/decisions/adr-0007-lifecycle-protocol-ceiling.md)). Both ceilings are ratchets: they may fall freely, and raising either is an owner decision recorded in `tests/ratchets.json`. The always-loaded budget has the same shape. `EAGER_EXEMPTIONS` in `tests/seed-lint.py` records one debt that may only shrink: on Claude Code the main session plays the orchestrator, so its charter and always-loaded nodes load on every session as the `orchestrator` output style. Every other harness sits under `EAGER_BUDGET`, and the per-harness figures are in the [host capability matrix](documentation/host-capability-matrix.md).
+Routable body sizes, computed by `tests/seed-lint.py` from the method files on every run: the largest routable body is 1 706 lines (`protocols/graft.md`) and the median is 163 lines, against a ceiling of 1 000 lines for any routable node and 2 500 lines for the three cross-project protocols, `graft`, `grow` and `harvest`. Those three are the only protocols that write into a repository the seed does not own, and a session loads one only while it performs that operation ([ADR-0007](docs/decisions/adr-0007-lifecycle-protocol-ceiling.md)). Both ceilings are ratchets: they may fall freely, and raising either is an owner decision recorded in `tests/ratchets.json`. The always-loaded budget has the same shape. `EAGER_EXEMPTIONS` in `tests/seed-lint.py` records one debt that may only shrink: on Claude Code the main session plays the orchestrator, so its charter and always-loaded nodes load on every session as the `orchestrator` output style. Every other harness sits under `EAGER_BUDGET`, and the per-harness figures are in the [host capability matrix](documentation/host-capability-matrix.md).
 
 ## 15. Glossary
 <a id="glossary"></a>

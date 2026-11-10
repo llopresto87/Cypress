@@ -17,6 +17,7 @@ peers:
   - method.delegation-bounds
   - method.delegation-continuation
   - method.delegation-wave-integrity
+  - method.delegation-light-variants
   - method.tiers
 load_when:
   - "who should do this, which specialist, which agent"
@@ -118,6 +119,8 @@ all three signed off on the same document.
   classifying, before choosing workers.
 - `method.delegation-model-classes`: load when sonnet or opus, which
   model class.
+- `method.delegation-light-variants`: load when light variant, light
+  reviewer or tester, one-line-fix implementer.
 - `method.delegation-cycle-economy`: load when how many increments per
   spawn, batch size.
 - `method.delegation-briefs`: load when spawn a worker, write a

@@ -24,8 +24,9 @@
   "kernel": {
     "core/AGENTS.md": "Bootstrap kernel — the one always-loaded instruction file, read on every session by every supported tool: identity, first move (the router), tier table, the eight rule anchors, boundaries, and where to look next, the source index for questions about code among them. Full statements live in the graph machinery nodes.",
     "core/method/tiers.md": "method.tiers node — tier depth, hard edges, execution paths. Installed to docs/graph/method/.",
-    "core/method/delegation.md": "method.delegation node — the roster, mechanical routing and shared spec authoring; hub over the seven delegation siblings. Installed to docs/graph/method/.",
-    "core/method/delegation-model-classes.md": "method.delegation-model-classes node — the class and reasoning effort each step runs on, light variants, and the plant's model map (docs/graph/models.md, delegation.model-map) that names the model each host runs per class and effort. Installed to docs/graph/method/.",
+    "core/method/delegation.md": "method.delegation node — the roster, mechanical routing and shared spec authoring; hub over the eight delegation siblings. Installed to docs/graph/method/.",
+    "core/method/delegation-model-classes.md": "method.delegation-model-classes node — the class and reasoning effort each step runs on, and the plant's model map (docs/graph/models.md, delegation.model-map) that names the model each host runs per class and effort. Installed to docs/graph/method/.",
+    "core/method/delegation-light-variants.md": "method.delegation-light-variants node — a low-budget variant of a specialist for small mechanical work, and when it escalates. Installed to docs/graph/method/.",
     "core/method/delegation-cycle-economy.md": "method.delegation-cycle-economy node — effort-sized batches, GREEN self-test, tip cadence, the question file and ruling pass, mutation at the end. Installed to docs/graph/method/.",
     "core/method/delegation-briefs.md": "method.delegation-briefs node — what every brief carries across the spawn boundary, and that every worker runs its own route. Installed to docs/graph/method/.",
     "core/method/delegation-sequencing.md": "method.delegation-sequencing node — spawn order by dependency, RED waves ahead of GREEN (delegation.waves), and one writer per file set. Installed to docs/graph/method/.",

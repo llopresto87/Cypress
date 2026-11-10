@@ -276,6 +276,52 @@ rc=0; msg="$(e6 e6e implementer 3)" || rc=$?
 rc=0; msg="$(e6 e6f tester 99)" || rc=$?
 [[ $rc -eq 0 ]] && grep -q '^brief: batch notice skipped — ' <<<"$msg" || { bad "X516 BRIEF_NOTICES_AN_UNDERSIZED_BATCH" "unknown increment blocked: rc $rc: $msg"; x516=1; }
 [[ $x516 == 0 ]] && ok "X516 BRIEF_NOTICES_AN_UNDERSIZED_BATCH: an undersized batch with more ready notices once and logs it; exact, security, concurrency and nothing-else-ready do not"
+# X517 BRIEF_DERIVES_THE_MODEL_CLASS: the class table beside the effort table
+# reproduces each role's `model:`, so every role and kind composes the brief it
+# composed before the table existed (hashes captured from the prior tip); a row
+# changed to another class adds one Model line
+x517=0
+T2="$T/x517"; mkdir -p "$T2"; bash "$ROOT/install.sh" claude-code --project-dir "$T2" >/dev/null 2>&1
+printf 'Do the task.\n' > "$T2/part.txt"
+"$PY" - "$T2/docs/graph/brief.py" "$ROOT/tests/fixtures/brief-class/before.sha256" "$T2" "$PY" <<'PY' || x517=1
+import hashlib, importlib.util, subprocess, sys
+b, want, root, py = sys.argv[1:]
+s = importlib.util.spec_from_file_location("brief", b); m = importlib.util.module_from_spec(s); s.loader.exec_module(m)
+rows = m.effort_rows()
+classes = m.class_rows() if hasattr(m, "class_rows") else {}
+for role, kind in sorted(rows):
+    if classes.get((role, kind)) is None:
+        print(f"  X517 BRIEF_DERIVES_THE_MODEL_CLASS — FAIL: no class row for {role} {kind}")
+        sys.exit(1)
+got = []
+for role, kind in sorted(rows):
+    r = subprocess.run([py, "docs/graph/brief.py", "--role", role, "--kind", kind, "--label", "medium",
+                        "--spawn-id", f"o.c.{role}.{kind}", "--task", "t", "--route", "r", "--part", "part.txt"],
+                       cwd=root, capture_output=True, text=True)
+    out = r.stdout + r.stderr + ("" if r.returncode == 0 else f"exit {r.returncode}\n")
+    got.append(f"{hashlib.sha256(out.encode()).hexdigest()}  {role} {kind}")
+exp = open(want).read().split("\n")[:-1]
+diff = sorted(set(got) ^ set(exp))
+if diff:
+    print("  X517 BRIEF_DERIVES_THE_MODEL_CLASS — FAIL: output changed for " + "; ".join(diff))
+    sys.exit(1)
+PY
+N="$T2/docs/graph/method/delegation-model-classes.md"; cp "$N" "$T2/node.bak"
+"$PY" - "$N" <<'PY' || x517=1
+import re, sys
+p = sys.argv[1]; t = open(p).read()
+t, n = re.subn(r"^\| implementer \| `fix` \| opus \|$", "| implementer | `fix` | sonnet |", t, flags=re.M)
+open(p, "w").write(t)
+sys.exit(0 if n == 1 else 1)
+PY
+err="$(cd "$T2" && "$PY" docs/graph/brief.py --role implementer --kind fix --spawn-id o.x517.m --task t --route r \
+       --part part.txt --out docs/graph/plans/x517.md 2>&1 >/dev/null)" || x517=1
+[[ "$(grep -c '^Model: sonnet (implementer fix, definition default opus)$' "$T2/docs/graph/plans/x517.md" 2>/dev/null)" == 1 ]] \
+  && [[ "$(grep -c '^model: sonnet' <<<"$err")" == 1 ]] \
+  || { bad "X517 BRIEF_DERIVES_THE_MODEL_CLASS" "changed row: want one Model line; stderr: $err"; x517=1; }
+cp "$T2/node.bak" "$N"
+[[ $x517 == 0 ]] && ok "X517 BRIEF_DERIVES_THE_MODEL_CLASS: every role and kind composes its prior brief byte for byte; a changed class row adds one Model line" \
+  || bad "X517 BRIEF_DERIVES_THE_MODEL_CLASS" "see above"
 rc=0; (cd "$T" && "$PY" docs/graph/brief.py --role nobody --spawn-id s --task t --route r --part part.txt) >/dev/null 2>&1 || rc=$?
 [[ $rc -ne 0 ]] && ok "unknown role refused" || bad "unknown role" "exit 0"
 [[ "$fail" == 0 ]] && echo "test-brief: PASS" || { echo "test-brief: FAIL"; exit 1; }

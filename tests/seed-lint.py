@@ -145,7 +145,7 @@ ADOPTED_RULE_HOMES = {
     "delegation.routing": DELEGATION_HUB,
     "delegation.spec-authoring": DELEGATION_HUB,
     "delegation.model-classes": "core/method/delegation-model-classes.md",
-    "delegation.light-variants": "core/method/delegation-model-classes.md",
+    "delegation.light-variants": "core/method/delegation-light-variants.md",
     "delegation.step-scope": "core/method/delegation-cycle-economy.md",
     "delegation.briefs": "core/method/delegation-briefs.md",
     "delegation.sequencing": "core/method/delegation-sequencing.md",
