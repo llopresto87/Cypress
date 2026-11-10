@@ -34,7 +34,7 @@ Each agent's `model:` frontmatter field names its model class: the investigation
 
 The two scout roles, `research-scout` and `growth-scout`, run on `sonnet` (growth-scout writes only its evidence ledger; research-scout's drafts are mechanical normalization finalized by the librarian); every other agent runs on `opus`, as the summary table below shows. Model class is a distinct axis from the task tier (T0–T3, kernel §0) and the graph load-tier (the node `tier:` field). Only the risk axis is written `T0–T3`.
 
-Each agent's `effort:` frontmatter field is its default reasoning effort, one of `low`, `medium` or `high`. Effort refines the model class and is not a fourth axis; it is also not the effort level an owner declares for a task. `orchestrator`, `architect`, `multi-agent-architect`, `security`, `pentest`, `devils-advocate`, `legal` and `growth-orchestrator` default to `high`; the rest default to `medium`, and none ships at `low`. `agent-lint.py --lint` fails an agent file whose value is missing or outside that set. A spawn can run at a different effort than its default; the derivation, and what each host is recorded to read, are in `core/method/delegation-model-classes.md`.
+Each agent's `effort:` frontmatter field is its default reasoning effort, one of `low`, `medium` or `high`. Effort refines the model class and is not a fourth axis; it is also not the effort level an owner declares for a task. `orchestrator`, `architect`, `multi-agent-architect`, `security`, `pentest`, `devils-advocate`, `legal` and `growth-orchestrator` default to `high`; `implementer` defaults to `low`, and the rest default to `medium`. `agent-lint.py --lint` fails an agent file whose value is missing or outside that set. A spawn can run at a different effort than its default; the derivation, and what each host is recorded to read, are in `core/method/delegation-model-classes.md`.
 
 ## 4. Bounded delegation
 
@@ -171,13 +171,13 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **id:** `agent.implementer`
 - **Role:** Senior implementer. Writes the code that turns a failing test green — the minimum new behavior, integrated into the file's existing design rather than bolted on as the smallest diff — after a spec has been authored and tests have been written.
 - **model class:** `opus`
-- **effort (default):** `medium`
+- **effort (default):** `low`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`
 - **tier (graph load-tier):** 2
 - **owns (facts):** `implementer.charter`, `implementer.spawn-scope`, `implementer.preconditions`, `implementer.integration-discipline`
 - **requires:** `skill.holistic-editing`
-- **always loads (composed into the Claude Code agent file):** `method.engineering-posture` sections 1, 2, 4, 9, 12, `method.design-posture` sections 2, 5, 6, 7, 10, 11, `method.contract-posture`, `method.minimum-sufficient-work`, `skill.holistic-editing`, `method.security-controls`
+- **always loads (composed into the Claude Code agent file):** `method.engineering-posture` sections 1, 2, 4, 9, 12, `method.design-posture`, `method.contract-posture`, `method.minimum-sufficient-work`, `skill.holistic-editing`, `method.security-controls`
 - **peers:** `agent.tester`, `agent.reviewer`
 - **routing_triggers:**
   - "make the failing test pass"

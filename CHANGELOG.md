@@ -1,6 +1,53 @@
 # Changelog
 
-## 8.3.0 — fixes from a trajectory audit of two grown plants (2026-11-02)
+## 8.3.0 — experimental: one implementer per increment, a security pass on trust paths, and fixes from a trajectory audit (2026-11-10)
+
+This version is experimental. The owner decided on 2026-11-10 to close the
+round on a branch of its own instead of the main line, so it carries no tag
+and no published release. The round started from an audit of two grown
+plants' trajectories and went on to change how work is split across workers,
+how much reasoning each spawn gets, and how a change to a trust surface is
+checked.
+
+### Measured status
+
+Measured on live builds against the previous release, an increment costs
+about the same as it did on 8.2.0, and the security results are stronger:
+more evasion paths are caught before a change lands. The round set out to
+lower the cost per increment, and that target was not reached. Treat this
+version as an experiment to learn from, not as the recommended seed.
+
+### The round in brief
+
+- **One implementer per increment.** The default shape gives one implementer
+  the whole increment in one warm cache, and a test judged wrong goes
+  straight back to the tester.
+- **A security pass on trust paths.** A crosscut node can mark itself
+  `trust: true` and claim paths. A change under such a path gets one
+  `security` pass after the review; its findings go to a tester for RED and
+  then to one implementer for GREEN. Graft and grow ask the owner to settle
+  any node whose trust marker is left open.
+- **Adversarial controls.** For each security contract, RED writes one
+  negative control per evasion class and one test per path to a gated
+  action, from the `method.security-controls` checklist.
+- **Always-loaded method nodes.** Each role names its core method nodes in
+  `always_loads:`, and on Claude Code `install.sh` composes them into the
+  role's agent file, so the prompt is the same on every spawn and its cache
+  holds.
+- **Effort per task.** `brief.py` derives each spawn's reasoning effort from
+  its role and task kind. Implementing runs at low effort, and at medium only
+  for an increment labelled hard; the review, the security pass and the
+  findings tester carry the quality.
+- **Graft and grow fixes.** A graft keeps the files the plant edited, stops
+  calling new seed nodes re-created, rows a new hook file, and offers a fix
+  for a stale composed agent that keeps the node.
+- **The orchestrator as output style.** On Claude Code the main session gets
+  the orchestrator's charter and always-loaded nodes through a project output
+  style, because the main session is no subagent.
+- **A project-agnostic sweep.** Seed nodes state their evidence without
+  naming the plants or hosts it came from.
+
+### What changed, in the order it landed
 
 The trajectories of two plants grown from scratch were audited: one on
 Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed

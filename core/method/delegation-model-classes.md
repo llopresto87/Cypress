@@ -150,12 +150,12 @@ transform drops the key.
 
 Each agent definition defaults to the effort of the step kind it mostly runs,
 from the table above, and to `medium` where the table has no row
-(`ui-ux-designer`, `data-ml`, `reliability`, `tool-smith`, `seed-installer`):
+(`ui-ux-designer`, `data-ml`, `reliability`, `tool-smith`, `seed-installer`); `implementer` defaults to `low` (the role-and-kind table below):
 
 | `effort:` | Agent (the step kind it mostly runs) |
 |---|---|
 | high | `orchestrator` (routing and rulings on a contract's reading), `architect` (spec contracts, architecture, rulings, one-way doors), `multi-agent-architect` (architecture), `security` (any step on a security surface; threat models), `pentest` (any step on a security surface), `devils-advocate` (adversarial validation), `legal` (rulings against a rule corpus), `growth-orchestrator` (the close-out that ends a grow) |
-| medium | `implementer` (routine GREEN), `tester` (RED for a new contract), `reviewer` (standard batch review), `product` (spec §3 and §9), `docs-librarian` (the canonize librarian), `research-scout` (library research), `growth-scout` (artifact discovery, low to medium) |
+| medium | `tester` (RED for a new contract), `reviewer` (standard batch review), `product` (spec §3 and §9), `docs-librarian` (the canonize librarian), `research-scout` (library research), `growth-scout` (artifact discovery, low to medium) |
 
 **Each spawn's effort follows its role and task kind** (the owner's decision of
 2026-11-09, pending measurement). `brief.py --kind KIND[,KIND]
