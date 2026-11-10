@@ -596,6 +596,25 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   trust-path review with no later security spawn still prints its BLOCK line
   and exits 1; the key decisions, limitations and quality stay the lead's
 
+### Contract: BRIEF_NOTICES_AN_UNDERSIZED_BATCH
+- **Test file:** `tests/test-brief.sh`
+- **Given:** a plant whose plan §9 has the REDs 1, 2 and 8 ready (label
+  `low`, batch table 7), and copies where REDs 1 and 2, or only 1, are
+  recorded so GREEN 3 is ready with or without GREEN 4
+- **When:** `brief.py` composes a brief with `--increments N[,N] --unit u`
+- **Then:** a tester brief for increment 1 alone prints one stderr line
+  `brief: batch notice — increment 1 is 1 of the batch table's 7 for RED low;
+  ready to join it: 2, 8 (delegation.effort-scale)`, exits 0, and its spawn
+  record carries the same text in a `notice` field
+- **And:** no notice for a brief of the whole ready batch (1, 2, 8), for a
+  GREEN of one under `--security-path` or `--alone concurrency`, or for a
+  GREEN of one with nothing else of its phase ready; a record with no notice
+  has no `notice` field
+- **And:** an increment §9 does not hold prints one `brief: batch notice
+  skipped — <reason>` line, logs no notice and the brief is composed (exit 0);
+  readiness comes from `cycle.py` and the packing from `grill-lint.py`'s
+  `pack`, and a brief without `--increments` is unchanged
+
 ### Contract: RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME
 - **Test file:** `tests/test-resume-hook.sh`
 - **Given:** Claude Code workers that handed back and have been idle 4, 30
@@ -2726,6 +2745,7 @@ gives.
 | TOKEN_LEDGER_RECORDS_HOST_USAGE | X505 a full, a partial and an empty usage are stored as given or `not recorded`; an unknown spawn, a second record, a fractional count and an unknown key are refused; seen red first | tests/test-brief.sh | fixture | green |
 | TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT | X506 a hand transcript with a repeated message id, a 1h write and a `<synthetic>` record sums once per message; an empty transcript records `not recorded`; seen red first | tests/test-brief.sh | fixture | green |
 | BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS | X515 a hand spawn log and ledger print `tests/fixtures/brief-log/log.out`; the three lines pass `session-metrics.py` in a delivery entry; no ledger, a broken ledger line and an empty log give their lines; seen red first | tests/test-brief.sh | fixture | green |
+| BRIEF_NOTICES_AN_UNDERSIZED_BATCH | X516 an undersized RED with two more ready notices once and logs it; the exact batch, a security and a concurrency GREEN of one, and a GREEN with nothing else ready do not; an unknown increment is skipped, not refused; seen red first | tests/test-brief.sh | integration (installed plant) | green |
 | RESUME_GUARD_FOLLOWS_THE_CONFIGURED_CACHE_LIFETIME | X507 workers idle 4, 30 and 90 minutes against `5m`, `1h`, an invalid value and unset through the variable, the project setting and the agent frontmatter, plus each precedence step; a configured `1h` with a 5m-only last write, a one-hour last write and no write; seen red first | tests/test-resume-hook.sh | fixture | green |
 | CYCLE_DRIVER_PRINTS_THE_CYCLE_STATE | X508 a fresh plan prints the ready RED and prose batches in order; an unrelated commit lands nothing, commits naming every contract slug land their increments, and with no git every increment is `landed: unknown`, exit 0; seen red first | tests/test-cycle.sh | integration (installed plant) | green |
 | CYCLE_DRIVER_NAMES_THE_HOLD_CONDITION | X509 a hand fixture holds one increment under each of the three conditions and two by dependency; the report matches `tests/fixtures/cycle/held.out` byte for byte; seen red first | tests/test-cycle.sh | integration (installed plant) | green |
@@ -3282,3 +3302,11 @@ kept outside the seed.
   log records composition time, not handback time, so a serial wait is read
   as a gap of more than 60 seconds between two compositions; the lines that
   need judgment stay the lead's.
+- 2026-11-10 — the owner's brief of 2026-11-10 asks that an undersized batch
+  be visible when it is briefed, as a notice and never a block.
+  `brief.py --increments N[,N] --unit U` reads readiness through `cycle.py`
+  and the batch through `grill-lint.py`'s `pack`, prints one notice naming
+  the table's number and logs it in a new `notice` field of the spawn record
+  (BRIEF_NOTICES_AN_UNDERSIZED_BATCH, X516, seen red first). A security or
+  concurrency GREEN of one, which the planner cannot read, is named by
+  `--security-path` or `--alone REASON`.

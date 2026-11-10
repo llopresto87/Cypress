@@ -49,7 +49,8 @@ this one defined outcome.
 
 **The batch is fixed at spawn** (owner ruling): the caller takes the
 batches `python3 docs/graph/cycle.py --unit U` prints as ready, packed by the table below
-(`grill-lint.py --batches` packs the static waves), one worker per batch, parallel where the wave allows, and splits a
+(`grill-lint.py --batches` packs the static waves), one worker per batch (`brief.py --increments N,N --unit U` notices a batch
+smaller than the table while more is ready), parallel where the wave allows, and splits a
 security or concurrency GREEN out by hand (the planner cannot read it). A worker does only its batch; the next batch gets a fresh
 worker, never a running or finished one (`delegation.continuation`).
 

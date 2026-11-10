@@ -243,6 +243,39 @@ rc=0; got="$(cd "$T" && "$PY" docs/graph/brief.py --log --plan "$T/docs/graph/pl
 [[ $rc -eq 1 && "$got" == "brief: no spawns logged at $T/docs/graph/plans/e5none/spawns.jsonl" ]] \
   || { bad "X515 BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS" "empty log: rc $rc: $got"; x515=1; }
 [[ $x515 == 0 ]] && ok "X515 BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS: Spawns, Serial waits and Tokens print from the log and ledger and pass the reader unchanged"
+# X516 BRIEF_NOTICES_AN_UNDERSIZED_BATCH: one notice, logged, only for an
+# undersized batch while more of its phase is ready; never a refusal
+x516=0; FC="$ROOT/tests/fixtures/cycle"; mkdir -p "$T/tests"; cp "$FC"/files/tests/* "$T/tests/"
+e6() {  # e6 DIR ROLE INCREMENTS [extra flags] -> stderr of the composition
+  local d="$T/docs/graph/plans/$1"; mkdir -p "$d"; [[ -f "$d/grill.md" ]] || cp "$FC/grill.md" "$d/grill.md"
+  (cd "$T" && "$PY" docs/graph/brief.py --role "$2" --spawn-id "$1.$2" --task "the batch" --route r --effort "low (x)" \
+     --part part.txt --plan "$d/grill.md" --unit u --increments "$3" "${@:4}" 2>&1 >/dev/null)
+}
+notice() { grep '^brief: batch notice' <<<"$1" || true; }
+n="$(notice "$(e6 e6a tester 1)")"
+[[ "$n" == "brief: batch notice — increment 1 is 1 of the batch table's 7 for RED low; ready to join it: 2, 8 (delegation.effort-scale)" ]] \
+  || { bad "X516 BRIEF_NOTICES_AN_UNDERSIZED_BATCH" "undersized: $n"; x516=1; }
+"$PY" - "$T/docs/graph/plans/e6a/spawns.jsonl" "$n" <<'PY' || { bad "X516 BRIEF_NOTICES_AN_UNDERSIZED_BATCH" "not logged"; x516=1; }
+import json, sys
+r = [json.loads(l) for l in open(sys.argv[1])][-1]
+assert r["notice"] == sys.argv[2][len("brief: "):], r
+PY
+[[ -z "$(notice "$(e6 e6b tester 1,2,8)")" ]] || { bad "X516 BRIEF_NOTICES_AN_UNDERSIZED_BATCH" "exact batch noticed"; x516=1; }
+mkdir -p "$T/docs/graph/plans/e6c"; cp "$FC/grill.md" "$T/docs/graph/plans/e6c/grill.md"
+(cd "$T" && "$PY" docs/graph/cycle.py record-red 1 --unit u --plan docs/graph/plans/e6c/grill.md --file tests/test_alpha.sh --test a.1 >/dev/null \
+  && "$PY" docs/graph/cycle.py record-red 2 --unit u --plan docs/graph/plans/e6c/grill.md --file tests/test_beta.sh --test b.1 >/dev/null) \
+  || { bad "X516 BRIEF_NOTICES_AN_UNDERSIZED_BATCH" "record-red"; x516=1; }
+cp -R "$T/docs/graph/plans/e6c" "$T/docs/graph/plans/e6d"
+[[ -z "$(notice "$(e6 e6c implementer 3 --security-path)")" ]] || { bad "X516 BRIEF_NOTICES_AN_UNDERSIZED_BATCH" "security batch of one noticed"; x516=1; }
+[[ -z "$(notice "$(e6 e6d implementer 3 --alone concurrency)")" ]] || { bad "X516 BRIEF_NOTICES_AN_UNDERSIZED_BATCH" "concurrency batch of one noticed"; x516=1; }
+mkdir -p "$T/docs/graph/plans/e6e"; cp "$FC/grill.md" "$T/docs/graph/plans/e6e/grill.md"
+(cd "$T" && "$PY" docs/graph/cycle.py record-red 1 --unit u --plan docs/graph/plans/e6e/grill.md --file tests/test_alpha.sh --test a.1 >/dev/null)
+rc=0; msg="$(e6 e6e implementer 3)" || rc=$?
+[[ $rc -eq 0 && -z "$(notice "$msg")" ]] || { bad "X516 BRIEF_NOTICES_AN_UNDERSIZED_BATCH" "nothing else ready: rc $rc: $msg"; x516=1; }
+! grep -q '"notice"' "$T/docs/graph/plans/e6e/spawns.jsonl" || { bad "X516 BRIEF_NOTICES_AN_UNDERSIZED_BATCH" "an empty notice was logged"; x516=1; }
+rc=0; msg="$(e6 e6f tester 99)" || rc=$?
+[[ $rc -eq 0 ]] && grep -q '^brief: batch notice skipped — ' <<<"$msg" || { bad "X516 BRIEF_NOTICES_AN_UNDERSIZED_BATCH" "unknown increment blocked: rc $rc: $msg"; x516=1; }
+[[ $x516 == 0 ]] && ok "X516 BRIEF_NOTICES_AN_UNDERSIZED_BATCH: an undersized batch with more ready notices once and logs it; exact, security, concurrency and nothing-else-ready do not"
 rc=0; (cd "$T" && "$PY" docs/graph/brief.py --role nobody --spawn-id s --task t --route r --part part.txt) >/dev/null 2>&1 || rc=$?
 [[ $rc -ne 0 ]] && ok "unknown role refused" || bad "unknown role" "exit 0"
 [[ "$fail" == 0 ]] && echo "test-brief: PASS" || { echo "test-brief: FAIL"; exit 1; }
