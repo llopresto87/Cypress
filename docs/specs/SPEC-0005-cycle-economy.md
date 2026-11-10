@@ -758,6 +758,29 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   reported gate evidence, and that the builder runs the builds and test
   suites
 
+### Contract: SLOW_COMMAND_LEAVES_THE_WORKER_TURN
+- **Test file:** `tests/seed-lint.py`
+- **Given:** `core/method/bounded-execution.md`, the reviewer charter
+  `agents/03-reviewer.md`, the kernel, the orchestrator's always-loaded nodes
+  and the canonical brief blocks
+- **When:** seed-lint reads them
+- **Then:** clause 2 of `toolcraft.bounded-execution` holds that a command
+  expected to outlast the worker's cache lifetime stays out of the worker's
+  turn, run detached and polled or run by the lead before the spawn, and that
+  a reviewer runs no build; the reviewer charter points there; the kernel,
+  the always-loaded nodes and the brief blocks do not carry the rule, and
+  `KERNEL_BUDGET`, `EAGER_EXEMPTIONS` and the block baseline still hold
+
+### Contract: GATE_OUTPUT_KEEPS_STATUS_AND_LOG
+- **Test file:** `tests/seed-lint.py`
+- **Given:** `protocols/verify.md`, the kernel, the orchestrator's
+  always-loaded nodes and the canonical brief blocks
+- **When:** seed-lint reads them
+- **Then:** `protocols/verify.md` holds that a gate returns its failing ids
+  and a one-line summary, leaves the full log on disk, and that a filter over
+  its output keeps the command's exit status and hides no failure; the
+  kernel, the always-loaded nodes and the brief blocks do not carry it
+
 ### Contract: CHARTER_FLAG_ONLY_FOR_PRIME_AGENT
 - **Test file:** `tests/test-brief.sh`
 - **Given:** a Claude Code plant, whose `.claude/agents/` carries each role,
@@ -2764,6 +2787,8 @@ gives.
 | PLAN_ROLE_LEAVES_OUT_THE_ROLES_OWN_PROMPT | X500 the tester brief's step 1 carries `--role tester`; seen red first | tests/test-brief.sh | fixture | green |
 | BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE | X500 a generic GREEN task line warns; a task line routing `expertise.<stack>` does not; seen red first | tests/test-brief.sh | fixture | green |
 | REVIEWER_RUNS_NO_BUILD | (none) the `REVIEWER_RUNS_NO_BUILD` row of seed-lint's `TEXT_RULES`; red id: `REVIEWER_RUNS_NO_BUILD: agents/03-reviewer.md does not hold 'the builder runs the builds and test suites'`; seen red first | tests/seed-lint.py | real-tree | green |
+| SLOW_COMMAND_LEAVES_THE_WORKER_TURN | (none) two require rows and a forbid row of seed-lint's `TEXT_RULES`; red id: `SLOW_COMMAND_LEAVES_THE_WORKER_TURN: core/method/bounded-execution.md does not hold "outlast the worker's cache lifetime"`; seen red first | tests/seed-lint.py | real-tree | green |
+| GATE_OUTPUT_KEEPS_STATUS_AND_LOG | (none) a require row and a forbid row of seed-lint's `TEXT_RULES`; red id: `GATE_OUTPUT_KEEPS_STATUS_AND_LOG: protocols/verify.md does not hold "keeps the command's exit status"`; seen red first | tests/seed-lint.py | real-tree | green |
 | CHARTER_FLAG_ONLY_FOR_PRIME_AGENT | X501 refused on a Claude Code plant; composed once `.prime/agent/` exists; seen red first | tests/test-brief.sh | fixture | green |
 | ALWAYS_LOADS_COMPOSES_ONLY_WHAT_THE_ROLE_NEEDS | M25 case_agents_sections: `engineering-posture#1,4` composes sections 1 and 4 only, no Neighbours or reference-only section; `#1,99` stops the recompose naming section 99; seen red first | tests/test-install-placement.sh | integration | green |
 | MAIN_SESSION_PLAYS_THE_ORCHESTRATOR | M24 case_orchestrator_style: settings select the style; the style carries the charter body and each always-loaded body once, no charter frontmatter, `keep-coding-instructions: true`; a hand edit is STALE and recomposed; seen red first. A `claude -p` probe in a fresh plant quoted the charter's second sentence and an always-loaded heading, and quoted neither with the setting removed | tests/test-install-placement.sh | integration | green |
@@ -3310,3 +3335,11 @@ kept outside the seed.
   (BRIEF_NOTICES_AN_UNDERSIZED_BATCH, X516, seen red first). A security or
   concurrency GREEN of one, which the planner cannot read, is named by
   `--security-path` or `--alone REASON`.
+- 2026-11-10 — the owner's brief of 2026-11-10 asks for two execution rules
+  in the nodes that own them, adding nothing every session pays for. Clause 2
+  of `toolcraft.bounded-execution` keeps a command that outlasts the worker's
+  cache out of its turn and generalises the reviewer's no-build rule, to which
+  the reviewer charter points (SLOW_COMMAND_LEAVES_THE_WORKER_TURN);
+  `protocols/verify.md` has a gate return failing ids and a summary, keep its
+  exit status and leave its log on disk (GATE_OUTPUT_KEEPS_STATUS_AND_LOG).
+  Both seen red first.

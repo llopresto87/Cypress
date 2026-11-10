@@ -17,7 +17,7 @@ load_when:
   - "is the run stuck, check it by id"
   - "one command at a time, which batched command stalled"
 prevents: A hung command that wedges the session, a stall retried unchanged, and a run called finished because its output stopped.
-est_tokens: 797
+est_tokens: 871
 ---
 
 ## A command that may outlive its session is bounded (`toolcraft.bounded-execution`)
@@ -35,7 +35,11 @@ clauses 2-6 tell "finished" from "stuck" when the work is long.
 2. Work that may legitimately exceed the bound runs detached: hangup
    trapped, its process group recorded to a file, its output written to a
    durable log under the project, and a terminal result line and an
-   exit-code file at the end.
+   exit-code file at the end. A command expected to outlast the worker's cache
+   lifetime stays out of the worker's turn: it runs detached this way and is
+   polled by short reads, or the lead runs it as a deterministic step before
+   the spawn and hands over its result. A reviewer, which reads the gate
+   evidence the builder reports, runs no build at all.
 3. Waiting is bounded polling of that log for new bytes or the marker. A
    poll that sees no new evidence for a fixed number of intervals stops and
    reports "no progress since T", so the next step is a diagnosis; an

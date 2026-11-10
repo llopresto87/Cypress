@@ -161,7 +161,10 @@ operation it checks: a probe with less access than the copy, the
 migration, or the scan it verifies silently skips what it cannot read,
 and the shortfall reads as a defect in the subject. Read absence ONLY
 from complete output: a search piped through a line cap is a sample, and
-a sample that missed the item proves nothing about it.
+a sample that missed the item proves nothing about it. So a gate returns its
+failing ids and a one-line summary and leaves the full log on disk, and a
+filter over its output keeps the command's exit status (the shell's
+`pipefail`, or the status captured before filtering) and hides no failure.
 
 The control settles the instrument, not the subject. A negative result
 is evidence about the exact subject that was presented and about nothing
