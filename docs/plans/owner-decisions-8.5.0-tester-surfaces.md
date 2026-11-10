@@ -25,7 +25,7 @@ The round that makes a test owed only where it can catch something (ADR-0034) le
 
 ## D4. Languages the worth check reads
 
-- **Finding.** The check reads what the plant's code index reads: Python, shell invocations, and TypeScript or JavaScript. Every other file is reported as not checked.
+- **Finding.** The check reads Python and TypeScript or JavaScript test files. The plant's code index also reads shell invocations, but a shell test's assertions are not something the check can read, so shell tests are reported as not checked along with every other language. (The owner's answer was given against a description that listed the index's three; the build follows the narrower reading above, and the owner can ask for shell.)
 - **Options.** (a) those three. (b) add a named language.
 - **Decided.** The owner decided on 2026-11-10 on (a). A language is added when a plant needs it and the owner names it.
 
