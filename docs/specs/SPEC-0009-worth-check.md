@@ -1130,3 +1130,11 @@ held at the verdict that file records.
   waits on the owner's confirmation by name; a row naming a bare method spares
   that method in every class of its file.
 - 2026-11-11: closed the security reviewer's should-fix: while any spec cannot be opened the removal list holds every test back (WORTH_REMOVAL_LIST_HOLDS_BACK_WHEN_A_SPEC_WAS_NOT_READ, X944, seen red first). The §11 row that asked it is answered by this line.
+- 2026-11-11 — the security reviewer confirmed the fix, and the security sign
+  in §0 stands. In a plant installed into a `git init`ed directory, a test
+  mapped `design` by one spec (its Test cell spelled `./tests/...`) and
+  `security control` by a second spec made unreadable is held back, as is
+  every other test in the batch, with and without `--spec`, each line naming
+  the unread spec; the plain run still exits 1 on it. No remaining way was
+  found for a test of origin bug or security control, a test with no §10 row,
+  or a test on a trust path to be offered for removal.
