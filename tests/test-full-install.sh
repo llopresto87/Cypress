@@ -158,6 +158,44 @@ assert "subagent_depth" not in cfg, "the top-level subagent_depth is an unsuppor
 assert cfg["experimental"]["subagent_depth"] == 3, f"delegation depth capped: {cfg.get('experimental')}"
 EOF
   assert_cmd_roster "$T/.opencode/commands" .md "opencode commands"
+  # X920 EVERY_ROSTER_AGENT_IS_LAUNCHABLE: the architect may launch legal, and
+  # every subagent file is named by some agent's subagent allow rule
+  lead_allows "$T/.opencode/agents/architect.md" legal \
+    || die "X920 EVERY_ROSTER_AGENT_IS_LAUNCHABLE: architect.md has no subagent allow for legal"
+  local a n
+  for a in "$T"/.opencode/agents/*.md; do
+    n="${a##*/}"; n="${n%.md}"; [[ "$n" == orchestrator ]] && continue
+    grep -qF "{action: \"subagent\", resource: \"$n\", effect: allow}" "$T"/.opencode/agents/*.md \
+      || die "X920 EVERY_ROSTER_AGENT_IS_LAUNCHABLE: no agent's rules allow launching $n"
+  done
+  rm -rf "$T"
+}
+
+# X921 UNLAUNCHABLE_ROSTER_AGENT_FAILS_THE_ROSTER_GATE: on a copy of the seed
+# roster, an agent no delegates_to names fails roster-justification --gaps,
+# naming it and both fixes; `launched_by: none  # <reason>` clears it, and the
+# key without a reason does not.
+rj_edit() {  # $1=file  $2=old  $3=new: replace the first occurrence
+  python3 -c 'import sys; p, o, n = sys.argv[1:4]; t = open(p).read(); assert o in t, o; open(p, "w").write(t.replace(o, n, 1))' "$@"
+}
+case_roster_launchable_lint() {
+  local T out rc; T="$(mktemp -d)"
+  mkdir -p "$T/tools" "$T/core"
+  cp "$ROOT/tools/roster-justification.py" "$ROOT/tools/frontmatter.py" "$T/tools/"
+  cp -R "$ROOT/agents" "$ROOT/protocols" "$ROOT/skills" "$T/"; cp -R "$ROOT/core/method" "$T/core/"
+  python3 "$T/tools/roster-justification.py" --gaps >/dev/null 2>&1 \
+    || die "X921 the clean roster copy fails roster-justification --gaps"
+  rj_edit "$T/agents/01-architect.md" $'  - research-scout\n  - legal\n' $'  - research-scout\n'
+  out="$(python3 "$T/tools/roster-justification.py" --gaps 2>&1)" && rc=0 || rc=$?
+  [[ $rc -ne 0 ]] || die "X921 UNLAUNCHABLE_ROSTER_AGENT_FAILS_THE_ROSTER_GATE: an unlaunchable legal passed --gaps"
+  grep "agents/14-legal.md: unlaunchable" <<<"$out" | grep 'architect' | grep -q 'launched_by: none' \
+    || die "X921 the finding does not name legal, a launcher and both fixes: ${out:0:300}"
+  rj_edit "$T/agents/14-legal.md" $'can_delegate: false\n' $'can_delegate: false\nlaunched_by: none\n'
+  python3 "$T/tools/roster-justification.py" --gaps >/dev/null 2>&1 \
+    && die "X921 launched_by: none with no reason cleared the finding"
+  rj_edit "$T/agents/14-legal.md" $'launched_by: none\n' $'launched_by: none  # the owner launches it by hand\n'
+  python3 "$T/tools/roster-justification.py" --gaps >/dev/null 2>&1 \
+    || die "X921 launched_by: none with a reason did not clear the finding"
   rm -rf "$T"
 }
 
@@ -1199,7 +1237,7 @@ main() {
     case_reinstall_engine_serves_hooks case_interpreter_floor case_stamp_tracking_lines \
     case_backups_listed case_opencode_native_agent case_opencode_reinstall_old_shape \
     case_reinstall_names_dropped_settings_keys case_opencode_lead_list_from_roster \
-    case_opencode_plant_unknown_tool; do
+    case_opencode_plant_unknown_tool case_roster_launchable_lint; do
     printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
   done
   python3 "$ROOT/tests/gate_pool.py" run "$SCN" || rc=$?

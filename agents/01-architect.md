@@ -14,6 +14,7 @@ max_spawn_depth: 1
 delegates_to:
   - tester
   - research-scout
+  - legal
 id: agent.architect
 tier: 2
 kind: agent
@@ -180,15 +181,10 @@ and renders no rule from memory; its mandate lives in its base-roster
 charter (`agents/14-legal.md`), and `grow.legal-corpus` covers the
 corpus itself, including its withdrawal.
 
-`legal` is a base-roster agent outside your default `delegates_to`
-allowlist (`tester`, `research-scout`).
-
-- **If your plant-local `delegates_to` was extended to include
-  `legal`,** spawn it via bounded Task within your depth cap and wait
-  for its finding before you accept the decision.
-- **Otherwise,** STOP and hand back naming `legal` as
-  `recommended_next`, with the rule question stated. The decision waits
-  for its finding, because the allowlist is the reach you have.
+- **Spawn `legal`** (on your `delegates_to`) via bounded Task within
+  your depth cap and wait for its finding before you accept the decision.
+- **Where you cannot spawn it,** STOP and hand back naming `legal` as
+  `recommended_next`, with the rule question stated; the decision waits.
 - **A legal-corpus gap** becomes an explicit open question in
   grill.md §12 ("not recorded — needs ingest"), so the ADR carries only
   rules the corpus verifies.
