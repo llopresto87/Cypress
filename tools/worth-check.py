@@ -2516,14 +2516,19 @@ def removal_list(rows: list[dict], flagged: list[dict], spec: str | None,
     it removes no file and edits no test. A test whose §10 origin is bug or
     security control is spared before the batch is drawn; the hold-back below
     stays as a second guard. The trust line and the specs not read come first.
-    When the plant marks trust paths that were not read in full, no test in the
-    batch is offered for removal: any of them may be on a trust path, and a
+    When the plant marks trust paths that were not read in full, or a spec could
+    not be opened, no test in the batch is offered for removal: any of them may be on a trust path, and a
     test on a trust path is never removed to clear a flag."""
     print(trust["message"])
     for m in notes:
         print(m)
     unread = (f"the trust paths were not read in full: {trust['reason']}; re-run once they are"
               if trust["state"] in ("not consulted", "partial") else None)
+    if unread is None and notes:
+        # a spec that cannot be opened may hold the row that calls a test a
+        # security control: hold every test back while any spec is unread
+        who = notes[0].split("§10 rows not read: ", 1)[-1].split(" does not open", 1)[0]
+        unread = f"a spec could not be read: {who}; re-run once it can be"
     batch = []
     for rec in flagged:
         mine = [r for r in rows if row_matches(r, rec)]

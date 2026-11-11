@@ -1028,6 +1028,17 @@ else
     'docs/graph/nodes/crosscut.sign-in.md does not open' \
     tests/test_auth_design.py::test_algorithms_listed tests/test_rules_design.py::test_jwt_algorithms_listed
   chmod 644 "$GU/docs/graph/nodes/crosscut.sign-in.md"
+  # a spec that cannot be opened may hold the row that says security control for
+  # a test another spec calls design: every test is held back while any is unread
+  GS="$T/gs"; cp -R "$GR" "$GS"; cp "$GS/docs/graph/specs/SPEC-0001-sign-in.md" "$GS/docs/graph/specs/SPEC-0002-other.md"
+  chmod 000 "$GS/docs/graph/specs/SPEC-0002-other.md"
+  rc=0; out="$(WC "$GS" --removal-list 2>&1)" || rc=$?
+  chmod 644 "$GS/docs/graph/specs/SPEC-0002-other.md"
+  [[ $rc -eq 0 ]] && grep -q '^worth-check: §10 rows not read: docs/graph/specs/SPEC-0002-other.md does not open' <<<"$out" \
+    && ! grep -q 'removable on confirmation' <<<"$out" \
+    && grep -qF -- '-> NOT REMOVABLE AUTOMATICALLY (a spec could not be read: ' <<<"$out" \
+    && ok "X944 WORTH_REMOVAL_LIST_HOLDS_BACK_WHEN_A_SPEC_WAS_NOT_READ: while a spec cannot be opened no test is offered for removal" \
+    || bad "X944 WORTH_REMOVAL_LIST_HOLDS_BACK_WHEN_A_SPEC_WAS_NOT_READ" "rc $rc; $out"
 fi
 
 # X943 WORTH_SPARES_BY_SECTION_10_ORIGIN: a Test cell is matched as the plant's
