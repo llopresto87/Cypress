@@ -351,10 +351,30 @@ PY
   echo "  X620 the four test counts may be absent (read as not recorded); present, each holds whole numbers — OK"
 }
 
+# X721
+case_not_checked_count() {
+  CASE="METRICS_NOT_CHECKED_COUNT_READ"
+  local r f; r="$(groot notchecked)"; f="$r/changelog.md"
+  run 0 --root "$r" --labels
+  grep -qxF "Not checked by worth check" "$TMP/out" || fail "--labels does not print 'Not checked by worth check'"
+  { printf '# Delivery — t — 2026-10-05\n\n## Session metrics\n'; metrics; } >"$f"
+  run 0 --root "$r" --since "$SINCE"
+  python3 "$SM" --root "$r" --all --json >"$TMP/out" 2>&1 || fail "--all exited non-zero"
+  grep -qF '"Not checked by worth check": "not recorded"' "$TMP/out" \
+    || fail "an absent Not checked line does not read 'not recorded'"
+  { printf '# Delivery — t — 2026-10-05\n\n## Session metrics\n'; metrics; echo '- Not checked by worth check: 3'; } >"$f"
+  run 0 --root "$r" --since "$SINCE"
+  { printf '# Delivery — t — 2026-10-05\n\n## Session metrics\n'; metrics; echo '- Not checked by worth check: some'; } >"$f"
+  run 1 --root "$r" --since "$SINCE"
+  has_finding "$(lineof "$f" '- Not checked by worth check: some')" METRICS_COUNT_UNREADABLE "Not checked by worth check"
+  [ "$(findings 'METRICS_[A-Z_]+')" -eq 1 ] || fail "expected exactly one finding (the unreadable count)"
+  echo "  X721 the Not checked by worth check count may be absent (not recorded); present, it holds a whole number — OK"
+}
+
 ALL="case_entry_span case_block_defects case_exemptions case_before_since_not_judged
 case_no_entry_since case_missing_changelog case_since_required case_entry_headings
 case_labels_from_node case_shipped_deliver_node case_deliver_node_unparseable
-case_all_json case_other_entry_is_a_note case_lines_as_grep case_all_zero_entries_named case_tokens_line case_test_counts"
+case_all_json case_other_entry_is_a_note case_lines_as_grep case_all_zero_entries_named case_tokens_line case_test_counts case_not_checked_count"
 
 if [ "$#" -gt 0 ]; then
   for c in "$@"; do "$c"; done
