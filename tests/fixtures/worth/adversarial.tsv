@@ -33,3 +33,28 @@ tests/adversarial/ts/adversarial.test.ts::async label	flagged	read-back in an as
 tests/adversarial/ts/adversarial.test.ts::route precedence through resolve	spared	precedence logic in an imported function named resolve
 tests/adversarial/ts/adversarial.test.ts::route precedence through router.match	spared	precedence logic reached through a method named match
 tests/adversarial/ts/adversarial.test.ts::built page carries the label	spared	reads a file beforeAll had the code under test write
+tests/adversarial/python/test_adversarial_setup.py::test_page_built_by_setup_module	spared	round 2: reads a file setup_module had the code under test write
+tests/adversarial/python/test_adversarial_setup.py::test_page_built_by_an_autouse_fixture	spared	round 2: reads a file an autouse fixture in the file had the code under test write
+tests/adversarial/python/test_adversarial_setup.py::test_page_built_by_a_named_fixture	spared	round 2: reads a file a usefixtures fixture from conftest wrote
+tests/adversarial/python/test_adversarial_setup.py::test_eligibility_table	spared	round 2: a parametrized condition table fed to logic
+tests/adversarial/python/test_adversarial_setup.py::test_email_pattern_table	spared	round 2: a parametrized pattern table fed to an imported pattern
+tests/adversarial/python/test_adversarial_setup.py::test_total_through_a_local_factory	spared	round 2: a computed value reached through a factory in the file
+tests/adversarial/python/test_adversarial_setup.py::test_absence_without_a_security_word	spared	round 2: an absence asserted with no security word
+tests/adversarial/python/test_adversarial_setup.py::TestBuiltOnce::test_page_built_by_set_up_class	spared	round 2: reads a file setUpClass had the code under test write
+tests/adversarial/python/test_adversarial_setup.py::TestRenderedAttribute::test_label_in_a_class_attribute	spared	round 2: a class attribute the code under test rendered
+tests/adversarial/python/test_adversarial_setup.py::TestSetUpOnlyReads::test_label_read_in_set_up	flagged	round 2: read-back of a constant that setUp only copies
+tests/adversarial/ts/adversarial-setup.test.ts::eligible at %i is %s	spared	round 2: a test.each condition table fed to logic
+tests/adversarial/ts/adversarial-setup.test.ts::page rendered in beforeEach carries the label	spared	round 2: a page beforeEach had the code under test render
+tests/adversarial/ts/adversarial-setup.test.ts::page rendered in the describe body carries the label	spared	round 2: a page the describe body had the code under test render
+tests/adversarial/ts/adversarial-setup.test.ts::page read in the describe body carries the label	flagged	round 2: read-back of a file read in the describe body
+tests/adversarial/ts/adversarial-setup.test.ts::label held in a local const	flagged	round 2: read-back of a constant copied to a local
+tests/adversarial/python/test_adversarial_controls.py::test_absence_of_a_draft_link	spared	round 2: an absence with no security word, no hook in the file
+tests/adversarial/python/test_adversarial_controls.py::test_absence_beside_a_presence	spared	round 2: an absence beside a presence assertion
+tests/adversarial/python/test_adversarial_controls.py::test_oversized_upload_raises	spared	round 2: a refusal with no security word
+tests/adversarial/python/test_adversarial_controls.py::test_policy_header_held_in_a_keyed_setting	spared	round 2: a security setting whose key is a string (Content-Security-Policy)
+tests/adversarial/python/test_adversarial_controls.py::test_cookie_flag_held_in_a_keyed_setting	spared	round 2: a security setting whose key is a string (SESSION_COOKIE_SECURE)
+tests/adversarial/python/test_adversarial_controls.py::test_two_homes_held_equal	spared	round 2: two declared homes held equal, no literal
+tests/adversarial/ts/adversarial-controls.test.ts::nav has no drafts link	spared	round 2: an absence through .not with no security word
+tests/adversarial/ts/adversarial-controls.test.ts::oversized upload throws	spared	round 2: a refusal through toThrow with no security word
+tests/adversarial/ts/adversarial-controls.test.ts::policy header held in a keyed setting	spared	round 2: a security setting whose key is a string (Content-Security-Policy)
+tests/adversarial/python/test_adversarial_setup.py::test_constant_beside_a_setup_module	flagged	round 2: read-back of a constant in a file with a setup hook, reading no file
