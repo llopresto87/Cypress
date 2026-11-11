@@ -361,7 +361,11 @@ tool. Every row was `red` on the missing tool first.
 
 | Question | Why it matters | Current assumption | Owner | Resolves by |
 |---|---|---|---|---|
-| Should an independent tester review the fixture suite? | the fixtures and their verdicts were written by the spawn that built the tool | the verdict table was written before the tool and each case was seen failing first | tester | the round's review |
+| Should an independent tester review the fixture suite? | the fixtures and their verdicts were written by the spawn that built the tool | reviewed on 2026-11-11: the 34 rows of `expected.tsv` hold, and 29 adversarial cases (`tests/fixtures/worth/adversarial.tsv`) found the gaps of the next four rows, listed case by case in `tests/fixtures/worth/known-gaps.tsv`; the independent tester's sign waits on the first of them | tester | the tool's owner answers the next rows |
+| Should a test that reads a file a setup hook had the code under test write be spared? | WORTH_SPARES_LOGIC_TESTS spares a test that reads a file the code under test wrote, yet a unittest `setUp` or a `beforeAll` that calls the build is not read, so the test is flagged: a false positive that fails a plant's gate on a good test | flagged today | architect | a ruling: read setup hooks as logic, or narrow the contract to a write inside the test |
+| Should a TypeScript call into the code under test whose name is a read helper be spared? | an imported `resolve(...)` reads as `path.resolve`, and `match` on an imported object reads as `String.match`, so a precedence test is flagged: two false positives against WORTH_SPARES_LOGIC_TESTS; Python reads a method as a read only on a value already read | flagged today | architect | the TypeScript reader treats an imported name as code under test, as the Python reader does |
+| Should `test.each` and `it.each` be read, or named as not read? | a parametrized TypeScript test is skipped with nothing in the report, so a read file can hold an unread test that the summary counts as read | skipped silently | architect | the reader reads it or lists it as not checked |
+| Should the sparing heuristics narrow? | any `False`/`None`/`false` literal, one `!=` guard beside a read-back, the word `https` or `cookies` in a literal, a hex colour that matches `#<digits>`, and the word regression in a name each spare a plain read-back; HEURISTIC_SPARES_A_READ_BACK names helpers and unrelated words only, so these false negatives go beyond the failure mode as written | spared, by the contracts' letter | architect | §7 widened to name them, or the heuristics narrowed |
 | Should a later language be read, shell first? | D4 reads Python and TypeScript or JavaScript only | every other language is listed as not checked | owner | a plant that needs it, named by the owner |
 
 ## 12. Changelog
@@ -377,3 +381,13 @@ tool. Every row was `red` on the missing tool first.
   WORTH_NEVER_EDITS_A_TEST now covers `--removal-list`. X600 to X602 were seen
   failing on the unknown option first, then green.
 - 2026-11-10: graft records the baseline once (D5, T12) instead of listing a judgment item, and `graft-graph-engine.py` keeps `SKIP_DIRS`; the two lines that said otherwise are corrected in place.
+- 2026-11-11 — an independent tester reviewed `tests/fixtures/worth/`, its
+  verdict table, `tools/worth-check.py` and every §10 case of
+  `tests/test-worth-check.sh`. The 34 hand-written verdicts hold. The tester
+  wrote 29 adversarial cases with their verdicts before running the tool
+  (`tests/fixtures/worth/adversarial/` and `adversarial.tsv`, outside the
+  gate): 9 match, 4 are false positives against WORTH_SPARES_LOGIC_TESTS, 15
+  are false negatives and 1 is a test the reader skips, each in
+  `tests/fixtures/worth/known-gaps.tsv`. The independent tester's sign is
+  withheld until §11's false positives are ruled on; the sign-offs of
+  2026-11-10 stay as their authors gave them.

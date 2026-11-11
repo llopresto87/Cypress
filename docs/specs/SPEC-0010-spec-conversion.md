@@ -36,7 +36,10 @@ status_evidence: tests/test-spec-convert.sh (X640 to X643, X649) and tests/test-
   the round's surface definition of the conversion dry run and the baseline at
   graft, transcribed in §3, §4 and §6. Tester 2026-11-10: every case was
   written before the code it checks and seen failing for its own reason first;
-  an independent tester's review is the open item of §11.
+  an independent tester's review is the open item of §11. Tester (independent)
+  2026-11-11: each contract is observable and each cited case runs the tool,
+  the engine reconcile, the audit or a graft rehearsal and watches its exit
+  code, output and files; none reads back a literal the change added.
 
 ## 1. Summary
 
@@ -242,7 +245,8 @@ plant's own test layout; the engine cases read the v8.4.0 engines from the tag.
 
 | Question | Why it matters | Current assumption | Owner | Resolves by |
 |---|---|---|---|---|
-| Should an independent tester review these cases? | they were written by the spawn that built the tool | each was seen failing for its own reason first | tester | the round's review |
+| Should an independent tester review these cases? | they were written by the spawn that built the tool | reviewed on 2026-11-11 and signed (§0, §12) | tester | resolved |
+| Should the §10 row of CONVERTED_SPEC_FAILS_THE_PLANT_LINT name X642? | the row still says "an engine question for the owner, §11", while the changelog of 2026-11-10 resolved it and X642's last arm holds it | the row is stale; the behavior is tested | tester | the §10 row cites X642 |
 
 ## 12. Changelog
 
@@ -252,3 +256,11 @@ plant's own test layout; the engine cases read the v8.4.0 engines from the tag.
   plant's baseline decided per plant). Nine contracts; each case written first
   and seen failing for its own reason, then green.
 - 2026-11-10: the owner-facing question of §11 resolved in the engine: `spec-lint.py` keeps the legacy §10 link while a kinds-form spec has no risk table (seen red in X642 first). CONVERTED_SPEC_FAILS_THE_PLANT_LINT no longer occurs.
+- 2026-11-11 — an independent tester read each contract and each cited case
+  (X640 to X643 and X649 in `tests/test-spec-convert.sh`, X644 to X648 in
+  `tests/test-graft-tools.sh`) and signed as tester in §0: the dry run and the
+  refusals are held by a plant digest, the write by a line-order diff and the
+  plant engine's reading, the backup by the audit's class, the engines by
+  reconcile and lint output compared byte for byte, the baseline by a graft
+  rehearsal and a new read-back test that then fails. One stale §10 row is
+  noted in §11.

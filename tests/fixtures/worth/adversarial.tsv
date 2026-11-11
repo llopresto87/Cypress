@@ -1,0 +1,34 @@
+# The verdict an independent tester owes each case of tests/fixtures/worth/adversarial/,
+# written by hand before worth-check.py was run over it. Not wired into the gate:
+# the cases the tool classifies otherwise are tests/fixtures/worth/known-gaps.tsv.
+# Paths are as a test plant holds them (the adversarial tree copied under tests/).
+# Columns: test, verdict (flagged | spared), what the test is.
+tests/adversarial/python/test_adversarial.py::test_routes_parametrized	flagged	parametrized read-back of a config entry
+tests/adversarial/python/test_adversarial.py::test_label_through_a_helper	flagged	read-back whose assertion sits in a helper
+tests/adversarial/python/test_adversarial.py::test_label_against_a_literal_built_from_literals	flagged	read-back against a literal concatenated from literals
+tests/adversarial/python/test_adversarial.py::test_label_against_a_joined_literal	flagged	read-back against a literal joined from literals
+tests/adversarial/python/test_adversarial.py::test_label_against_a_golden_file	flagged	a declared constant held equal to a golden file the change adds
+tests/adversarial/python/test_adversarial.py::test_label_in_an_async_test	flagged	read-back in an async test
+tests/adversarial/python/test_adversarial.py::test_regression_label_text	flagged	named like a regression, names no bug, only reads back
+tests/adversarial/python/test_adversarial.py::test_api_base_url	flagged	read-back of a URL: https is not a security subject
+tests/adversarial/python/test_adversarial.py::test_brand_colour	flagged	read-back of a hex colour named in a comment
+tests/adversarial/python/test_adversarial.py::test_dark_mode_off_by_default	flagged	read-back of a False flag that is no security control
+tests/adversarial/python/test_adversarial.py::test_label_not_empty_and_is_send	flagged	a non-empty guard beside a read-back
+tests/adversarial/python/test_adversarial.py::test_csrf_header_name	spared	a security test asserting a constant (spared by the spec)
+tests/adversarial/python/test_adversarial.py::test_router_precedence_through_get	spared	precedence logic reached through a method named get
+tests/adversarial/python/test_adversarial.py::test_user_lookup_by_email	spared	a lookup reached through a method named find
+tests/adversarial/python/test_adversarial.py::test_label_rendered_for_a_snapshot	flagged	a declared constant against a snapshot fixture
+tests/adversarial/python/test_adversarial.py::TestBuiltPage::test_built_page_carries_the_label	spared	reads a file setUp had the code under test write
+tests/adversarial/ts/adversarial.test.ts::label after formatting	spared	logic between the constant and the literal
+tests/adversarial/ts/adversarial.test.ts::label trimmed and upper-cased	flagged	string methods only between the constant and the literal
+tests/adversarial/ts/adversarial.test.ts::label against a joined literal	flagged	read-back against a literal joined from literals
+tests/adversarial/ts/adversarial.test.ts::label is %s	flagged	test.each read-back of an imported constant
+tests/adversarial/ts/adversarial.test.ts::label snapshot	flagged	a declared constant against a snapshot
+tests/adversarial/ts/adversarial.test.ts::label inline snapshot	flagged	a declared constant against an inline snapshot
+tests/adversarial/ts/adversarial.test.ts::primary colour is #0055ff	flagged	read-back whose title carries a hex colour
+tests/adversarial/ts/adversarial.test.ts::banner hidden by default	flagged	read-back of a false flag that is no security control
+tests/adversarial/ts/adversarial.test.ts::cookie banner text	flagged	read-back of banner copy that mentions cookies
+tests/adversarial/ts/adversarial.test.ts::async label	flagged	read-back in an async test
+tests/adversarial/ts/adversarial.test.ts::route precedence through resolve	spared	precedence logic in an imported function named resolve
+tests/adversarial/ts/adversarial.test.ts::route precedence through router.match	spared	precedence logic reached through a method named match
+tests/adversarial/ts/adversarial.test.ts::built page carries the label	spared	reads a file beforeAll had the code under test write
