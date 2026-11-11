@@ -230,8 +230,9 @@ This holds for seed-owned agent charters and host settings too
 (`.claude/settings.json`, `opencode.json`): a plain re-install replaces a copy
 you edited and keeps your version only in the backup, so carry your keys over
 from it by hand. A graft keeps the edited file instead and names the lines it
-lacks. Whether a re-install should keep a plant's edits to its host settings
-is an open owner decision of 8.5.0.
+lacks. The re-install names each key path your file had and the new one lacks
+(`theme`, `permissions.deny[2]`) with the backup that holds it, so upgrade
+edited host settings by graft, which keeps the edited file.
 
 `--force` suppresses the per-file warning, never the backup
 ([backup before replace](DOCUMENTATION.md#enf-backup-before-replace)). The

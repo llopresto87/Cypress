@@ -1,5 +1,5 @@
 {
-  "_comment": "The one home of the map from a charter's tools: names to OpenCode 2 permission actions. A tool name this table does not carry stops the render (SPEC-0001 OPENCODE_TOOL_BOUND_IS_HOST_PERMISSIONS).",
+  "_comment": "The one home of the map from a charter's tools: names to OpenCode 2 permission actions. A tool name this table does not carry stops the render in a seed charter and is denied and named in a plant charter (SPEC-0001 OPENCODE_TOOL_BOUND_IS_HOST_PERMISSIONS).",
   "tools": {
     "Read": ["read"],
     "Glob": ["glob"],

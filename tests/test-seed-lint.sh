@@ -266,6 +266,8 @@ ROWS = [
     ("opencode-legacy-depth-key", "check_opencode_config", lambda: oc({**OC, "subagent_depth": 3}), "unsupported legacy setting"),
     ("opencode-double-load", "check_opencode_config", lambda: oc({**OC, "instructions": ["AGENTS.md"]}), "kernel would load twice"),
     ("opencode-depth-cap", "check_opencode_config", lambda: oc({**OC, "experimental": {"subagent_depth": 1}}), "delegation topology would be capped"),
+    # SPEC-0001 SEED_CHARTER_TOOLS_ARE_IN_THE_PERMISSION_TABLE: a seed charter naming a tool the opencode table lacks
+    ("X704 SEED_CHARTER_TOOLS_ARE_IN_THE_PERMISSION_TABLE", "check_opencode_tool_table", lambda: sub("agents/02-implementer.md", r"^(tools: \[[^\]\n]*)\]", r"\1, Teleport]", True), ("agents/02-implementer.md", "'Teleport'", "tool-permissions.json")),
     ("ci-workflow", "check_workflows", lambda: drop(".github/workflows/gate.yml"), "gate.yml is missing"),
     ("release-workflow", "check_workflows", lambda: sub(".github/workflows/release.yml", "gh release create", "gh release view"), "does not hold `gh release create`"),
     # RED: gate.yml's checkout has no fetch-depth, so CI clones shallow with no tags

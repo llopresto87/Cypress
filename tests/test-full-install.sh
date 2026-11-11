@@ -987,11 +987,12 @@ have = sorted(x for x in os.listdir(out) if x.endswith(".md"))
 if have != sorted(names): bad.append(f"agent set {have} != {sorted(names)}")
 if bad: sys.exit("; ".join(bad[:6]))
 PY
-  # an unknown tool name stops the render, naming it, with every projection as it was
-  printf -- '---\nname: zz-odd\ndescription: odd\norigin: project\ntools: [Read, Teleport]\nmodel: sonnet\neffort: low\nrouting_triggers:\n  - "x"\ncan_delegate: false\n---\n\nbody\n' > "$T/docs/graph/agents/zz-odd.md"
+  # X704 SEED_CHARTER_TOOLS_ARE_IN_THE_PERMISSION_TABLE: an unknown tool name in a
+  # seed charter stops the render, naming it, with every projection as it was
+  printf -- '---\nname: zz-odd\ndescription: odd\norigin: seed\ntools: [Read, Teleport]\nmodel: sonnet\neffort: low\nrouting_triggers:\n  - "x"\ncan_delegate: false\n---\n\nbody\n' > "$T/docs/graph/agents/zz-odd.md"
   local before; before="$(tree_digest "$T/.opencode/agents")"
   if "$ROOT/install.sh" opencode --project-dir "$T" --copy >/dev/null 2>"$E"; then
-    arm_fail "an unknown tool name exited 0"
+    arm_fail "X704 an unknown tool name in a seed charter exited 0"
   else
     grep -q 'Teleport' "$E" || arm_fail "the refusal does not name the tool: $(head -c 200 "$E")"
     [[ "$(tree_digest "$T/.opencode/agents")" == "$before" ]] || arm_fail "a refused render changed .opencode/agents/"
@@ -1058,6 +1059,116 @@ case_opencode_reinstall_old_shape() {
   rm -rf "$P" "$ERR"
 }
 
+# X700 REINSTALL_NAMES_DROPPED_HOST_SETTINGS_KEYS: a plain re-install over a
+# plant that edited .claude/settings.json and opencode.json still replaces each
+# with a backup, and names every key path of the plant's file the new one lacks,
+# the backup that holds them, and graft as the upgrade that keeps the file.
+case_reinstall_names_dropped_settings_keys() {
+  local T out; T="$(mktemp -d)"
+  fresh_copy "$T" claude-code opencode --copy
+  python3 - "$T" <<'PY'
+import json, sys
+p = sys.argv[1] + "/.claude/settings.json"
+d = json.load(open(p))
+d["theme"] = "dark"
+d["permissions"] = {"deny": ["Bash(rm:*)", "Read(.env)", "WebFetch"]}
+d["hooks"]["PreToolUse"].append({"matcher": "Write", "hooks": [{"type": "command", "command": "true"}]})
+json.dump(d, open(p, "w"), indent=2)
+p = sys.argv[1] + "/opencode.json"
+d = json.load(open(p))
+d["theme"] = "tokyonight"
+json.dump(d, open(p, "w"), indent=2)
+PY
+  out="$("$ROOT/install.sh" claude-code opencode --project-dir "$T" --copy 2>&1)" \
+    || arm_fail "the re-install over edited host settings exited non-zero: ${out:0:200}"
+  local line bak
+  line="$(grep 'settings.json: ' <<<"$out" | grep 'not in the new file' || true)"
+  [[ -n "$line" ]] || arm_fail "(a) no line names the keys .claude/settings.json lost"
+  for k in 'hooks.PreToolUse\[2\]' 'permissions' 'theme'; do
+    grep -q "$k" <<<"$line" || arm_fail "(a) the settings line does not name $k: ${line:0:300}"
+  done
+  bak="$(ls -1 "$T"/.claude/settings.json.bak-* 2>/dev/null | head -1)"
+  [[ -n "$bak" ]] && grep -qF "$bak" <<<"$line" || arm_fail "(a) the settings line does not name the backup ${bak:-<none>}"
+  grep -q 'upgrade by graft' <<<"$line" || arm_fail "(a) the settings line does not say edited host settings upgrade by graft"
+  grep -q '"theme"' "$T/.claude/settings.json" && arm_fail "(a) the file was merged, not replaced"
+  line="$(grep 'opencode.json: ' <<<"$out" | grep 'not in the new file' || true)"
+  { grep -q 'theme' <<<"$line" && grep -q 'opencode.json.bak-' <<<"$line" && grep -q 'upgrade by graft' <<<"$line"; } \
+    || arm_fail "(b) the opencode.json line does not name theme, its backup and graft: ${line:0:300}"
+  out="$("$ROOT/install.sh" claude-code opencode --project-dir "$T" --copy 2>&1)" || arm_fail "(c) the clean re-install exited non-zero"
+  ! grep -q 'not in the new file' <<<"$out" || arm_fail "(c) a re-install over unedited settings names dropped keys"
+  arms_done "X700 REINSTALL_NAMES_DROPPED_HOST_SETTINGS_KEYS"
+  rm -rf "$T"
+}
+
+# lead_allows <orchestrator.md> <name>: the lead's rules allow launching <name>.
+lead_allows() { grep -qF "{action: \"subagent\", resource: \"$2\", effect: allow}" "$1"; }
+
+# X701 OPENCODE_LEAD_LAUNCHES_THE_PLANTS_LINT_CLEAN_AGENTS and X702
+# OPENCODE_CHECK_NAMES_A_STALE_LEAD_LIST: the lead's `subagent` allow list is the
+# seed roster plus each lint-clean plant agent, printed at install; a lint-dirty
+# plant agent is projected but left off with a named warning; only the lead's
+# rules change; a roster that moved past the list fails --check with the remedy.
+case_opencode_lead_list_from_roster() {
+  local T B out rc ERR; T="$(mktemp -d)"; B="$(mktemp -d)"; ERR="$(mktemp)"
+  fresh_copy "$T" opencode --copy; plant_copy "$B"
+  local A="$T/docs/graph/agents" O="$T/.opencode/agents"
+  plant_agent "$A/20-widget-expert.md" widget-expert sonnet low
+  printf -- '---\nname: sloppy-expert\ndescription: owns the sloppy work\norigin: project\ntools: [Read]\nmodel: sonnet\nrouting_triggers:\n  - "tend the sloppy borogove"\ncan_delegate: false\n---\n\nNo effort line.\n' > "$A/21-sloppy-expert.md"
+  out="$("$ROOT/install.sh" opencode --project-dir "$T" --copy 2>&1)" || arm_fail "(a) the install exited non-zero: ${out:0:300}"
+  [[ -f "$O/widget-expert.md" && -f "$O/sloppy-expert.md" ]] || arm_fail "(a) a plant agent is not projected"
+  lead_allows "$O/orchestrator.md" widget-expert || arm_fail "(a) X701 the lead may not launch the lint-clean plant agent widget-expert"
+  lead_allows "$O/orchestrator.md" architect || arm_fail "(a) the lead lost a seed roster agent"
+  lead_allows "$O/orchestrator.md" sloppy-expert && arm_fail "(a) X701 the lint-dirty sloppy-expert entered the lead's list"
+  [[ "$(grep -c 'lead may also launch' <<<"$out")" -eq 1 ]] && grep 'lead may also launch' <<<"$out" | grep -q 'widget-expert' \
+    || arm_fail "(a) X701 no one install line names widget-expert as added beyond the seed roster"
+  grep 'sloppy-expert' <<<"$out" | grep -q 'agent lint' || arm_fail "(a) X701 no warning names sloppy-expert and the agent lint"
+  cmp -s "$B/.opencode/agents/architect.md" "$O/architect.md" || arm_fail "(a) X701 an agent other than the lead changed"
+  out="$("$ROOT/install.sh" opencode --check --project-dir "$T" 2>"$ERR")" && rc=0 || rc=$?
+  [[ $rc -eq 0 ]] || arm_fail "(b) --check exited $rc over a list that matches the roster: $(head -c 300 "$ERR")"
+  plant_agent "$A/22-gadget-expert.md" gadget-expert sonnet low
+  out="$("$ROOT/install.sh" opencode --check --project-dir "$T" 2>"$ERR")" && rc=0 || rc=$?
+  out="$out $(cat "$ERR")"
+  [[ $rc -ne 0 ]] || arm_fail "(c) X702 --check exited 0 with gadget-expert off the lead's list"
+  grep "lead's subagent list" <<<"$out" | grep 'gadget-expert' | grep -q -- '--recompose-agents' \
+    || arm_fail "(c) X702 --check does not name the stale lead list, gadget-expert and --recompose-agents: ${out:0:400}"
+  "$ROOT/install.sh" opencode --recompose-agents --project-dir "$T" >/dev/null 2>"$ERR" || arm_fail "(d) --recompose-agents exited non-zero"
+  lead_allows "$O/orchestrator.md" gadget-expert || arm_fail "(d) the recompose did not add gadget-expert to the lead's list"
+  "$ROOT/install.sh" opencode --check --project-dir "$T" >/dev/null 2>"$ERR" && rc=0 || rc=$?
+  [[ $rc -eq 0 ]] || arm_fail "(d) --check exited $rc after the recompose: $(head -c 300 "$ERR")"
+  arms_done "X701 OPENCODE_LEAD_LAUNCHES_THE_PLANTS_LINT_CLEAN_AGENTS, X702 OPENCODE_CHECK_NAMES_A_STALE_LEAD_LIST"
+  rm -rf "$T" "$B" "$ERR"
+}
+
+# X703 OPENCODE_PLANT_AGENT_UNKNOWN_TOOL_IS_DENIED_AND_NAMED: a plant agent whose
+# tools: names a tool the permission table lacks is projected with that tool
+# denied, every other agent is projected, the warning names file, tool and
+# remedy, and --check fails until the charter changes.
+case_opencode_plant_unknown_tool() {
+  local T out rc ERR; T="$(mktemp -d)"; ERR="$(mktemp)"
+  fresh_copy "$T" opencode --copy
+  local F="$T/docs/graph/agents/20-frob-expert.md" O="$T/.opencode/agents"
+  printf -- '---\nname: frob-expert\ndescription: owns the frob work\norigin: project\ntools: [Read, Grep, FrobnicateTool]\nmodel: sonnet\neffort: low\nrouting_triggers:\n  - "tend the frob borogove"\ncan_delegate: false\n---\n\nA plant agent.\n' > "$F"
+  rm -f "$O/implementer.md"
+  out="$("$ROOT/install.sh" opencode --project-dir "$T" --copy 2>&1)" && rc=0 || rc=$?
+  [[ $rc -eq 0 ]] || arm_fail "(a) the install exited $rc over a plant agent naming an unknown tool: $(grep -A1 ERROR <<<"$out" | head -c 300)"
+  [[ -f "$O/frob-expert.md" ]] || arm_fail "(a) the plant agent is not projected"
+  [[ -f "$O/implementer.md" ]] || arm_fail "(a) the rest of the roster is not projected"
+  grep -qF 'resource: "*", effect: allow}' "$O/frob-expert.md" && grep -q 'action: "read", resource: "\*", effect: allow' "$O/frob-expert.md" \
+    || arm_fail "(a) the agent's known tools are not allowed"
+  grep -qi 'frobnicate' "$O/frob-expert.md" && arm_fail "(a) the unknown tool reached the projection"
+  grep 'docs/graph/agents/20-frob-expert.md' <<<"$out" | grep 'FrobnicateTool' | grep 'denies it' | grep -q 'remove it from' \
+    || arm_fail "(a) no warning names the file, the tool, the denial and the remedy: $(grep -i frob <<<"$out" | head -c 300)"
+  out="$("$ROOT/install.sh" opencode --check --project-dir "$T" 2>"$ERR")" && rc=0 || rc=$?
+  [[ $rc -ne 0 ]] || arm_fail "(b) --check exited 0 with an unknown tool in a plant charter"
+  grep -q 'FrobnicateTool' "$ERR" || arm_fail "(b) --check does not name the tool: $(head -c 300 "$ERR")"
+  sed -i.tmp 's/tools: \[Read, Grep, FrobnicateTool\]/tools: [Read, Grep]/' "$F" && rm -f "$F.tmp"
+  "$ROOT/install.sh" opencode --project-dir "$T" --copy >/dev/null 2>&1 || arm_fail "(c) the install over the fixed charter exited non-zero"
+  "$ROOT/install.sh" opencode --check --project-dir "$T" >/dev/null 2>"$ERR" && rc=0 || rc=$?
+  [[ $rc -eq 0 ]] || arm_fail "(c) --check exited $rc after the charter was fixed: $(head -c 300 "$ERR")"
+  arms_done "X703 OPENCODE_PLANT_AGENT_UNKNOWN_TOOL_IS_DENIED_AND_NAMED"
+  rm -rf "$T" "$ERR"
+}
+
 SELF="$ROOT/tests/test-full-install.sh"
 
 # Re-invoke self to run ONE scenario (a child bash spawned by gate_pool).
@@ -1074,6 +1185,7 @@ main() {
   trap 'rm -rf "$PLANT_CACHE" "$SCN" "$BTMP"' EXIT
   # Shared bases, built once before the pool so concurrent cases only copy them.
   for h in $EVERY_HOST all; do plant_base "$h" --copy; done
+  plant_base claude-code opencode --copy   # two cases share it (E19, X700)
   for c in \
     case_claude_code case_plant_facts_flags case_opencode case_codex \
     case_claude_code_ampersand_path case_github_copilot case_prime_agent \
@@ -1085,7 +1197,9 @@ main() {
     case_model_map_placed case_opencode_model_from_map case_opencode_no_map_row \
     case_opencode_check_drift case_prime_hook_scripts_placed \
     case_reinstall_engine_serves_hooks case_interpreter_floor case_stamp_tracking_lines \
-    case_backups_listed case_opencode_native_agent case_opencode_reinstall_old_shape; do
+    case_backups_listed case_opencode_native_agent case_opencode_reinstall_old_shape \
+    case_reinstall_names_dropped_settings_keys case_opencode_lead_list_from_roster \
+    case_opencode_plant_unknown_tool; do
     printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
   done
   python3 "$ROOT/tests/gate_pool.py" run "$SCN" || rc=$?

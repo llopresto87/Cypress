@@ -629,6 +629,50 @@ place_claude_settings() {
     place_generated "$staged" "$dest"
 }
 
+# name_dropped_settings_keys DEST BEFORE: REINSTALL_NAMES_DROPPED_HOST_SETTINGS_KEYS.
+# A host settings file the plant edited (.claude/settings.json, opencode.json)
+# is replaced with a backup like any placed file; the owner decided on
+# 2026-11-11 that the re-install keeps that behaviour and names what it drops.
+# When this run backed DEST up (the backup list grew past BEFORE and its last
+# entry is DEST's), each key path of the backed-up JSON that the new file lacks
+# (`theme`, `permissions.deny[2]`) is named in one warning with the backup and
+# the upgrade that keeps an edited file: graft. A file that is not JSON, or
+# lost no key, adds nothing to the backup line place_file printed.
+name_dropped_settings_keys() {
+    local dest="$1" before="$2" bak keys
+    [[ ${#BACKUPS_MADE[@]} -gt $before ]] || return 0
+    bak="${BACKUPS_MADE[${#BACKUPS_MADE[@]}-1]}"
+    [[ "$bak" == "$dest".bak-* ]] || return 0
+    keys="$(run_python -B - "$bak" "$dest" <<'PYEOF'
+import json, sys
+try:
+    old, new = (json.load(open(p, encoding="utf-8")) for p in sys.argv[1:3])
+except (OSError, ValueError):
+    sys.exit(0)
+out = []
+def walk(a, b, path):
+    if isinstance(a, dict):
+        for k, v in a.items():
+            p = f"{path}.{k}" if path else str(k)
+            if isinstance(b, dict) and k in b:
+                walk(v, b[k], p)
+            else:
+                out.append(p)
+    elif isinstance(a, list):
+        for i, v in enumerate(a):
+            p = f"{path}[{i}]"
+            if isinstance(b, list) and i < len(b):
+                walk(v, b[i], p)
+            else:
+                out.append(p)
+walk(old, new, "")
+print(", ".join(out))
+PYEOF
+)" || return 0
+    [[ -n "$keys" ]] || return 0
+    warn "${dest#"$PROJECT_DIR"/}: the re-install replaced the plant's edited file, and these keys from it are not in the new file: $keys. The plant's file is kept as $bak. Edited host settings upgrade by graft, which keeps the edited file (protocols/graft.md)."
+}
+
 # add_prompt_cache_ttl: stdin settings JSON with `"promptCacheTtl": "1h"`
 # inserted after its opening brace, every other byte kept.
 add_prompt_cache_ttl() {
@@ -1126,9 +1170,11 @@ project_skills() {
 # body and, as render_claude_agents composes them, each always-loaded node
 # (tools/agent_compose.py, one composer for both hosts). The tool bound is
 # host permissions: integrations/opencode/tool-permissions.json maps each tool
-# name a charter lists to a host action, deny-all first, and a name it does not
-# carry stops the run; `delegates_to` is a deny-all `subagent` rule followed by
-# one allow per listed agent. The model comes from docs/graph/models.md:
+# name a charter lists to a host action, deny-all first; a name it does not
+# carry stops the run in a seed charter and, in a plant's, is denied and named
+# with its remedy. `delegates_to` is a deny-all `subagent` rule followed by
+# one allow per listed agent; the lead's list also allows each plant agent that
+# passes the agent lint. The model comes from docs/graph/models.md:
 # `opus` reads the authoring row of the agent's effort, `sonnet` the
 # investigation row, `haiku` the investigation-low row; a cell may end in
 # `#<variant>`, which is how the plant's map expresses the effort on a model
@@ -1138,12 +1184,16 @@ project_skills() {
 # agent is rendered, so a map that breaks the grammar stops the run here,
 # naming the file and the line, with every projection as it was
 # (MODEL_MAP_UNREADABLE). Renders into DEST_DIR under $STAGE, for the placer or
-# --check to compare, and prints "<agents with no model: line> <agents>".
+# --check to compare, and prints three lines: "<agents with no model: line>
+# <agents>", the plant agents added to the lead's list, and the number of tool
+# names in plant charters the table lacks.
 render_opencode_agents() {
     run_python -B - "$PROJECT_DIR/docs/graph" "$1" "$SEED_ROOT/tools" \
-        "$SEED_ROOT/integrations/opencode/tool-permissions.json" <<'PYEOF'
-import json, os, re, sys
-graph, dest, tools, table_path = sys.argv[1:5]
+        "$SEED_ROOT/integrations/opencode/tool-permissions.json" \
+        "$SEED_ROOT/integrations/claude-code/agent-lint.py" <<'PYEOF'
+import contextlib, importlib.util, io, json, os, re, sys
+from pathlib import Path
+graph, dest, tools, table_path, lint_path = sys.argv[1:6]
 sys.path.insert(0, tools)
 from agent_compose import ComposeError, node_bodies, sections
 from frontmatter import parse, scalar, FrontmatterError
@@ -1242,6 +1292,64 @@ def fail(msg):
     sys.exit(1)
 
 
+def warn(msg):
+    sys.stderr.write(f"[seed] WARNING: {msg}\n")
+
+
+charters = {}
+for name in names:
+    path = os.path.join(agents_dir, name)
+    try:
+        charters[name] = parse(open(path, encoding="utf-8").read(), path)
+    except (FrontmatterError, UnicodeDecodeError) as e:
+        fail(f"docs/graph/agents/{name}: {e}")
+
+
+def callable_of(name):
+    return re.sub(r"^\d+-", "", name[:-3])
+
+
+# The lead's launch list (OPENCODE_LEAD_LAUNCHES_THE_PLANTS_LINT_CLEAN_AGENTS):
+# the owner decided on 2026-11-11 that it is generated from the plant's roster.
+# The lead's own delegates_to stays as its charter writes it; each plant agent
+# (origin other than seed) that passes the agent lint (agent-lint.py --lint, the
+# errors it attributes to that file) is added; one that fails is left off with a
+# named warning. No other agent's rules change.
+plant = [n for n in names if str(charters[n][0].get("origin", "")).strip() != "seed"
+         and charters[n][0].get("name") != "orchestrator"]
+dirty = {}
+if plant:
+    try:
+        spec = importlib.util.spec_from_file_location("cypress_agent_lint", lint_path)
+        lint = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = lint            # its dataclass resolves its module by name
+        spec.loader.exec_module(lint)
+        roster = [lint.Agent(Path(agents_dir, n), *charters[n]) for n in names]
+        errs = io.StringIO()
+        with contextlib.redirect_stderr(errs), contextlib.redirect_stdout(io.StringIO()):
+            lint.cmd_lint(roster)
+        found = [l[len("  ✗ "):] for l in errs.getvalue().split("\n")
+                 if l.startswith("  ✗ ")]
+        for a in roster:
+            if a.path.name in plant:
+                mine = [e for e in found if e.startswith(a.ident + ":")]
+                if mine:
+                    dirty[a.path.name] = mine[0]
+    except Exception as e:                       # the lint could not run: no plant agent is clean
+        for n in plant:
+            dirty[n] = f"the agent lint could not run ({type(e).__name__}: {e})"
+lead_meta = next((m for m, _b in charters.values() if m.get("name") == "orchestrator"), {})
+seed_list = [str(d) for d in (lead_meta.get("delegates_to") or [])]
+added = sorted(c for c in (callable_of(n) for n in plant if n not in dirty)
+               if c not in seed_list)
+for n in plant:
+    if n in dirty:
+        warn(f"docs/graph/agents/{n}: left off the lead's subagent list, because it "
+             f"fails the agent lint (agent-lint.py --lint): {dirty[n]}. Fix the "
+             f"charter and re-run install.sh opencode")
+unknown = []
+
+
 def rule(r):
     return '- {action: "%s", resource: "%s", effect: %s}' % (r["action"], r["resource"], r["effect"])
 
@@ -1257,8 +1365,20 @@ def permissions(name, meta):
     seen = set()
     for t in tools_list:
         if t not in TABLE["tools"]:
-            fail(f"docs/graph/agents/{name}: the tool {t!r} is not in "
-                 f"integrations/opencode/tool-permissions.json, so its host action is unknown")
+            # OPENCODE_PLANT_AGENT_UNKNOWN_TOOL_IS_DENIED_AND_NAMED: the owner
+            # decided on 2026-11-11 that a plant's charter is installed with the
+            # tool denied (the deny-all rule covers it) and named; a seed
+            # charter still stops the run (SEED_CHARTER_TOOLS_ARE_IN_THE_PERMISSION_TABLE).
+            if str(meta.get("origin", "")).strip() == "seed":
+                fail(f"docs/graph/agents/{name}: the tool {t!r} is not in "
+                     f"integrations/opencode/tool-permissions.json, so its host action is unknown")
+            unknown.append((name, t))
+            warn(f"docs/graph/agents/{name}: the tool {t!r} is not in the seed's opencode "
+                 f"permission table (integrations/opencode/tool-permissions.json), so opencode "
+                 f"denies it to this agent; the agent and the rest of the roster are installed. "
+                 f"Remedy: remove it from the charter's tools: line, or the seed adds it to the "
+                 f"table; install.sh opencode --check fails until then")
+            continue
         for action in TABLE["tools"][t]:
             if action in seen:
                 continue
@@ -1274,18 +1394,16 @@ def permissions(name, meta):
         rules.append(TABLE["launch_none"])
         for target in meta.get("delegates_to") or []:
             rules.append({"action": "subagent", "resource": str(target), "effect": "allow"})
+        if meta.get("name") == "orchestrator":
+            for target in added:
+                rules.append({"action": "subagent", "resource": target, "effect": "allow"})
     return rules
 
 
 projected, inherits = {}, 0
 for name in names:
-    path = os.path.join(agents_dir, name)
-    try:
-        meta, body = parse(open(path, encoding="utf-8").read(), path)
-    except (FrontmatterError, UnicodeDecodeError) as e:
-        fail(f"docs/graph/agents/{name}: {e}")
-    stem = name[:-3]
-    callable_name = re.sub(r"^\d+-", "", stem)
+    meta, body = charters[name]
+    callable_name = callable_of(name)
     if callable_name in projected:
         fail(f"docs/graph/agents/{name} and docs/graph/agents/{projected[callable_name]} "
              f"are both callable as {callable_name!r}")
@@ -1316,6 +1434,8 @@ for name in names:
     with open(target, "w", encoding="utf-8") as fh:
         fh.write("\n".join(head) + "\n\n" + "\n\n".join(parts) + "\n")
 print(inherits, len(names))
+print(" ".join(added))
+print(len(unknown))
 PYEOF
 }
 
@@ -1452,6 +1572,14 @@ check_claude_skill_projections() {
     return 1
 }
 
+# log_lead_list REPORT: the second line of render_opencode_agents' report names
+# the plant agents the lead may launch beyond the seed roster; one line says so
+# (OPENCODE_LEAD_LAUNCHES_THE_PLANTS_LINT_CLEAN_AGENTS).
+log_lead_list() {
+    local added; added="$(sed -n 2p <<<"$1")"
+    [[ -z "$added" ]] || log "opencode: the lead may also launch the plant's lint-clean agents beyond the seed roster: ${added// /, }"
+}
+
 # project_opencode_agents RENDERED_DIR: place each rendered opencode agent as
 # .opencode/agents/<callable name>.md (OPENCODE_AGENT_IS_NATIVE) and the routing
 # corpus beside them. An earlier seed projected the graph home's own file name
@@ -1490,12 +1618,20 @@ project_opencode_agents() {
 # projection that differs, is missing, or has no graph home is stale. The
 # routing corpus rides with the roster, so it is expected too. Writes nothing
 # into the target; a map the renderer refuses exits as the install does, before
-# any comparison. Returns 1 when a projection is stale.
+# any comparison. Returns 1 when a projection is stale, when the lead's launch
+# list differs from the roster (OPENCODE_CHECK_NAMES_A_STALE_LEAD_LIST), or when
+# a plant charter names a tool the permission table lacks
+# (OPENCODE_PLANT_AGENT_UNKNOWN_TOOL_IS_DENIED_AND_NAMED; the renderer named each).
 check_opencode_projections() {
     local dest="$PROJECT_DIR/.opencode/agents" home="$PROJECT_DIR/docs/graph/agents"
-    local rendered f name stale=()
+    local rendered f name stale=() report lead_rc=0
     rendered="$(stage opencode-check/agents)"
-    render_opencode_agents "$rendered" >/dev/null || exit 1
+    report="$(render_opencode_agents "$rendered")" || exit 1
+    check_opencode_lead_list "$rendered" || lead_rc=1
+    if [[ "$(sed -n 3p <<<"$report")" != 0 ]]; then
+        warn "opencode: $(sed -n 3p <<<"$report") tool name(s) in the plant's charters are not in the seed's opencode permission table and are denied (each is named above). Remove each from its charter's tools: line, or the seed adds it to the table; then re-run install.sh opencode"
+        lead_rc=1
+    fi
     for f in "$rendered"/*.md "$home/_routes.golden.tsv"; do
         [[ -f "$f" ]] || continue
         name="${f##*/}"
@@ -1509,7 +1645,7 @@ check_opencode_projections() {
         [[ "$name" == _routes.golden.tsv && -f "$home/$name" ]] && continue
         stale+=("$name")
     done
-    local rc=0 out
+    local rc=$lead_rc out
     if [[ -d "$dest" ]]; then
         # DELIVERY_LINT (OPENCODE_CHECK_HOLDS_THE_MUST_REACH_RULES): the same
         # table as claude-code, each role found by its callable name
@@ -1526,6 +1662,31 @@ check_opencode_projections() {
         return $rc
     fi
     warn "opencode projections are STALE: ${stale[*]}. Recompose them from the nodes on disk: install.sh opencode --recompose-agents (it writes .opencode/agents/ and .opencode/skills/ only; a file in the earlier shape is moved to a backup beside it)"
+    return 1
+}
+
+# lead_launch_list FILE: the agents an opencode agent file's rules allow it to
+# launch, one per line, sorted.
+lead_launch_list() {
+    [[ -f "$1" ]] || return 0
+    sed -n 's/^  - {action: "subagent", resource: "\([^"*]*\)", effect: allow}$/\1/p' "$1" | LC_ALL=C sort
+}
+
+# check_opencode_lead_list RENDERED_DIR: OPENCODE_CHECK_NAMES_A_STALE_LEAD_LIST.
+# The lead (the `primary` agent) launches the seed roster plus each lint-clean
+# plant agent, a list generated at projection time; a roster that changed since
+# leaves the placed list behind. Names what the roster adds and what the list
+# still names, with the remedy. Writes nothing; returns 1 when they differ.
+check_opencode_lead_list() {
+    local lead want have adds drops
+    lead="$(grep -lx 'mode: primary' "$1"/*.md 2>/dev/null | head -1 || true)"
+    [[ -n "$lead" ]] || return 0
+    want="$(lead_launch_list "$lead")"
+    have="$(lead_launch_list "$PROJECT_DIR/.opencode/agents/${lead##*/}")"
+    [[ "$want" == "$have" ]] && return 0
+    adds="$(comm -23 <(printf '%s\n' "$want") <(printf '%s\n' "$have") | sed '/^$/d' | tr '\n' ' ')"
+    drops="$(comm -13 <(printf '%s\n' "$want") <(printf '%s\n' "$have") | sed '/^$/d' | tr '\n' ' ')"
+    warn "the lead's subagent list in .opencode/agents/${lead##*/} is stale against the roster:${adds:+ the roster adds ${adds% }}${adds:+${drops:+;}}${drops:+ the list still names ${drops% }}. Regenerate it from the roster: install.sh opencode --recompose-agents"
     return 1
 }
 
@@ -2399,7 +2560,10 @@ install_claude_code() {
     generate_slash_commands "$PROJECT_DIR/.claude/commands"
     # Settings file is placed (so the project can edit it); an edited copy is
     # backed up before replacement — a graft never destroys a plant's hook config.
+    # Each key the edited copy loses is named (name_dropped_settings_keys).
+    local backups_before=${#BACKUPS_MADE[@]}
     place_claude_settings
+    name_dropped_settings_keys "$PROJECT_DIR/.claude/settings.json" "$backups_before"
     retire_copilot_hook_duplicates
     # Progressive-discovery enforcement hook (referenced by settings.json).
     place_file "$SEED_ROOT/integrations/claude-code/route-hook.py" \
@@ -2449,7 +2613,9 @@ install_opencode() {
     rendered="$(stage opencode/agents)"
     counts="$(render_opencode_agents "$rendered")" || exit 1
     project_opencode_agents "$rendered"
-    log "opencode: ${counts%% *} of ${counts##* } agents carry no model: line, because docs/graph/models.md names no opencode model for their class and effort; each runs on its caller's model"
+    local first; first="$(sed -n 1p <<<"$counts")"
+    log "opencode: ${first%% *} of ${first##* } agents carry no model: line, because docs/graph/models.md names no opencode model for their class and effort; each runs on its caller's model"
+    log_lead_list "$counts"
     project_skills "$PROJECT_DIR/.opencode/skills"
     # Slash commands — the same generated projections as every other harness.
     generate_slash_commands "$PROJECT_DIR/.opencode/commands"
@@ -2458,7 +2624,9 @@ install_opencode() {
     # seed shipped both and let the harness pick. Strict JSON is also the form
     # tests/seed-lint.py and tests/test-full-install.sh can parse; the rationale
     # for what this file does NOT declare lives in integrations/opencode/README.md.
+    local backups_before=${#BACKUPS_MADE[@]}
     place_file "$SEED_ROOT/integrations/opencode/opencode.json" "$PROJECT_DIR/opencode.json"
+    name_dropped_settings_keys "$PROJECT_DIR/opencode.json" "$backups_before"
     # The hook core: the same route-hook.py, status-hook.py and bound-hook.py
     # Claude Code runs, byte-identical, so every hooked host keeps one decision
     # (ADR-0024). The plugin below is the OpenCode 2 envelope that runs them
@@ -3617,8 +3785,9 @@ if [[ ${RECOMPOSE_AGENTS:-0} -eq 1 ]]; then
     fi
     if [[ " ${expanded[*]} " == *" opencode "* ]]; then
         _rendered="$(stage opencode/agents)"
-        render_opencode_agents "$_rendered" >/dev/null || exit 1
+        _report="$(render_opencode_agents "$_rendered")" || exit 1
         project_opencode_agents "$_rendered"
+        log_lead_list "$_report"
         project_skills "$PROJECT_DIR/.opencode/skills"
         log "recomposed .opencode/agents/ and .opencode/skills/ from docs/graph/; nothing else was written."
     fi

@@ -1361,6 +1361,24 @@ def check_opencode_config() -> None:
              f"the seed's delegation topology would be capped on opencode")
 
 
+def check_opencode_tool_table() -> None:
+    """SPEC-0001 SEED_CHARTER_TOOLS_ARE_IN_THE_PERMISSION_TABLE: every tool a seed
+    charter lists is mapped in integrations/opencode/tool-permissions.json. The
+    opencode render stops on a seed charter's unknown tool, so this check holds
+    the seed's own roster before any plant installs it."""
+    table = json.loads((ROOT / "integrations/opencode/tool-permissions.json")
+                       .read_text(encoding="utf-8"))["tools"]
+    for a in load_agents().values():
+        tools = a["fm"].get("tools") or []
+        if isinstance(tools, str):
+            tools = tools.strip().strip("[]").split(",")
+        for t in (str(x).strip() for x in tools):
+            if t not in table:
+                fail(f"{a['path'].relative_to(ROOT).as_posix()}: the tool {str(t)!r} is "
+                     f"not in integrations/opencode/tool-permissions.json, so the opencode "
+                     f"install stops on this seed charter; map it there or drop it")
+
+
 def check_opencode_version() -> None:
     """SPEC-0001 OPENCODE_VERSION_HAS_ONE_HOME: the OpenCode 2 version the
     adapter was last verified against live has one home, and the adapter README
@@ -2518,7 +2536,7 @@ def check_published_counts() -> None:
 
 CHECKS = (check, check_corpus_stack, check_agent_spawn_grants, check_body_ceiling, check_leaf_body_ceiling,
           check_adopted_rule_homes, check_text_rules, check_eager_surface,
-          check_opencode_config, check_opencode_version, check_spec_test_mapping, check_spec_rows_name_their_contract,
+          check_opencode_config, check_opencode_tool_table, check_opencode_version, check_spec_test_mapping, check_spec_rows_name_their_contract,
           check_frontmatter_reader_is_one_reader, check_source_paths_is_one_module,
           check_frontmatter_is_portable_yaml,
           check_install_write_sites, check_seed_only_stays_home, check_host_tiers,

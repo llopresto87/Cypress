@@ -78,12 +78,20 @@ contracts):
   [`tool-permissions.json`](tool-permissions.json), the one home of that map,
   with the host's guard on `.env` files restored after `read`. The host applies
   the last matching rule, so the narrow rule wins. A tool name the table does
-  not carry stops the render, naming the charter and the tool, with every
-  projection as it was.
+  not carry in a seed charter stops the render, naming the charter and the
+  tool, with every projection as it was; `tests/seed-lint.py` holds the seed's
+  own charters to the table. In a plant's own agent the owner decided on
+  2026-11-11 that the name is denied: the roster is installed, a warning names
+  the file and the tool with the remedy (remove it from the charter, or the
+  seed adds it to the table), and `--check` fails until it is fixed.
 - **Delegation.** A charter with `Task` gets a rule denying every `subagent`
   launch, then one allow per agent in its `delegates_to:`. A charter without
-  `Task` launches nothing. The allowlist is the agent's own host rules, so it
-  holds without a brief.
+  `Task` launches nothing. The lead's list is generated from the plant's roster
+  (owner decision of 2026-11-11): after its `delegates_to:` it allows each
+  agent the plant authored that passes the agent lint, the installer prints one
+  line naming them, and a plant agent the lint fails is left off with a
+  warning. The allowlist is the agent's own host rules, so it holds without a
+  brief.
 - **Body.** The charter's body, followed by each always-loaded section its
   `always_loads:` names (a whole node, numbered sections, or one section by
   its slug, as `skill.test-first#test-first.proportionate-checks`), composed by
@@ -207,8 +215,9 @@ A plant installed by an earlier seed holds agent files named
 diagnostic, a top-level `subagent_depth`, and no plugin. Re-running
 `install.sh opencode` moves each old agent file to a timestamped backup beside
 it, so a plant's edit survives there, writes the native agents, replaces
-`opencode.json` with a backup, and places the plugin and the cores. The
-installer neither detects nor branches on OpenCode 1. Observed on 2.2.6 over a
+`opencode.json` with a backup, naming each key the plant's file had and the
+new one lacks (edited host settings upgrade by graft, which keeps the file),
+and places the plugin and the cores. The installer neither detects nor branches on OpenCode 1. Observed on 2.2.6 over a
 plant installed by 8.3.2: the re-install succeeds, the host then lists every
 agent with no warning, and `--check` is green.
 
@@ -222,7 +231,9 @@ earlier numbered shape included, and a model-map edit not yet re-run), an
 unusable hook core, and an agent whose loaded prompt lacks a rule that must
 reach its role (`tools/delivery_rules.py`, run from the seed; today the
 restraint rule of `skill.test-first` for the architect, the tester and the
-reviewer). For the earlier `opencode.json` it names both remedies: outside a
+reviewer). It also fails on a lead whose launch list differs from the roster
+(remedy: `install.sh opencode --recompose-agents`) and on a plant charter
+that names a tool the permission table lacks. For the earlier `opencode.json` it names both remedies: outside a
 graft, re-run `install.sh opencode`, which replaces the file and keeps a
 backup; inside a graft, which keeps the plant's file, merge the seed's
 `integrations/opencode/opencode.json` into it in Phase 3, where

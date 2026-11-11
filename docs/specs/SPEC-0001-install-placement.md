@@ -911,10 +911,14 @@ its own record, and that slug stays as written in §12's history.
 - **And:** an agent without `Write`/`Edit` cannot edit, one without `Bash`
   cannot run a shell command, and one without `Task` cannot launch a
   subagent; an agent with `Task` may launch exactly the agents in its
-  `delegates_to:`
-- **And:** a tool name the table does not carry stops the render before any
-  projection is placed, naming the charter and the tool, with every
-  projection as it was; an unknown name is never read as allowed
+  `delegates_to:`, and the lead also each lint-clean plant agent
+  (OPENCODE_LEAD_LAUNCHES_THE_PLANTS_LINT_CLEAN_AGENTS)
+- **And:** a tool name the table does not carry, in a seed charter, stops the
+  render before any projection is placed, naming the charter and the tool,
+  with every projection as it was (SEED_CHARTER_TOOLS_ARE_IN_THE_PERMISSION_TABLE);
+  in a plant's charter it is denied and named
+  (OPENCODE_PLANT_AGENT_UNKNOWN_TOOL_IS_DENIED_AND_NAMED); an unknown name is
+  never read as allowed
 
 ### Contract: OPENCODE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES
 - **Given:** a charter whose frontmatter names `always_loads:`
@@ -1001,6 +1005,70 @@ its own record, and that slug stays as written in §12's history.
   every must-reach rule.`
 - **And:** a role whose loaded prompt lacks a rule's sentence is named with the
   rule on stderr, and the check exits non-zero
+
+### Contract: REINSTALL_NAMES_DROPPED_HOST_SETTINGS_KEYS
+- **Given:** a plant that edited a host settings file the seed places,
+  `.claude/settings.json` or `opencode.json`, and the owner's decision of
+  2026-11-11 that a plain re-install keeps replacing such a file with a backup
+- **When:** `install.sh <host> --project-dir <target>` runs without
+  `--keep-diverged`
+- **Then:** the file is replaced and the plant's file is kept as a timestamped
+  backup, as `BACKUP_BEFORE_REPLACE` says, and one warning per file names each
+  key path of the plant's JSON that the new file lacks (an object key by its
+  dotted path, a list entry by its index: `theme`,
+  `hooks.PreToolUse[2]`), the backup's path, and that edited host settings
+  upgrade by graft, which keeps the edited file
+- **And:** the warning appears only when a key is dropped, so a re-install
+  over an unedited file prints none, and the file is always replaced whole
+
+### Contract: OPENCODE_LEAD_LAUNCHES_THE_PLANTS_LINT_CLEAN_AGENTS
+- **Given:** an opencode plant whose `docs/graph/agents/` holds agents the plant
+  authored (an `origin:` other than `seed`) beside the seed roster, and the
+  owner's decision of 2026-11-11 that the lead's launch list is generated from
+  the plant's roster
+- **When:** `install.sh opencode` or `install.sh opencode --recompose-agents`
+  renders the agents
+- **Then:** the lead's (`orchestrator.md`'s) `subagent` rules allow the agents
+  its charter's `delegates_to:` names and, after them, each plant agent that
+  passes the agent lint (`agent-lint.py --lint` reports no error for its file)
+- **And:** the installer prints one line naming the plant agents added beyond
+  the seed roster
+- **And:** a plant agent the agent lint fails is projected, left off the lead's
+  list, and named in a warning with its first lint error
+- **And:** every other agent's permissions stay as they were
+
+### Contract: OPENCODE_CHECK_NAMES_A_STALE_LEAD_LIST
+- **Given:** an opencode plant whose roster changed after the lead's list was
+  generated (a plant agent added, removed, or now lint-clean)
+- **When:** `install.sh opencode --check --project-dir <target>` runs
+- **Then:** it exits non-zero with one warning naming the lead's file, the
+  agents the roster adds and the agents the list still names, and the remedy
+  `install.sh opencode --recompose-agents`
+- **And:** after that remedy, `--check` exits 0
+
+### Contract: OPENCODE_PLANT_AGENT_UNKNOWN_TOOL_IS_DENIED_AND_NAMED
+- **Given:** a plant-authored agent (an `origin:` other than `seed`) whose
+  `tools:` names a tool `integrations/opencode/tool-permissions.json` lacks,
+  and the owner's decision of 2026-11-11 on such a name
+- **When:** `install.sh opencode` renders the agents
+- **Then:** the run exits 0, every agent is projected, and that agent's rules
+  allow its mapped tools and nothing for the unknown one, which the deny-all
+  rule denies
+- **And:** a warning names the charter file and the tool, says opencode denies
+  it, and gives the remedy: remove it from the charter's `tools:` line, or the
+  seed adds it to the table
+- **And:** `install.sh opencode --check` exits non-zero, naming the tool,
+  until the charter changes
+
+### Contract: SEED_CHARTER_TOOLS_ARE_IN_THE_PERMISSION_TABLE
+- **Given:** a seed charter (`origin: seed`) whose `tools:` names a tool
+  `integrations/opencode/tool-permissions.json` lacks
+- **When:** `install.sh opencode` renders it, or `tests/seed-lint.py` runs over
+  the seed's `agents/`
+- **Then:** the render stops before any projection is placed, naming the
+  charter and the tool, with every projection as it was
+- **And:** `tests/seed-lint.py` fails naming the charter and the tool, so a
+  seed charter never reaches a plant with a tool the table lacks
 
 ### Contract: OPENCODE_CONFIG_IS_OPENCODE_2
 - **Given:** the seed's `integrations/opencode/opencode.json`
@@ -2257,7 +2325,7 @@ $ head -1 /p/docs/graph/libraries/rxjs.md
 | OPENCODE_SELECTOR_UNRESOLVED | (no behavioural test: the installer has no host catalog to check a cell against; §7) | — | — | pending |
 | OPENCODE_CHECK_DETECTS_DRIFT | E11 case_opencode_check_drift: over an opencode plant with a filled authoring-high cell, `install.sh opencode --check` exits 0 and says up to date; after a hand edit to one projection, and after a cell edit with no re-run, it exits non-zero naming the stale projections; `install.sh all --check` fails the same way; the plant's file digest is unchanged by every run | tests/test-full-install.sh | integration | green |
 | OPENCODE_AGENT_IS_NATIVE | E19 case_opencode_native_agent: after `install.sh claude-code opencode`, `.opencode/agents/` holds one file per graph agent named by its callable name, frontmatter keys within `description`, `mode`, `model`, `permissions`, mode `primary` for the orchestrator only | tests/test-full-install.sh | integration | green |
-| OPENCODE_TOOL_BOUND_IS_HOST_PERMISSIONS | E19 case_opencode_native_agent: each agent's rules, evaluated last-match-wins, allow edit/shell/search/fetch/read exactly for the tools its charter lists, allow `subagent` exactly for its `delegates_to` (none without `Task`), deny any other action and ask on `.env`; a plant agent listing the tool `Teleport` makes the run exit non-zero naming it with `.opencode/agents/` unchanged | tests/test-full-install.sh | integration | green |
+| OPENCODE_TOOL_BOUND_IS_HOST_PERMISSIONS | E19 case_opencode_native_agent: each agent's rules, evaluated last-match-wins, allow edit/shell/search/fetch/read exactly for the tools its charter lists, allow `subagent` exactly for its `delegates_to` (none without `Task`), deny any other action and ask on `.env`; a seed charter listing the tool `Teleport` makes the run exit non-zero naming it with `.opencode/agents/` unchanged (X704) | tests/test-full-install.sh | integration | green |
 | OPENCODE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | E19, composition arm: each opencode agent body equals Claude Code's composed body after its frontmatter; E20 arms (f) and (g): an edited always-loaded node makes `--check` name the agent with the recompose remedy, `--recompose-agents` clears it, the node keeps the edit and `docs/` is unchanged | tests/test-full-install.sh | integration | green |
 | OPENCODE_HOOK_CORE_AND_PLUGIN_ARE_PLACED | E19 case_opencode_native_agent: the three cores are byte-identical to the seed's and the plugin exists after a fresh install; tests/test-opencode-plugin.sh holds the plugin's static shape | tests/test-full-install.sh | integration | green |
 | OPENCODE_LEAD_PLAYS_THE_ORCHESTRATOR | E23 in case_opencode: the placed `opencode.json` has `default_agent` `orchestrator`; `orchestrator.md` is `mode: primary` and carries an always-loaded section; the opencode-default-agent row of test-seed-lint fails a config without it; a live session started in the orchestrator on the host | tests/test-full-install.sh | integration | green |
@@ -2265,6 +2333,12 @@ $ head -1 /p/docs/graph/libraries/rxjs.md
 | OPENCODE_CHECK_NAMES_THE_EARLIER_SHAPE | E20 arms (a), (d) and (e): over the earlier shape `--check` exits non-zero naming the old file, the earlier-shape config and the missing plugin; with a core removed it names the core; with the plugin removed it names the plugin | tests/test-full-install.sh | integration | green |
 | OPENCODE_CHECK_NAMES_BOTH_REMEDIES_FOR_THE_EARLIER_CONFIG | X660 E20 arm (a): the earlier-shape warning names the plain re-install and graft's Phase 3 merge with `graft.gate.kept-deltas`; seen red first on the re-install-only wording | tests/test-full-install.sh | integration | green |
 | OPENCODE_CHECK_HOLDS_THE_MUST_REACH_RULES | X662 a fresh opencode plant passes `delivery_rules.py` and `--check` says it read the rules; with the sentence removed from `tester.md` `--check` names tester and the rule and no other role; seen red first (the table named `04-tester.md`, so every opencode role read as lacking the rule) | tests/test-delivery-rules.sh | integration | green |
+| REINSTALL_NAMES_DROPPED_HOST_SETTINGS_KEYS | X700 case_reinstall_names_dropped_settings_keys: over an install whose `.claude/settings.json` gained `theme`, `permissions` and a third `PreToolUse` entry and whose `opencode.json` gained `theme`, a plain re-install names `hooks.PreToolUse[2]`, `permissions` and `theme` with the settings backup and graft, names `theme` with the `opencode.json` backup and graft, and replaces the file; a second re-install names nothing; seen red first (only the generic backup line) | tests/test-full-install.sh | integration | green |
+| OPENCODE_LEAD_LAUNCHES_THE_PLANTS_LINT_CLEAN_AGENTS | X701 case_opencode_lead_list_from_roster: a lint-clean plant agent is on the lead's list beside the seed roster and named in one install line; a plant agent with no `effort:` is projected, off the list and named with the agent lint; `architect.md` is byte-identical to the base install's; `--check` exits 0; seen red first (the lead's list named the seed roster only) | tests/test-full-install.sh | integration | green |
+| OPENCODE_CHECK_NAMES_A_STALE_LEAD_LIST | X702 case_opencode_lead_list_from_roster: a plant agent added after the install makes `--check` exit non-zero with one line naming the lead's list, the agent and `--recompose-agents`; after the recompose the agent is on the list and `--check` exits 0; seen red first (only the generic STALE line) | tests/test-full-install.sh | integration | green |
+| OPENCODE_PLANT_AGENT_UNKNOWN_TOOL_IS_DENIED_AND_NAMED | X703 case_opencode_plant_unknown_tool: a plant agent listing `FrobnicateTool` installs with exit 0, is projected with `read` allowed and no trace of the tool, the rest of the roster is projected, the warning names the file, the tool, the denial and the remedy; `--check` exits non-zero naming the tool; after the charter drops it, install and `--check` exit 0; seen red first (the install stopped) | tests/test-full-install.sh | integration | green |
+| SEED_CHARTER_TOOLS_ARE_IN_THE_PERMISSION_TABLE | X704 case_opencode_native_agent: an `origin: seed` charter listing `Teleport` makes `install.sh opencode` exit non-zero naming the tool, with `.opencode/agents/` unchanged | tests/test-full-install.sh | integration | green |
+| SEED_CHARTER_TOOLS_ARE_IN_THE_PERMISSION_TABLE | X704 row of the seed-lint contract table: `Teleport` added to `agents/02-implementer.md`'s `tools:` makes `check_opencode_tool_table` name the charter, the tool and the table; seen red first (the check did not exist) | tests/test-seed-lint.sh | unit (seed copy) | green |
 | OPENCODE_CONFIG_IS_OPENCODE_2 | E21 opencode-stale-schema, opencode-invalid-key, opencode-legacy-depth-key, opencode-double-load and opencode-depth-cap rows of test-seed-lint: each mutated config fails `check_opencode_config` with its message | tests/test-seed-lint.sh | integration | green |
 | OPENCODE_VERSION_HAS_ONE_HOME | E22 opencode-version-uncited row of test-seed-lint: a verified version the adapter README does not cite fails `check_opencode_version` | tests/test-seed-lint.sh | integration | green |
 | MODEL_MAP_UNREADABLE | E11 case_opencode_check_drift, its arm (f): a map row with class `premium` makes `install.sh opencode --check` exit non-zero with stderr naming `docs/graph/models.md` | tests/test-full-install.sh | integration | green |
@@ -3041,3 +3115,14 @@ only version surface it has, and it moves with each entry here.
   said the guard was off where an earlier seed's wiring blocks the tool, named only
   the re-install as the remedy inside a graft that keeps the plant's file, and read
   the must-reach rules on Claude Code alone.
+- 2026-11-11 — the owner decided on 2026-11-11 that a plain re-install names
+  the host-settings keys it drops, that opencode's lead launches the plant's
+  lint-clean agents, and that a plant charter's unknown tool is denied and
+  named while a seed charter's still stops the run. Added
+  REINSTALL_NAMES_DROPPED_HOST_SETTINGS_KEYS (X700),
+  OPENCODE_LEAD_LAUNCHES_THE_PLANTS_LINT_CLEAN_AGENTS (X701),
+  OPENCODE_CHECK_NAMES_A_STALE_LEAD_LIST (X702),
+  OPENCODE_PLANT_AGENT_UNKNOWN_TOOL_IS_DENIED_AND_NAMED (X703) and
+  SEED_CHARTER_TOOLS_ARE_IN_THE_PERMISSION_TABLE (X704), each seen red first;
+  OPENCODE_TOOL_BOUND_IS_HOST_PERMISSIONS now stops the render on a seed
+  charter's unknown tool only.
