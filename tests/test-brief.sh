@@ -224,6 +224,17 @@ out="$(tok --tokens o.9.tester.7 --transcript agent-a2.jsonl 2>&1)" || { bad "X5
 [[ "$out" == "tokens: o.9.tester.7 — not recorded — input not recorded, cache write not recorded (5m not recorded, 1h not recorded), cache read not recorded, output not recorded — source: claude-code transcript" ]] \
   || { bad "X506 TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT" "no usage: $out"; x506=1; }
 [[ $x506 == 0 ]] && ok "X506 TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT: one count per message id, 5m and 1h apart, no usage is not recorded"
+# X950 TOKEN_LEDGER_READS_A_REAL_SUBAGENT_TRANSCRIPT: the reader's sums over a
+# redacted real Claude Code subagent transcript (13 records, 7 messages, one
+# message streamed as up to three records) equal the totals computed apart from
+# the tool: last record per message id, ids, model and usage only
+x950=0
+cp "$ROOT/tests/fixtures/brief-log/real-subagent-transcript.jsonl" "$T/agent-real.jsonl"
+(cd "$T" && "$PY" docs/graph/brief.py --role tester --spawn-id o.9.tester.50 --task t --route r --effort "low (x)" --part part.txt >/dev/null 2>&1) || true
+out="$(tok --tokens o.9.tester.50 --transcript agent-real.jsonl 2>&1)" || { bad "X950 TOKEN_LEDGER_READS_A_REAL_SUBAGENT_TRANSCRIPT" "$out"; x950=1; }
+[[ "$out" == "tokens: o.9.tester.50 — claude-sonnet-5-5 — input 14, cache write 41153 (5m 41153, 1h 0), cache read 225501, output 4384 — source: claude-code transcript" ]] \
+  || { bad "X950 TOKEN_LEDGER_READS_A_REAL_SUBAGENT_TRANSCRIPT" "stdout: $out"; x950=1; }
+[[ $x950 == 0 ]] && ok "X950 TOKEN_LEDGER_READS_A_REAL_SUBAGENT_TRANSCRIPT: the sums over a real subagent transcript equal the independently computed totals"
 # X505/X506 malformed input: a transcript line that is not an object is
 # skipped; a ledger line that is not JSON refuses --tokens with one line, exit 2
 x507=0
