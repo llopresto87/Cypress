@@ -91,7 +91,13 @@ contracts):
   agent the plant authored that passes the agent lint, the installer prints one
   line naming them, and a plant agent the lint fails is left off with a
   warning. The allowlist is the agent's own host rules, so it holds without a
-  brief.
+  brief. Every seed agent is on some list: the architect's names `legal`, which
+  the method's legal checkpoint spawns, and the seed's roster gate fails an
+  agent no list names unless its frontmatter says `launched_by: none  #
+  <reason>`. A plant installed before 8.5.1 receives the architect's new list on
+  re-install; a plant that kept its own architect charter through graft adds
+  `legal` to that charter's `delegates_to:` and runs
+  `install.sh opencode --recompose-agents`.
 - **Body.** The charter's body, followed by each always-loaded section its
   `always_loads:` names (a whole node, numbered sections, or one section by
   its slug, as `skill.test-first#test-first.proportionate-checks`), composed by
@@ -231,7 +237,8 @@ earlier numbered shape included, and a model-map edit not yet re-run), an
 unusable hook core, and an agent whose loaded prompt lacks a rule that must
 reach its role (`tools/delivery_rules.py`, run from the seed; today the
 restraint rule of `skill.test-first` for the architect, the tester and the
-reviewer). It also fails on a lead whose launch list differs from the roster
+reviewer), and an agent whose loaded prompt still carries a sentence that rule
+retired (the same tool's `FORBIDDEN` table). It also fails on a lead whose launch list differs from the roster
 (remedy: `install.sh opencode --recompose-agents`) and on a plant charter
 that names a tool the permission table lacks. For the earlier `opencode.json` it names both remedies: outside a
 graft, re-run `install.sh opencode`, which replaces the file and keeps a
@@ -299,7 +306,17 @@ the model map's `#<variant>`, as it does on Prime Agent.
 
 ## Live verification
 
-The gate needs neither OpenCode 2 nor a network. What the adapter holds on a
+The gate needs neither OpenCode 2 nor a network. The plugin's suite has two
+halves: the structural checks always run, and the fixture cases load the plugin
+under `bun` against a stub host. Where bun is absent the fixture half prints
+`SKIPPED-PART`, and the gate summary names the suite as passed in part. The
+seed's CI workflow has a job of its own, `opencode-plugin`, that installs one
+bun release checked against a recorded checksum and runs the suite with
+`CYPRESS_REQUIRE_BUN=1`, so a missing bun fails it. That job has not yet run
+on GitHub; the cases passed under bun 1.3.14 when run by hand. The job is the
+seed's and reaches no plant.
+
+What the adapter holds on a
 running release is re-verified by hand with the seed-only procedure
 [`opencode-live-verification.md`](../../docs/skills/opencode-live-verification.md);
 a matrix cell for opencode rises only on an observation recorded there.

@@ -124,8 +124,9 @@ This creates (copies by default; pass `--symlink` for live seed links):
   `always_loads:` is composed with those nodes' bodies (a whole node, numbered
   sections, or one section named by its slug, as
   `skill.test-first#test-first.proportionate-checks`), and `--check` names
-  one that drifted, and one whose loaded prompt lacks a rule that must reach
-  its role (`tools/delivery_rules.py`, run from the seed). `install.sh claude-code --recompose-agents` rewrites
+  one that drifted, one whose loaded prompt lacks a rule that must reach
+  its role, and one that still carries a sentence that rule retired
+  (`tools/delivery_rules.py`, run from the seed). `install.sh claude-code --recompose-agents` rewrites
   `.claude/agents/` and `.claude/skills/` from the nodes on disk and writes no
   node (SPEC-0005 ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES; `--check` also
   names a skill projection that differs from its node,

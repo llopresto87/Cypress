@@ -581,7 +581,7 @@ three hook cores → `.opencode/hooks/`; `cypress-plugin.ts` →
   the old agent files and config to backups; `--check` names drift, the
   earlier shape (with the remedy outside a graft and the one inside it), a
   missing plugin or core, and an agent whose loaded prompt lacks a must-reach
-  rule (`tools/delivery_rules.py`, seed-side).
+  rule or carries a retired sentence (`tools/delivery_rules.py`, seed-side).
 - **Agents:** each carries only the host's fields (`description`, `mode`,
   `model`, `permissions`). Its `tools:` become host permissions through
   `tool-permissions.json`, its `delegates_to:` become `subagent` rules, its

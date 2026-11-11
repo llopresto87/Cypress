@@ -688,7 +688,11 @@ until the owner confirms its removal by name;
 baseline tests within that work (`--removal-list --spec SPEC-NNNN`). A
 bug regression, a security control and a test no §10 row maps each wait
 for a decision of their own, and a security control that kills no
-mutant is a finding for `security`. Graft and grow leave every test in
+mutant is a finding for `security`. The worth check spares a test whose
+§10 origin is `bug` or `security control`, so neither reaches the batch,
+and the list holds every test back, with the reason, when the plant's
+trust paths were not read in full or a spec could not be opened: a test
+on a trust path is never removed to clear a flag. Graft and grow leave every test in
 place.
 
 ### Exit conditions
@@ -1291,7 +1295,8 @@ reclassification), Spawns, Route bands + overrides, Retries by class (per
 `recover`), Gates run/failed-then-fixed, full-suite runs, serial waits,
 overflow notes, and a Quality line, plus optional lines for tokens and
 five test counts (tests written by origin, dropped at RED, refused by the
-worth check, removed, and not checked by the worth check), each read from
+worth check, removed, and not checked by the worth check, which counts
+the tests it reported `not judged` as well), each read from
 the plan's §10 rows or the worth check's output; an entry without the optional lines passes unchanged. It is
 a required part of the full form: a line the trace cannot fill says
 `not recorded` and why.
