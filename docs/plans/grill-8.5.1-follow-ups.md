@@ -325,7 +325,7 @@ Increments are inline; numbers are dependency order. Increment 1 carries the con
 - Depends on: increment 17
 
 ### Increment 19: Follow-up 1: the worth check spares by declaration
-- Spec contracts: SPEC-0009/WORTH_SPARES_BY_SECTION_10_ORIGIN, SPEC-0009/WORTH_SPARES_A_TEST_ON_A_TRUST_PATH, SPEC-0009/WORTH_VOCABULARY_ONLY_WITHOUT_A_DECLARATION, SPEC-0009/WORTH_TRUST_PATHS_NOT_CONSULTED_ARE_NAMED, SPEC-0009/WORTH_FAILURE_NEVER_LEADS_WITH_REMOVAL, SPEC-0009/WORTH_UNSEEN_ASSERTION_IS_NOT_JUDGED
+- Spec contracts: SPEC-0009/WORTH_SPARES_BY_SECTION_10_ORIGIN, SPEC-0009/WORTH_SPARES_A_TEST_ON_A_TRUST_PATH, SPEC-0009/WORTH_VOCABULARY_ONLY_WITHOUT_A_DECLARATION, SPEC-0009/WORTH_TRUST_PATHS_NOT_CONSULTED_ARE_NAMED, SPEC-0009/WORTH_FAILURE_NEVER_LEADS_WITH_REMOVAL, SPEC-0009/WORTH_UNSEEN_ASSERTION_IS_NOT_JUDGED, SPEC-0009/WORTH_REMOVAL_LIST_HOLDS_BACK_WHEN_THE_TRUST_PATHS_WERE_NOT_READ, SPEC-0009/WORTH_FAILURE_NAMES_THE_DECLARATIONS_THAT_SPARE, SPEC-0005/SPEC_LINT_READS_A_TEST_CELL_AS_THE_WORTH_CHECK_DOES
 - Files touched: `tools/worth-check.py`, `tests/test-worth-check.sh`, `tests/fixtures/worth/`, `docs/specs/SPEC-0009-worth-check.md`
 - Tests to write (RED): X900 to X906 in `tests/test-worth-check.sh`, each seen red against the 8.5.0 tool; the owner's check (X900 to X902) on a plant with an installed tool
 - Behavior added: a test is spared by its §10 row's origin, by reaching a marked trust path through the source index, and by the word list only when neither exists; the failure message never leads with removal; helper, golden-file and snapshot assertions are reported not judged and counted with not checked
