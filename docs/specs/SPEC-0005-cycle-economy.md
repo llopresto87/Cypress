@@ -924,6 +924,23 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 - **When:** `spec-lint.py --slice SLUG` runs, with or without `--lines`
 - **Then:** it prints the contract's block and each §10 row whose Covers cell
   names the slug, under its table header
+### Contract: SPEC_LINT_READS_A_TEST_CELL_AS_THE_WORTH_CHECK_DOES
+- **Test file:** `tests/test-spec-lint.sh`
+- **Given:** a live new-form spec whose §10 Test cell names a TypeScript test
+  by its title with spaces (`tests/frame.test.ts::frame policy denies
+  embedding`), a cell spelled `./tests/x.py::name`, and a cell naming a class
+  method `tests/x.py::Class::method`
+- **When:** `spec-lint.py` reads them, plain and with `--list`
+- **Then:** each cell is `file::name`, its name running to the end of the cell
+  and its path read normalised (`posixpath.normpath`), and its contract counts
+  as covered when the suite holds the test: the title in the file's code, or
+  the method's name; `--list` names the normalised `path::name`
+- **And:** a title the suite does not hold leaves the contract uncovered, a
+  cell with no name or no path still fails as not `file::name`, a covered
+  Check line still names its test by one token, and every spec and fixture
+  the seed holds lints byte for byte as before (the security review of
+  2026-11-11: the worth check spares by a row the lint refused, and matched no
+  test to a cell the lint accepted)
 
 ### Contract: AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK
 - **Test file:** `tests/test-install-placement.sh`
@@ -3080,6 +3097,7 @@ gives.
 | SPEC_LINT_ACCEPTS_A_SPEC_WITH_NOTHING_TO_TEST | X563 case_nothing_to_test_needs_no_rows: run and review only, no §10 rows, no tester tick, passes; the trust-path line restores the tester's sign-off; seen red first | tests/test-spec-lint.sh | fixture | green |
 | SPEC_LINT_COUNTS_CONTRACTS_BY_KIND | X564 case_counts_by_kind: the kinds line beside a legacy spec, `--list` evidence, and no line over legacy specs alone; seen red first | tests/test-spec-lint.sh | fixture | green |
 | SPEC_LINT_SLICES_A_NEW_FORM_SPEC | X565 case_slice_reads_the_new_form: the block and the Covers-matched row under its header, one `--lines` row; seen red first | tests/test-spec-lint.sh | fixture | green |
+| SPEC_LINT_READS_A_TEST_CELL_AS_THE_WORTH_CHECK_DOES | X941 case_test_cell_reads_as_the_worth_check_does: a spaced TypeScript title covers its contract and `--list` names it; a title the suite lacks is uncovered; `./` is read normalised; `Class::method` is found by the method; a cell with no name or no path fails; seen red first (the spaced title was "not file::name") | tests/test-spec-lint.sh | fixture | green |
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | M22 case_agents_compose: the implementer's six always-loaded bodies once each with no frontmatter; `11-pentest.md` byte for byte; a hand edit is STALE to `--check` | tests/test-install-placement.sh | integration | green |
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | (none) the `ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES` row of seed-lint's `TEXT_RULES`: the `graft.gate.projection-drift` row holds `install.sh claude-code --check`; red id: `ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES: protocols/graft.md graft.gate.projection-drift does not hold 'install.sh claude-code --check'` | tests/seed-lint.py | real-tree | green |
 | TRUST_MARKER_IS_SETTLED | X496 TrustMarkerTests: `--trust-unsettled` names the unset and the pathless crosscut only; the lint warns on the pathless one and exits 0 | tests/test_graph_lint.py | fixture | green |
@@ -3720,3 +3738,10 @@ kept outside the seed.
   FORBIDDEN_SENTENCE_IS_IN_NO_COMPOSED_PROMPT and
   FORBIDDEN_SENTENCE_IS_IN_NO_METHOD_SOURCE (X910, X911, each seen red first).
 - 2026-11-11: the token ledger's transcript reader was verified against real Claude Code subagent transcripts (three, 7 to 151 messages): its sums equal an independent computation. Added TOKEN_LEDGER_READS_A_REAL_SUBAGENT_TRANSCRIPT (X950, seen red against a reader that counts every record). The 1h cache-write path was 0 in every real transcript and stays covered by the synthetic case only; billing is not verified.
+- 2026-11-11 — the security review of the worth check (SPEC-0009) found the
+  plant's spec lint and the check reading a §10 Test cell differently. The
+  lint's Test-cell name now runs to the end of the cell and its path is read
+  normalised, as the check reads it; a covered Check line keeps its one-token
+  form. Added SPEC_LINT_READS_A_TEST_CELL_AS_THE_WORTH_CHECK_DOES (X941, seen
+  red first). Every spec and fixture of the seed lints byte for byte as
+  before, plain, with `--warn`, `--list`, the budgets and `--slice`.

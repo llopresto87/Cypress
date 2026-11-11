@@ -17,7 +17,11 @@
 # through the plant's source index), the word list only where neither speaks,
 # a failing line that never leads with removal, and an assertion the check
 # cannot see reported as not judged. X900 to X902 run in a plant installed into
-# a `git init`ed directory, as a plant's source index needs. The check never
+# a `git init`ed directory, as a plant's source index needs. X940 to X943 gate
+# the security review of 2026-11-11: the removal list holds every test back when
+# the trust paths were not read in full, the failing line offers the §10 origin
+# and the trust marking, and a Test cell is matched as the plant's spec lint
+# reads it (a normalised path, a spaced title). The check never
 # runs over this repository's own suite, whose tests assert documentation text
 # on purpose.
 set -euo pipefail
@@ -162,6 +166,19 @@ grep -qF 'keep it with its reason or strengthen it' <<<"$foot" || x904=1
   && ok "X904 WORTH_FAILURE_NEVER_LEADS_WITH_REMOVAL: the failing line leads with the keep line and the strengthening, and says a trust-path, bug or security-control test is never removed to clear a flag" \
   || bad "X904 WORTH_FAILURE_NEVER_LEADS_WITH_REMOVAL" "footer: ${foot:-none}"
 
+# X942 WORTH_FAILURE_NAMES_THE_DECLARATIONS_THAT_SPARE: the failing line also
+# offers the two declarations that spare a security control or a bug
+# reproduction, after the keep line and the strengthening, and none of the
+# remedies opens with removal.
+x942=0
+grep -qF 'record its §10 row with origin security control (or bug), or mark the trust path it exercises (a trust: true crosscut that claims the file)' <<<"$rest" || x942=1
+decl="${rest#*strengthen it so it feeds inputs to the logic it guards}"
+[[ "$decl" != "$rest" ]] && grep -qF 'record its §10 row' <<<"$decl" || x942=1
+grep -qiE '(^|[.;:] *)remov' <<<"${rest%%A test on a trust path*}" && x942=1
+[[ $x942 == 0 ]] \
+  && ok "X942 WORTH_FAILURE_NAMES_THE_DECLARATIONS_THAT_SPARE: the failing line offers the §10 origin and the trust marking after the keep line and the strengthening, and no remedy opens with removal" \
+  || bad "X942 WORTH_FAILURE_NAMES_THE_DECLARATIONS_THAT_SPARE" "footer: ${foot:-none}"
+
 # X584: a test with no assertion is never flagged; it is reported as read.
 mkdir -p "$T/q"; plant "$T/q"; rm -rf "$T/q/tests/"*
 printf 'from app import LABEL\n\n\ndef test_label_is_imported():\n    LABEL\n' > "$T/q/tests/test_bare.py"
@@ -264,6 +281,10 @@ after="${refusal#*: tests/python/test_readback.py::test_new_banner. }"
   && grep -qF 'never removed to clear a flag' <<<"$refusal" \
   && ok "X904 WORTH_FAILURE_NEVER_LEADS_WITH_REMOVAL: a refused baseline write opens with the keep line, never with removal" \
   || bad "X904 WORTH_FAILURE_NEVER_LEADS_WITH_REMOVAL" "refusal: ${refusal:-none}"
+grep -qF 'record its §10 row with origin security control (or bug), or mark the trust path it exercises' <<<"$after" \
+  && ! grep -qiE '(^|[.;:] *)remov' <<<"${after%%a trust-path, bug-origin*}" \
+  && ok "X942 WORTH_FAILURE_NAMES_THE_DECLARATIONS_THAT_SPARE: a refused baseline write offers the §10 origin and the trust marking too, and no remedy opens with removal" \
+  || bad "X942 WORTH_FAILURE_NAMES_THE_DECLARATIONS_THAT_SPARE" "refusal: ${refusal:-none}"
 "$PY" - "$B/tests/python/test_readback.py" <<'PY'
 import sys
 p = sys.argv[1]
@@ -945,6 +966,106 @@ v="$(gv "$T/g5.json" tests/test_auth_settings.py::test_algorithms_pinned tests/t
   && grep -qF 'worth-check: trust paths consulted in part: 2 file(s) on the marked trust paths, 2 test file(s) reach them; the source index answered incomplete (depth-cap: app/auth/settings.py), so the security word list still applies to a test no §10 row maps' <<<"$out" \
   && ok "X906 TRUST_REACH_IS_PARTIAL: an incomplete answer spares what it names, names its records, and keeps the word list on" \
   || bad "X906 TRUST_REACH_IS_PARTIAL" "rc $rc; trust-path, off-trust, design: $v (want spared spared flagged); $(grep 'trust paths' <<<"$out" || echo 'no trust line')"
+
+# X940 WORTH_REMOVAL_LIST_HOLDS_BACK_WHEN_THE_TRUST_PATHS_WERE_NOT_READ, the
+# companion of X601 (the security review of 2026-11-11, its blocking finding):
+# a test that imports a trust-path file and carries a §10 row of origin design
+# is spared while the trust paths are read in full, and is held back from the
+# removal batch, with the trust line printed above it, when they are not: a
+# source index that exits 1, a trust node that cannot be opened, an answer in
+# part. A spec that cannot be opened is named above the batch too.
+GR="$T/gr"; cp -R "$G" "$GR"
+cat > "$GR/tests/test_auth_design.py" <<'EOF'
+from app.auth.settings import JWT_ALGORITHMS
+
+
+def test_algorithms_listed():
+    assert JWT_ALGORITHMS == ["RS256"]
+EOF
+printf '| The algorithm list on the trust path reads as written | tests/test_auth_design.py::test_algorithms_listed | TOKENS_ARE_SIGNED_WITH_RS256 | design | green |\n' \
+  >> "$GR/docs/graph/specs/SPEC-0001-sign-in.md"
+HELD_BACK='-> NOT REMOVABLE AUTOMATICALLY (the trust paths were not read in full: '
+held_back() {   # label plant want-trust-line want-reason test...
+  local label="$1" plant="$2" line="$3" reason="$4"; shift 4
+  local rc=0 out; out="$(WC "$plant" --removal-list 2>&1)" || rc=$?
+  local miss="" t e
+  [[ $rc -eq 0 ]] || miss="$miss rc=$rc"
+  grep -q "^worth-check: $line" <<<"$out" || miss="$miss [trust line]"
+  for t in "$@"; do
+    e="$(grep -A3 -F ". $t" <<<"$out" || true)"
+    grep -qF -- "$HELD_BACK$reason" <<<"$e" && grep -qF -- '; re-run once they are)' <<<"$e" || miss="$miss [$t not held back]"
+  done
+  ! grep -q 'removable on confirmation' <<<"$out" || miss="$miss [a test offered for removal]"
+  [[ -z "$miss" ]] \
+    && ok "X940 WORTH_REMOVAL_LIST_HOLDS_BACK_WHEN_THE_TRUST_PATHS_WERE_NOT_READ: $label: the trust line is printed and each design-row test is held back" \
+    || bad "X940 WORTH_REMOVAL_LIST_HOLDS_BACK_WHEN_THE_TRUST_PATHS_WERE_NOT_READ" "$label:$miss; $out"
+}
+rc=0; out="$(WC "$GR" --removal-list 2>&1)" || rc=$?
+[[ $rc -eq 0 ]] && ! grep -qF '. tests/test_auth_design.py::test_algorithms_listed' <<<"$out" \
+  && grep -q '^worth-check: trust paths consulted: ' <<<"$out" \
+  && grep -A3 -F '. tests/test_rules_design.py::test_jwt_algorithms_listed' <<<"$out" | grep -q 'origin: design *-> removable on confirmation$' \
+  && ok "X940 WORTH_REMOVAL_LIST_HOLDS_BACK_WHEN_THE_TRUST_PATHS_WERE_NOT_READ: read in full, the trust-path test is spared and a design-row test off the paths stays removable on confirmation" \
+  || bad "X940 WORTH_REMOVAL_LIST_HOLDS_BACK_WHEN_THE_TRUST_PATHS_WERE_NOT_READ" "consulted: rc $rc; $out"
+GF="$T/gf"; cp -R "$GR" "$GF"; printf 'import sys\nsys.exit(1)\n' > "$GF/docs/graph/source-index.py"
+held_back "a source index that exits 1" "$GF" 'trust paths not consulted: docs/graph/source-index.py build did not answer (exit 1' \
+  'docs/graph/source-index.py build did not answer (exit 1' \
+  tests/test_auth_design.py::test_algorithms_listed tests/test_rules_design.py::test_jwt_algorithms_listed
+GP="$T/gp"; cp -R "$GR" "$GP"; mv "$GP/docs/graph/source-index.py" "$GP/docs/graph/real-source-index.py"
+cp "$G5/docs/graph/source-index.py" "$GP/docs/graph/source-index.py"
+held_back "an answer in part" "$GP" 'trust paths consulted in part: ' \
+  'the source index answered incomplete (depth-cap: app/auth/settings.py)' \
+  tests/test_rules_design.py::test_jwt_algorithms_listed tests/test_rules_design.py::test_regression_lockout_threshold
+GU="$T/gu"; cp -R "$GR" "$GU"; chmod 000 "$GU/docs/graph/nodes/crosscut.sign-in.md" "$GU/docs/graph/specs/SPEC-0001-sign-in.md"
+if [[ -r "$GU/docs/graph/nodes/crosscut.sign-in.md" ]]; then
+  ok "X940 WORTH_REMOVAL_LIST_HOLDS_BACK_WHEN_THE_TRUST_PATHS_WERE_NOT_READ: an unreadable trust node is not exercised here (this user reads a mode-000 file)"
+else
+  rc=0; out="$(WC "$GU" --removal-list 2>&1)" || rc=$?
+  grep -q '^worth-check: §10 rows not read: docs/graph/specs/SPEC-0001-sign-in.md does not open' <<<"$out" \
+    && ok "X940 WORTH_REMOVAL_LIST_HOLDS_BACK_WHEN_THE_TRUST_PATHS_WERE_NOT_READ: a spec that cannot be opened is named above the batch" \
+    || bad "X940 WORTH_REMOVAL_LIST_HOLDS_BACK_WHEN_THE_TRUST_PATHS_WERE_NOT_READ" "unreadable spec: $out"
+  chmod 644 "$GU/docs/graph/specs/SPEC-0001-sign-in.md"
+  held_back "a trust node that cannot be opened" "$GU" 'trust paths not consulted: docs/graph/nodes/crosscut.sign-in.md does not open' \
+    'docs/graph/nodes/crosscut.sign-in.md does not open' \
+    tests/test_auth_design.py::test_algorithms_listed tests/test_rules_design.py::test_jwt_algorithms_listed
+  chmod 644 "$GU/docs/graph/nodes/crosscut.sign-in.md"
+fi
+
+# X943 WORTH_SPARES_BY_SECTION_10_ORIGIN: a Test cell is matched as the plant's
+# spec lint reads it: its path normalised (`./tests/x.py`), its name up to the
+# end of the cell (a TypeScript title with spaces). Without the rows both pins
+# are flagged, so the rows do the sparing.
+N9="$T/n9"; mkdir -p "$N9/docs/graph/specs" "$N9/tests"
+printf 'TEST_GLOBS = ["tests/**/*.*"]\n' > "$N9/docs/graph/spec-lint.py"
+printf 'from app.rules import ALGORITHMS\n\n\ndef test_algorithms_pinned():\n    assert ALGORITHMS == ["RS256"]\n' > "$N9/tests/test_pins.py"
+printf 'import { expect, test } from "vitest";\nimport { FRAME_POLICY } from "../src/settings";\n\ntest("frame policy denies embedding", () => {\n  expect(FRAME_POLICY).toBe("DENY");\n});\n' > "$N9/tests/frame.test.ts"
+rc=0; WC "$N9" --json >"$T/n9.json" 2>&1 || rc=$?
+w="$(gv "$T/n9.json" tests/test_pins.py::test_algorithms_pinned 'tests/frame.test.ts::frame policy denies embedding')"
+cat > "$N9/docs/graph/specs/SPEC-0002-frames.md" <<'EOF'
+---
+status: implemented
+---
+# SPEC-0002: frames
+
+## 4. Functional contracts
+
+### Contract: TOKENS_ARE_SIGNED_WITH_RS256
+
+### Contract: PAGES_ARE_NOT_FRAMED
+
+## 10. Test design
+
+| Risk (what breaks, for whom) | Test (file::name, lowest level) | Covers | Origin | Status |
+|---|---|---|---|---|
+| A token signed with a weak algorithm is accepted | ./tests/test_pins.py::test_algorithms_pinned | TOKENS_ARE_SIGNED_WITH_RS256 | security control | green |
+| A page is framed by another origin | tests/frame.test.ts::frame policy denies embedding | PAGES_ARE_NOT_FRAMED | security control | green |
+EOF
+rc=0; WC "$N9" --json >"$T/n9.json" 2>&1 || rc=$?
+v="$(gv "$T/n9.json" tests/test_pins.py::test_algorithms_pinned 'tests/frame.test.ts::frame policy denies embedding')"
+why="$(gwhy "$T/n9.json" tests/test_pins.py::test_algorithms_pinned)"
+[[ $rc -eq 0 && "$w" == "flagged flagged" && "$v" == "spared spared" \
+   && "$why" == "§10 origin security control (SPEC-0002): a security control stays" ]] \
+  && ok "X943 WORTH_SPARES_BY_SECTION_10_ORIGIN: a Test cell spelled ./path::name and one naming a spaced TypeScript title each spare the test they name" \
+  || bad "X943 WORTH_SPARES_BY_SECTION_10_ORIGIN" "rc $rc; without rows: $w (want flagged x2); with rows: $v (want spared x2); why: $why"
 
 # X905 WORTH_UNSEEN_ASSERTION_IS_NOT_JUDGED: an assertion in a helper, a
 # comparison with a golden file and one with a snapshot are each named not

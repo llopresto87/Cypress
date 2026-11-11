@@ -148,7 +148,14 @@ confirmation: each test, why it is flagged, its §10 row and origin read from
 docs/graph/specs/, and the contract it would leave without evidence. A test
 whose §10 origin is bug or security control is spared, so it never reaches the
 batch; a test in a legacy row with no origin, and a test no §10 row maps, print
-NOT REMOVABLE AUTOMATICALLY. --spec SPEC-NNNN narrows the batch to the tests
+NOT REMOVABLE AUTOMATICALLY. The trust line and any spec the list could not
+read are printed above the batch, and when the plant marks trust paths that
+were not read in full (not consulted, or consulted in part), every test in the
+batch prints NOT REMOVABLE AUTOMATICALLY with the reason: a test on a trust path
+is never removed to clear a flag, and the list cannot tell which tests are on
+one. A Test cell's path is read normalised (./tests/x.py is tests/x.py) and its
+name runs to the end of the cell, as the plant's spec-lint.py reads it.
+--spec SPEC-NNNN narrows the batch to the tests
 that spec's §10 maps, its baseline tests included: the listing a reopened spec
 owes. The list is read-only and exits 0; a test leaves the suite only when the
 owner names it in the chat (protocol.test-first, Removing a test that catches
@@ -156,9 +163,10 @@ nothing).
 
 In the gate: a newly written test the check flags fails the plant's gate
 unless it is kept. The failing line names the remedies: keep the test with a
-reason, or strengthen it so it feeds inputs to the logic it guards; a test on a
-trust path, of §10 origin bug, or a security control is never removed to clear
-a flag. A plant puts the check in its verification runbook
+reason, strengthen it so it feeds inputs to the logic it guards, or declare
+what it guards (its §10 row with origin security control or bug, or the trust
+path it exercises); a test on a trust path, of §10 origin bug, or a security
+control is never removed to clear a flag. A plant puts the check in its verification runbook
 (docs/graph/runbooks/verification.md) as the gate row
 `python3 docs/graph/worth-check.py`, expected exit 0, once TEST_GLOBS names
 its test layout (grow.gate.spec-wired); until then the row prints the
@@ -176,6 +184,7 @@ import ast
 import io
 import json
 import os
+import posixpath
 import re
 import subprocess
 import sys
@@ -2180,45 +2189,57 @@ def trust_reach(root: Path) -> tuple[dict, list[str], int]:
     return reach, gaps, len(files)
 
 
+def not_consulted(e: TrustUnread) -> dict:
+    """The trust state of a plant whose marked trust paths cannot be read: it
+    reads as a plant that marks none."""
+    return {"state": "not consulted", "tests": {}, "words_apply": True, "reason": str(e),
+            "message": f"worth-check: trust paths not consulted: {e}; no test is spared for a trust "
+                       f"path, and the security word list applies to a test no §10 row maps"}
+
+
 def read_trust(root: Path, needed: bool) -> dict:
-    """{"state", "message", "tests", "words_apply"}: what the plant's trust
-    paths spare, and whether the security word list still applies. The state
-    is `none` (the plant marks no trust path), `consulted`, `partial` (the
-    source index answered incomplete), `not consulted` (with the reason), or
-    `not needed` (no test reads back a literal, so no tool was run)."""
+    """{"state", "message", "reason", "tests", "words_apply"}: what the
+    plant's trust paths spare, and whether the security word list still
+    applies. The state is `none` (the plant marks no trust path), `consulted`,
+    `partial` (the source index answered incomplete), `not consulted`, or `not
+    needed` (no test reads back a literal, so no tool was run); `reason` says
+    why the paths were not read in full, empty when they were or are none."""
     try:
         marked = marked_trust(root)
     except TrustUnread as e:
-        return {"state": "not consulted", "tests": {}, "words_apply": True,
-                "message": f"worth-check: trust paths not consulted: {e}; no test is spared for a trust "
-                           f"path, and the security word list applies to a test no §10 row maps"}
+        return not_consulted(e)
     if not marked:
-        return {"state": "none", "tests": {}, "words_apply": True,
+        return {"state": "none", "tests": {}, "words_apply": True, "reason": "",
                 "message": "worth-check: trust paths: the plant marks none, so the security word list "
                            "applies to a test no §10 row maps"}
     if not needed:
-        return {"state": "not needed", "tests": {}, "words_apply": False,
+        return {"state": "not needed", "tests": {}, "words_apply": False, "reason": "",
                 "message": "worth-check: trust paths: marked; no test reads back a literal, so the "
                            "source index was not asked"}
     try:
         reach, gaps, n = trust_reach(root)
     except TrustUnread as e:
-        return {"state": "not consulted", "tests": {}, "words_apply": True,
-                "message": f"worth-check: trust paths not consulted: {e}; no test is spared for a trust "
-                           f"path, and the security word list applies to a test no §10 row maps"}
+        return not_consulted(e)
     tests = reach                                 # a claimed file maps to itself
     counted = len([p for p, f in reach.items() if p != f])
     if gaps:
         shown = "; ".join(gaps[:5]) + (f" and {len(gaps) - 5} more" if len(gaps) > 5 else "")
         return {"state": "partial", "tests": tests, "words_apply": True,
+                "reason": f"the source index answered incomplete ({shown})",
                 "message": f"worth-check: trust paths consulted in part: {n} file(s) on the marked trust "
                            f"paths, {counted} test file(s) reach them; the source index answered "
                            f"incomplete ({shown}), so the security word list still applies to a test "
                            f"no §10 row maps"}
-    return {"state": "consulted", "tests": tests, "words_apply": False,
+    return {"state": "consulted", "tests": tests, "words_apply": False, "reason": "",
             "message": f"worth-check: trust paths consulted: {n} file(s) on the marked trust paths, "
                        f"{counted} test file(s) reach them ({SOURCE_INDEX}); a test no §10 row maps is "
                        f"spared by a declaration only"}
+
+
+# The declarations that spare a flagged test, offered after the keep line and
+# the strengthening by the failing line and by a refused baseline write.
+DECLARE = ("record its §10 row with origin security control (or bug), or mark the trust path it "
+           "exercises (a trust: true crosscut that claims the file)")
 
 
 def flag_line(rec: dict) -> str:
@@ -2336,7 +2357,7 @@ def run(args) -> int:
             unread_reasons[n["reason"]] = unread_reasons.get(n["reason"], 0) + 1
 
     if args.removal_list:
-        return removal_list(rows, flagged, args.spec)
+        return removal_list(rows, flagged, args.spec, trust, row_notes)
     rc = 1 if new else 0
     messages = []
     if args.write_baseline:
@@ -2346,7 +2367,8 @@ def run(args) -> int:
                 f"worth-check: --write-baseline refused: the baseline only shrinks, and "
                 f"{len(grow)} flagged test(s) are not in it: {', '.join(grow)}. Keep each with a "
                 f"\"worth-check: keep — <reason>\" line above it, or strengthen it so it feeds "
-                f"inputs to the logic it guards; a trust-path, bug-origin or security-control test "
+                f"inputs to the logic it guards; if it guards a security control or reproduces a "
+                f"bug, {DECLARE}; a trust-path, bug-origin or security-control test "
                 f"is never removed to clear a flag. Then write again. "
                 f"{base_path.relative_to(root) if base_path.is_relative_to(root) else base_path} "
                 f"is unchanged.")
@@ -2407,7 +2429,8 @@ def run(args) -> int:
     if new:
         print(f"worth-check: FAIL — {len(new)} flagged test(s) are not in the baseline. For each: "
               f"keep it with a \"worth-check: keep — <reason>\" line directly above it if it earns "
-              f"its place, or strengthen it so it feeds inputs to the logic it guards. A test on a "
+              f"its place, or strengthen it so it feeds inputs to the logic it guards. If it guards a "
+              f"security control or reproduces a bug, {DECLARE}; either declaration spares it. A test on a "
               f"trust path, a test whose §10 origin is bug and a security-control test are never "
               f"removed to clear a flag: keep it with its reason or strengthen it. Any other test "
               f"leaves the suite only when the owner confirms it by name (--removal-list). The "
@@ -2433,6 +2456,12 @@ def cells(line: str) -> list[str]:
     s = s[1:] if s.startswith("|") else s
     s = s[:-1] if s.endswith("|") and not s.endswith("\\|") else s
     return [c.strip().strip("`").strip() for c in CELL_RE.split(s)]
+
+
+def cell_path(p: str) -> str:
+    """A Test cell's path read normalised (`./tests/x.py` is `tests/x.py`), as
+    the plant's spec-lint.py reads it; an empty cell stays empty."""
+    return posixpath.normpath(p) if p else p
 
 
 def spec_rows(path: Path) -> list[dict]:
@@ -2466,10 +2495,10 @@ def spec_rows(path: Path) -> list[dict]:
             if "::" not in test or re.search(r"\b(?:dropped:|merged into|removed:)", status):
                 continue
             path_, name = test.split("::", 1)
-            rows.append({"spec": sid, "text": c[0], "path": path_, "name": name,
+            rows.append({"spec": sid, "text": c[0], "path": cell_path(path_), "name": name,
                          "covers": SLUG_RE.findall(get("covers")), "origin": get("origin").lower()})
         elif head[0].startswith("contract"):
-            rows.append({"spec": sid, "text": c[0], "path": get("test file"), "name": get("test name"),
+            rows.append({"spec": sid, "text": c[0], "path": cell_path(get("test file")), "name": get("test name"),
                          "covers": SLUG_RE.findall(c[0]), "origin": ""})
     for r in rows:
         r["kinds"] = kinds
@@ -2481,11 +2510,20 @@ def row_matches(row: dict, rec: dict) -> bool:
                                            or row["name"] == rec["name"].rsplit("::", 1)[-1])
 
 
-def removal_list(rows: list[dict], flagged: list[dict], spec: str | None) -> int:
+def removal_list(rows: list[dict], flagged: list[dict], spec: str | None,
+                 trust: dict, notes: list[str]) -> int:
     """Print the batch of flagged tests for the owner's confirmation. Read-only:
     it removes no file and edits no test. A test whose §10 origin is bug or
     security control is spared before the batch is drawn; the hold-back below
-    stays as a second guard."""
+    stays as a second guard. The trust line and the specs not read come first.
+    When the plant marks trust paths that were not read in full, no test in the
+    batch is offered for removal: any of them may be on a trust path, and a
+    test on a trust path is never removed to clear a flag."""
+    print(trust["message"])
+    for m in notes:
+        print(m)
+    unread = (f"the trust paths were not read in full: {trust['reason']}; re-run once they are"
+              if trust["state"] in ("not consulted", "partial") else None)
     batch = []
     for rec in flagged:
         mine = [r for r in rows if row_matches(r, rec)]
@@ -2507,7 +2545,7 @@ def removal_list(rows: list[dict], flagged: list[dict], spec: str | None) -> int
             print("    no §10 row -> NOT REMOVABLE AUTOMATICALLY (no spec maps it; the architect "
                   "maps it to a contract, or records why it has none, first)")
             continue
-        held = next((HELD[r["origin"]] for r in mine if r["origin"] in HELD), None)
+        held = next((HELD[r["origin"]] for r in mine if r["origin"] in HELD), None) or unread
         for k, r in enumerate(mine):
             verdict = "" if k < len(mine) - 1 else (
                 f"  -> NOT REMOVABLE AUTOMATICALLY ({held})" if held else "  -> removable on confirmation")

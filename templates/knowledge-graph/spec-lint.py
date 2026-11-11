@@ -66,6 +66,7 @@ Usage:
 """
 from __future__ import annotations
 
+import posixpath
 import re
 import sys
 from pathlib import Path
@@ -145,7 +146,12 @@ BLOCK_END_RE = re.compile(r"^#{1,3}\s", re.M)
 KINDS = ("test", "run", "review", "covered")
 ORIGINS = ("design", "bug", "security control")
 ROW_STATUSES = ("red", "green", "pending", "skipped")
-TEST_REF_RE = re.compile(r"^([^\s`:|]+)::([A-Za-z_][\w.\-]*)$")
+# A §10 Test cell is `path::name`, the name running to the end of the cell: a
+# Python function, `Class::method`, or a TypeScript or JavaScript test's title
+# with its spaces. The worth check reads the cell the same way. A covered
+# Check line names its test by one whitespace-free token.
+TEST_REF_RE = re.compile(r"^([^\s`:|]+)::([^\s`|](?:[^`|]*[^\s`|])?)$")
+TEST_TOKEN_RE = re.compile(r"^([^\s`:|]+)::([A-Za-z_][\w.\-]*)$")
 SPAWN_RE = re.compile(r"confirmed by reviewer spawn\s+([A-Za-z0-9][\w.\-]*)")
 RESULT_RE = re.compile(r"(?:→|->)\s*(\S.*?)\s*$")
 _SUITE: list[set[Path]] = []   # the test files, globbed once on first use
@@ -355,8 +361,18 @@ def contract_checks(text: str) -> dict[str, str | None]:
     return out
 
 
+def test_ref(cell: str) -> tuple[str, str] | None:
+    """(path, name) of a §10 Test cell, or None when it is not `path::name`.
+    The path is read normalised (`./tests/x.py` is `tests/x.py`), as the worth
+    check matches it."""
+    m = TEST_REF_RE.match(cell)
+    return (posixpath.normpath(m.group(1)), m.group(2)) if m else None
+
+
 def test_exists(path: str, name: str) -> bool:
-    """`name` is in the code (not a comment) of `path`, a file of the suite."""
+    """`name` is in the code (not a comment) of `path`, a file of the suite;
+    for `Class::method`, the method's name."""
+    name = name.rsplit("::", 1)[-1]
     if not _SUITE:
         _SUITE.append(set(test_files()))
     f = (ROOT / path).resolve()
@@ -402,7 +418,7 @@ def check_evidence(value: str, live: bool) -> tuple[str, str | None, str]:
                           '"confirmed by reviewer spawn <id>"'), ""
         return kind, None, "review: pending"
     if kind == "covered":
-        ref = TEST_REF_RE.match(rest.split()[0].strip("`")) if rest else None
+        ref = TEST_TOKEN_RE.match(rest.split()[0].strip("`")) if rest else None
         if not ref:
             return kind, ("has kind covered but names no test; add "
                           "path::name of the test that asserts it"), ""
@@ -500,7 +516,7 @@ def read_form(spec: Path, text: str, status: str, secs: dict[int, str],
                 fails.append(f"{where}: §10 accepted, untested row gives no reason; "
                              f'write "accepted, untested — <why>"')
             continue                          # covers nothing
-        ref = TEST_REF_RE.match(row["test"])
+        ref = test_ref(row["test"])
         if not ref:
             fails.append(f"{where}: §10 Test cell {row['test']!r} is not file::name")
         if row["origin"].lower() not in ORIGINS:
@@ -520,8 +536,8 @@ def read_form(spec: Path, text: str, status: str, secs: dict[int, str],
                          f"{row['test']} is `{st}`")
         for t in covers:
             form["rows"].add(t)
-            if live and test_exists(ref.group(1), ref.group(2)):
-                form["refs"].setdefault(t, []).append(ref.group(0))
+            if live and test_exists(*ref):
+                form["refs"].setdefault(t, []).append("::".join(ref))
     return form
 
 

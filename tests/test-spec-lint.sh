@@ -9,6 +9,8 @@
 # SLICE: --slice prints one contract's block, its §10 rows and, with --refs,
 # pointers. ROW CELLS: a §10 row's cell count must match its header.
 # CONTRACT FORM (X560 to X565): Check kinds, their evidence, the Covers link.
+# TEST CELL (X941): a §10 Test cell's name runs to the end of the cell and its
+# path is read normalised, as the worth check reads it.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -734,12 +736,47 @@ case_slice_reads_the_new_form() {
   run_rc 0 klint --slice SUBMIT_BUTTON_LABEL_IS_SEND
   has -F 'Check:** run'
 }
+case_test_cell_reads_as_the_worth_check_does() {
+  CASE="X941 SPEC_LINT_READS_A_TEST_CELL_AS_THE_WORTH_CHECK_DOES"
+  # a TypeScript or JavaScript test is named by its title, spaces included,
+  # up to the end of the cell; the row is lint-clean and links its contract
+  kinds_reset
+  printf 'import { expect, test } from "vitest";\n\ntest("frame policy denies embedding", () => {\n  expect(frame("DENY")).toBe(true);\n});\n' > "$KF/tests/frame.test.ts"
+  kedit "$TEST_ROW" '| A page is framed by another origin | tests/frame.test.ts::frame policy denies embedding | SUBMIT_VALID_FORM_RETURNS_2XX | security control | green |'
+  run_rc 0 klint
+  hasnt 'not file::name'
+  has '^spec lint: PASS — 4 live contract(s) covered'
+  run_rc 0 klint --list
+  has -F 'SUBMIT_VALID_FORM_RETURNS_2XX  (SPEC-0401-kinds.md)  ->  tests/frame.test.ts::frame policy denies embedding'
+  # a title the suite does not hold leaves the contract uncovered, as a missing test does
+  kedit 'frame policy denies embedding |' 'frame policy allows embedding |'
+  run_rc 1 klint
+  has -- '- SUBMIT_VALID_FORM_RETURNS_2XX '
+  # a cell path is read normalised, as the worth check matches it
+  kinds_reset; kedit '| tests/submit_test.py::test_valid_form_accepted |' '| ./tests/submit_test.py::test_valid_form_accepted |'
+  run_rc 0 klint --list
+  has -F 'SUBMIT_VALID_FORM_RETURNS_2XX  (SPEC-0401-kinds.md)  ->  tests/submit_test.py::test_valid_form_accepted'
+  # a method of a class is named Class::method, as the worth check names it
+  kinds_reset
+  printf 'class TestSubmit:\n    def test_valid_form_accepted(self):\n        assert post("/submit").status == 201\n' > "$KF/tests/submit_test.py"
+  kedit '| tests/submit_test.py::test_valid_form_accepted |' '| tests/submit_test.py::TestSubmit::test_valid_form_accepted |'
+  run_rc 0 klint --list
+  has -F 'SUBMIT_VALID_FORM_RETURNS_2XX  (SPEC-0401-kinds.md)  ->  tests/submit_test.py::TestSubmit::test_valid_form_accepted'
+  # a cell with no name, and one with no path, are still not file::name
+  kinds_reset; kedit 'tests/submit_test.py::test_valid_form_accepted' 'tests/submit_test.py::'
+  run_rc 1 klint
+  has -F "Test cell 'tests/submit_test.py::' is not file::name"
+  kinds_reset; kedit 'tests/submit_test.py::test_valid_form_accepted' '::test_valid_form_accepted'
+  run_rc 1 klint
+  has -F "Test cell '::test_valid_form_accepted' is not file::name"
+}
 collect_case X560 case_contract_form_is_read "a spec declaring Contract form: kinds owes a Check line per contract; without it the spec is legacy"
 collect_case X561 case_each_kind_owes_its_evidence "run, review and covered each owe their evidence, and a declared-values table one Check line"
 collect_case X562 case_test_contract_is_linked_by_covers "a test contract is linked by a §10 Covers cell to a test that exists"
 collect_case X563 case_nothing_to_test_needs_no_rows "a new-form spec with nothing to test owes no §10 rows and no tester sign-off"
 collect_case X564 case_counts_by_kind "the summary counts contracts by kind, and only when a new-form spec is present"
 collect_case X565 case_slice_reads_the_new_form "--slice prints a new-form contract's block and the §10 rows whose Covers names it"
+collect_case X941 case_test_cell_reads_as_the_worth_check_does "a §10 Test cell names a spaced title, a normalised path and a class method, as the worth check reads it"
 CASE=""
 [ "$CASE_FAILED" -eq 0 ] || { printf 'spec lint contract: FAIL — the contract-form block has failing cases (above)\n'; exit 1; }
 

@@ -2,7 +2,7 @@
 status: implemented
 status_date: 2026-11-11
 owner: architect
-status_evidence: tests/test-worth-check.sh (X580 to X592, X600 to X602, X800 to X806, X810 to X812, X820, X900 to X905), wired into tests/run.sh, every §10 row green over the 32 contracts; each case was seen failing first on the missing tool or the unfixed heuristic, then passing against the fixture suite of tests/fixtures/worth/, its hand-written verdict table, the independent tester's adversarial table and, for X900 to X903, a plant installed into a `git init`ed directory with a §10 risk table and a marked trust path
+status_evidence: tests/test-worth-check.sh (X580 to X592, X600 to X602, X800 to X806, X810 to X812, X820, X900 to X906, X940, X942, X943), wired into tests/run.sh, every §10 row green over the 34 contracts; each case was seen failing first on the missing tool or the unfixed heuristic, then passing against the fixture suite of tests/fixtures/worth/, its hand-written verdict table, the independent tester's adversarial table and, for X900 to X903, a plant installed into a `git init`ed directory with a §10 risk table and a marked trust path
 ---
 
 # SPEC-0009: the worth check
@@ -71,7 +71,9 @@ judged. It never removes or edits a test: a flagged test is the owner's to
 keep with a reason, strengthen, leave in the plant's baseline or, outside the
 trust paths and the bug and security-control origins, remove on the owner's
 confirmation. Its `--removal-list` prints the flagged tests as one numbered
-batch the owner confirms by naming them, and removes nothing itself.
+batch the owner confirms by naming them, and removes nothing itself; while a
+plant's marked trust paths are not read in full it offers none of them for
+removal.
 
 ## 2. Scope
 
@@ -367,6 +369,24 @@ configured, and exit 0.
   tests that spec's §10 maps, its baseline tests included
 - **And:** a spec the plant does not hold exits 2 and names it
 
+### Contract: WORTH_REMOVAL_LIST_HOLDS_BACK_WHEN_THE_TRUST_PATHS_WERE_NOT_READ
+- **Given:** a plant that marks a trust path, a read-back test that imports a
+  file on it and carries a §10 row of origin `design`, and a design-row test
+  off the paths; the plant's source index exits 1, a trust node cannot be
+  opened, or the source index answers in part
+- **When:** `worth-check.py --removal-list` runs
+- **Then:** above the batch it prints the trust line (`worth-check: trust
+  paths not consulted: <reason>; ...` or `worth-check: trust paths consulted
+  in part: ...`) and a `worth-check: §10 rows not read: ...` line for each spec
+  it could not open; every test in the batch that no other hold-back already
+  holds prints `-> NOT REMOVABLE AUTOMATICALLY (the trust paths were not read
+  in full: <reason>; re-run once they are)`, no test prints `-> removable on
+  confirmation`, and it exits 0
+- **And:** with the trust paths read in full the trust-path test is spared and
+  never reaches the batch, and the design-row test off the paths prints `->
+  removable on confirmation` as before
+- **Test file:** `tests/test-worth-check.sh` (X940)
+
 ### Contract: WORTH_NEVER_EDITS_A_TEST
 - **Given:** any run of the worth check, `--removal-list` included
 - **When:** it finishes
@@ -398,7 +418,10 @@ configured, and exit 0.
   name says regression or names a word of the security list, since no name and
   no word spares a test a row maps; a legacy row that records no origin decides
   nothing, and its test reads as if no row maps it
-- **Test file:** `tests/test-worth-check.sh` (X900)
+- **And:** a Test cell is read as the plant's `spec-lint.py` reads it: its path
+  normalised (`./tests/x.py` is `tests/x.py`) and its name running to the end
+  of the cell, so a TypeScript or JavaScript title with spaces names its test
+- **Test file:** `tests/test-worth-check.sh` (X900, X943)
 
 ### Contract: WORTH_SPARES_A_TEST_ON_A_TRUST_PATH
 - **Given:** a plant whose `docs/graph/nodes/` holds a `kind: crosscut` node
@@ -461,6 +484,17 @@ configured, and exit 0.
 - **And:** the closing line says any other test leaves the suite only when the
   owner confirms it by name (`--removal-list`)
 - **Test file:** `tests/test-worth-check.sh` (X904)
+
+### Contract: WORTH_FAILURE_NAMES_THE_DECLARATIONS_THAT_SPARE
+- **Given:** a run with a flagged test outside the baseline, and a
+  `--write-baseline` refused for a test it would add
+- **When:** the worth check prints its closing line or its refusal
+- **Then:** after the keep line and the strengthening, it offers the two
+  declarations that spare a security control or a bug reproduction: `record
+  its §10 row with origin security control (or bug), or mark the trust path it
+  exercises (a trust: true crosscut that claims the file)`
+- **And:** no remedy opens with removal
+- **Test file:** `tests/test-worth-check.sh` (X942)
 
 ### Contract: WORTH_UNSEEN_ASSERTION_IS_NOT_JUDGED
 - **Given:** a test that calls a helper in its file that asserts, a test that
@@ -543,7 +577,9 @@ title is computed, are not read: each is listed as not checked.
 
 A §10 row maps a test by its Test cell `path::name` (a risk-based row) or its
 Test file and Test name cells (a legacy row), read as the removal list reads
-them. Its origin, lower-cased with hyphens read as spaces, is `bug`,
+them, its path normalised (`posixpath.normpath`) and its name running to the
+end of the cell, as the plant's `spec-lint.py` reads a Test cell. Its origin,
+lower-cased with hyphens read as spaces, is `bug`,
 `security control`, another recorded origin, or none (a legacy row). A trust
 path is what a `kind: crosscut` node directly under `docs/graph/nodes/`, marked
 `trust: true`, claims through `graph-lint.py --trust-claims`; the test files
@@ -578,7 +614,12 @@ importing the plant's spec lint: a risk-based row links by its `path::name`
 Test cell and its Covers cell, a legacy row by its Test file and Test name
 cells and its first cell. A row whose status records `dropped:`, `merged
 into` or `removed:` links nothing. A contract's kind is its `Check:` line,
-`test` when it has none.
+`test` when it has none. The list opens with the run's trust line and a line
+per spec it could not open. A test is held back (`NOT REMOVABLE
+AUTOMATICALLY`, with its reason) when a row of origin bug or security control
+maps it, when only a legacy row with no origin maps it, when no row maps it,
+and, whatever its rows, when the plant marks trust paths whose state is `not
+consulted` or `partial`.
 
 ### Baseline
 
@@ -619,7 +660,8 @@ shrinks after the first write.
   reached through a link the index does not see, such as a dynamic import or a
   request over HTTP) reads as a plain read-back
 - **Response:** the test is flagged, and the plant's gate fails on it as on any
-  new flag; the failing line says it is never removed to clear the flag
+  new flag; the failing line says it is never removed to clear the flag and
+  offers the §10 origin and the trust marking that would spare it
 - **Recovery:** the architect records the test's §10 row with origin
   `security control`, the plant marks the file it guards as a trust path, or
   the author keeps the test with a keep line and its reason
@@ -635,6 +677,33 @@ shrinks after the first write.
   and the word list still applies to a test no §10 row maps
 - **Recovery:** the plant repairs what the records name (the source index's own
   fixes), or records the test's §10 row
+
+### Failure: DELETED_BASELINE_IS_WRITTEN_AFRESH
+- **Trigger:** the plant's `docs/graph/worth-baseline.txt` is deleted, and
+  `--write-baseline` runs: with no file the write is a first write, which is
+  free, so every test flagged that day enters the new baseline and stops
+  failing the gate
+- **Response:** the check writes the file and says how many tests it holds and
+  that there was no file before; it cannot tell a deletion from a plant's
+  first baseline. An accepted limit (the security review of 2026-11-11), of
+  ADR-0003 class detective: only the diff of the tracked baseline file shows
+  the first write, and the tests it took in
+- **Recovery:** the reviewer of the change reads the baseline file's diff; a
+  baseline that grew is restored from Git and each new flag is kept with a
+  reason, strengthened, or declared
+
+### Failure: FLOOR_REACH_NAMES_THE_TEST_ITSELF
+- **Trigger:** the source index reaches a test file only through its floor (a
+  test whose references it cannot pin), so its answer names no trust-path file
+  the test reaches
+- **Response:** the test is spared as on a trust path, and its reason names
+  the test's own path where a pinned reach names the trust-path file:
+  `reads or imports a file on a marked trust path (<the test's path>)`. The
+  check errs toward sparing, so the spare stands. An accepted limit (the
+  security review of 2026-11-11), of ADR-0003 class judgment: a reader of the
+  reason tells a floor reach from a pinned one by the path it names
+- **Recovery:** the plant repairs the link the index cannot pin (the source
+  index's own fixes), or records the test's §10 row
 
 ### Failure: SETUP_FILE_OUTSIDE_THE_TEST_IS_NOT_READ
 - **Trigger:** a test reads a file that a setup file named only in the
@@ -662,7 +731,20 @@ tests/e2e/smoke.sh  not checked (shell)
 tests/test_labels.py::test_label_matches_the_snapshot  not judged (snapshot)
 worth-check: trust paths consulted: 3 file(s) on the marked trust paths, 4 test file(s) reach them (docs/graph/source-index.py); a test no §10 row maps is spared by a declaration only
 worth-check: 1 flagged (0 in baseline), 12 files read, 2 not checked (languages: shell; not judged: 1 test(s))
-worth-check: FAIL — 1 flagged test(s) are not in the baseline. For each: keep it with a "worth-check: keep — <reason>" line directly above it if it earns its place, or strengthen it so it feeds inputs to the logic it guards. A test on a trust path, a test whose §10 origin is bug and a security-control test are never removed to clear a flag: ...
+worth-check: FAIL — 1 flagged test(s) are not in the baseline. For each: keep it with a "worth-check: keep — <reason>" line directly above it if it earns its place, or strengthen it so it feeds inputs to the logic it guards. If it guards a security control or reproduces a bug, record its §10 row with origin security control (or bug), or mark the trust path it exercises (a trust: true crosscut that claims the file); either declaration spares it. A test on a trust path, a test whose §10 origin is bug and a security-control test are never removed to clear a flag: ...
+```
+
+In a plant whose one flagged test imports a trust-path file under a §10 row of
+origin design, with the source index failing, the removal list holds it back:
+
+```
+$ python3 docs/graph/worth-check.py --removal-list
+worth-check: trust paths not consulted: docs/graph/source-index.py build did not answer (exit 1: ); no test is spared for a trust path, and the security word list applies to a test no §10 row maps
+removal batch — 1 test(s) for the owner's confirmation (nothing is removed by this list)
+ 1. tests/test_auth_design.py::test_algorithms_listed
+    flagged: only assertion reads back ['RS256'] that the same change adds (worth-check)
+    §10 row: SPEC-0001 "The algorithm list on the trust path reads as written" origin: design  -> NOT REMOVABLE AUTOMATICALLY (the trust paths were not read in full: docs/graph/source-index.py build did not answer (exit 1: ); re-run once they are)
+To confirm, reply in the chat naming the tests to remove, e.g. "remove tests 1 and 4 of the batch".
 ```
 
 ## 9. Acceptance criteria
@@ -717,6 +799,12 @@ worth-check: FAIL — 1 flagged test(s) are not in the baseline. For each: keep 
   never removed to clear a flag, and an assertion the check cannot see is named
   not judged and counted with the not checked; maps to
   WORTH_FAILURE_NEVER_LEADS_WITH_REMOVAL, WORTH_UNSEEN_ASSERTION_IS_NOT_JUDGED
+- [x] AC-13: the removal list offers no test for removal while the plant's
+  trust paths are not read in full, and names the trust state and the specs it
+  could not read above the batch; the failing line offers the §10 origin and
+  the trust marking as remedies; maps to
+  WORTH_REMOVAL_LIST_HOLDS_BACK_WHEN_THE_TRUST_PATHS_WERE_NOT_READ,
+  WORTH_FAILURE_NAMES_THE_DECLARATIONS_THAT_SPARE
 
 ## 10. Test mapping
 
@@ -743,8 +831,16 @@ neither, under names free of the word list, are flagged (X902). Every X900 to
 X906 case, the reworded closing line and the moved `known-gaps.tsv` rows
 (the four now `not judged` in `adversarial.tsv`, the regression-named one
 flagged under a design row, the nine round-four rows spared by the stopgap
-words) were `red` on the tool as it stood at 8.5.0, then green. A row of
-`known-gaps.tsv` is a documented limit, held at the verdict that file records.
+words) were `red` on the tool as it stood at 8.5.0, then green. X940, X942
+and X943 gate the findings of the security review of 2026-11-11 in the same
+kind of plant: the review's reproduction (a test importing `JWT_ALGORITHMS`
+from a trust-path file under a design row, with the source index replaced by a
+script that exits 1) printed `-> removable on confirmation` before the fix;
+each case was `red` on the tool as it stood after X906, then green. The
+spec lint's side of the Test-cell finding is SPEC-0005's
+SPEC_LINT_READS_A_TEST_CELL_AS_THE_WORTH_CHECK_DOES (X941 in
+`tests/test-spec-lint.sh`). A row of `known-gaps.tsv` is a documented limit,
+held at the verdict that file records.
 
 | Contract / Failure | Test case | Test file | Level | Status |
 |---|---|---|---|---|
@@ -764,6 +860,7 @@ words) were `red` on the tool as it stood at 8.5.0, then green. A row of
 | WORTH_REMOVAL_LIST_NAMES_EACH_TEST | X600 a design-origin test written now and an older one from the baseline, each with its row and what it leaves without evidence | tests/test-worth-check.sh | integration (fixture) | green |
 | WORTH_REMOVAL_LIST_HOLDS_BACK_THE_NEVER_AUTOMATIC_KINDS | X601 bug, security control, a legacy row with no origin, no §10 row | tests/test-worth-check.sh | integration (fixture) | green |
 | WORTH_REMOVAL_LIST_FOR_A_REOPENED_SPEC | X602 --spec narrows to the spec's tests, baseline included; an unknown spec exits 2 | tests/test-worth-check.sh | integration (fixture) | green |
+| WORTH_REMOVAL_LIST_HOLDS_BACK_WHEN_THE_TRUST_PATHS_WERE_NOT_READ | X940 read in full, the trust-path test under a design row is spared and a design-row test off the paths stays removable; with a source index that exits 1, an answer in part and an unreadable trust node, the trust line opens the list and every design-row test is held back with the reason; an unreadable spec is named above the batch | tests/test-worth-check.sh | integration (temp install, git) | green |
 | WORTH_SETUP_OUTPUT_IS_NOT_A_LITERAL | X800 a file a unittest setUp and a file a beforeAll had the code under test write are read and spared | tests/test-worth-check.sh | integration (fixture) | green |
 | WORTH_IMPORTED_CALL_IS_CODE_UNDER_TEST | X801 an imported resolve(), router.match(), router.get() and users.find() are code under test | tests/test-worth-check.sh | integration (fixture) | green |
 | WORTH_UNREAD_TEST_IS_NOT_CHECKED | X802 a parametrize table and a test.each table read as literals; a computed table, a tagged template and a computed title named and counted as not checked | tests/test-worth-check.sh | integration (fixture) | green |
@@ -776,14 +873,18 @@ words) were `red` on the tool as it stood at 8.5.0, then green. A row of
 | WORTH_SETUP_THAT_ONLY_READS_IS_A_READ | X811 a setUp that copies a constant or reads a file flags; a setUp that also builds, and a class under an unseen base, spare | tests/test-worth-check.sh | integration (fixture) | green |
 | WORTH_DESCRIBE_BODY_READ_IS_A_READ | X812 a const a describe body read from a file flags; the same read beside a build hook, and one held in a let, spare | tests/test-worth-check.sh | integration (fixture) | green |
 | WORTH_SPARES_BY_SECTION_10_ORIGIN | X900 the JWT_ALGORITHMS and LOCKOUT_THRESHOLD pins a security-control row maps and a bug-origin test are spared; design rows flag a jwt-named and a regression-named pin; the regression-named adversarial row flags under a design row | tests/test-worth-check.sh | integration (temp install, git) | green |
+| WORTH_SPARES_BY_SECTION_10_ORIGIN | X943 a security-control row whose Test cell reads `./tests/test_pins.py::test_algorithms_pinned`, and one naming a TypeScript title with spaces, each spare the test they name; without the rows both flag | tests/test-worth-check.sh | integration (fixture) | green |
 | WORTH_SPARES_A_TEST_ON_A_TRUST_PATH | X901 the same pins importing a module a trust crosscut claims, and a test reading a claimed config file, are spared through source-index.py and graph-lint.py; the trust line counts the files and the tests | tests/test-worth-check.sh | integration (temp install, git) | green |
 | WORTH_VOCABULARY_ONLY_WITHOUT_A_DECLARATION | X902 with neither a row nor a trust path the pins under plain names flag and under jwt, lockout, role, allowed origins and a regression name spare; a jwt-named test off the trust paths of a marking plant flags; the round-four adversarial rows get their owed verdict | tests/test-worth-check.sh | integration (temp install, git) | green |
 | WORTH_TRUST_PATHS_NOT_CONSULTED_ARE_NAMED | X903 a missing source index, one with no affected-tests, and a graph-lint.py with no --trust-claims are each named; the word list applies and the run still fails | tests/test-worth-check.sh | integration (temp install, git) | green |
 | WORTH_FAILURE_NEVER_LEADS_WITH_REMOVAL | X904 the closing line and a refused baseline write open with the keep line and say a trust-path, bug or security-control test is never removed to clear a flag | tests/test-worth-check.sh | integration (fixture) | green |
+| WORTH_FAILURE_NAMES_THE_DECLARATIONS_THAT_SPARE | X942 the closing line and a refused baseline write offer the §10 origin and the trust marking after the keep line and the strengthening, and no remedy opens with removal | tests/test-worth-check.sh | integration (fixture) | green |
 | WORTH_UNSEEN_ASSERTION_IS_NOT_JUDGED | X905 a helper's assertion, a golden file and a snapshot in each language are named not judged and counted with the not checked; logic-fed snapshots spare; a not judged baseline entry is not shrinkable; the four adversarial rows get not judged | tests/test-worth-check.sh | integration (fixture) | green |
 | HEURISTIC_SPARES_A_READ_BACK | X806 each documented limit of known-gaps.tsv keeps the verdict that file records, so a fix moves its row (none since 2026-11-11) | tests/test-worth-check.sh | integration (fixture) | green |
 | TRUST_REACH_IS_PARTIAL | X906 a source index that answers with a depth-cap record spares what it names, the line names the record, and the word list stays on | tests/test-worth-check.sh | integration (temp install, git) | green |
 | SECURITY_CONTROL_OUTSIDE_THE_SPARE_IS_FLAGGED | none: a control no declaration and no word reaches has nothing the check could read; the §10 row, the trust marking or the keep line is the recovery | none | none | none |
+| DELETED_BASELINE_IS_WRITTEN_AFRESH | none: an accepted limit; a deleted file and a first baseline look alike to the check, and the tracked file's diff is the detective record | none | none | none |
+| FLOOR_REACH_NAMES_THE_TEST_ITSELF | none: an accepted limit; the spare stands, and the path its reason names tells a floor reach from a pinned one | none | none | none |
 | SETUP_FILE_OUTSIDE_THE_TEST_IS_NOT_READ | none: a runner's configuration is outside the test files the check reads; the keep line is the recovery | none | none | none |
 | ADOPTED_SUITE_FLAGS_ON_DAY_ONE | none: graft's baseline step reports the count, and the owner decides on a cleanup | none | none | none |
 
@@ -795,9 +896,9 @@ words) were `red` on the tool as it stood at 8.5.0, then green. A row of
 | Should a security setting held under a string key be spared? | `HEADERS["Content-Security-Policy"] == "default-src 'self'"` and `SETTINGS["SESSION_COOKIE_SECURE"] is True` (Python) and the TypeScript header form were flagged, because the security spare read identifiers and never a key, while `SESSION_COOKIE_SECURE is True` is spared in `expected.tsv`: the same control got two verdicts by how it is stored. Two false negatives beside it: a `setUp` that only copies a constant spared the test, and a `readFileSync` in a `describe` body read as logic | closed on 2026-11-11: a string used as a key names a thing and the security spare reads it, while a string compared against is content and never counts (WORTH_SECURITY_KEY_IS_A_DECLARATION, X810); a setUp that only reads binds a read (WORTH_SETUP_THAT_ONLY_READS_IS_A_READ, X811); a const a describe body only reads is a read (WORTH_DESCRIBE_BODY_READ_IS_A_READ, X812). The five rows left `known-gaps.tsv` for the gated table | architect | closed |
 | Should a security header whose name holds no security word be spared? | round three of the independent tester's cases: `HEADERS["X-Frame-Options"] == "DENY"` (Python) and `expect(HEADERS["X-Frame-Options"]).toBe("DENY")` (TypeScript) are flagged, while Strict-Transport-Security and Content-Security-Policy keys are spared, because the security spare matches words and X-Frame-Options names none; X-Content-Type-Options and Referrer-Policy fall the same way, so a plant's gate fails on a clickjacking or sniffing control. Both are rows of `known-gaps.tsv`, class false-positive, held at today's verdict so the gate shows a fix | closed on 2026-11-11: a string key shaped like an HTTP header name is a security declaration by its shape, and the standard security header names join the vocabulary for identifiers (WORTH_HEADER_NAME_KEY_IS_A_SECURITY_DECLARATION, X820); the two rows left `known-gaps.tsv` for the gated table. The spare stays a heuristic with edges, and §7 names the residual risk (SECURITY_CONTROL_OUTSIDE_THE_SPARE_IS_FLAGGED) | architect | closed |
 | Should the security vocabulary name roles, allow-lists, origins, lockouts and JWT? | round four of the independent tester's cases: `ROLE_REQUIRED["/billing"] == "owner"`, `LOCKOUT_THRESHOLD == 5`, `ALLOWED_ORIGINS`, `ALLOWED_HOSTS` membership and `JWT_ALGORITHMS == ["RS256"]`, in Python and TypeScript (9 cases), are flagged: settings named for their effect, whose words are outside the spare's vocabulary. They are the vocabulary edge SECURITY_CONTROL_OUTSIDE_THE_SPARE_IS_FLAGGED names, kept with a keep line and its reason, and rows of `known-gaps.tsv`; they do not block the tester's sign | closed on 2026-11-11 by the owner's decision of that date: the check spares by declaration (a §10 origin of security control, a marked trust path), and the words role, lockout, origin, allowed and jwt join the word list as a stopgap for a plant that declares neither (WORTH_SPARES_BY_SECTION_10_ORIGIN, WORTH_SPARES_A_TEST_ON_A_TRUST_PATH, WORTH_VOCABULARY_ONLY_WITHOUT_A_DECLARATION, X900 to X902); the nine rows left `known-gaps.tsv` for the gated table | architect | closed |
-| Does the security review accept sparing by declaration? | in a plant that marks trust paths the word list is off, so a security test off those paths with no §10 row is flagged where 8.5.0 spared it by a word; a trust path reached through a link the source index does not see, and a §10 Test cell spelled otherwise than the test's `path::name`, spare nothing; a trust path the check cannot consult falls back to the word list | reviewed on 2026-11-11: the gate verdicts are accepted. A §10 origin of bug or security control and a trust path reached by a static or a literal dynamic import spare; a non-literal dynamic import reaches the source index's floor and spares too; a test that drives the application over HTTP calls code and is spared as logic. What stays flagged in a plant that marks trust paths (a control off them with no §10 row, a setting named for its effect, a control whose row says origin design) fails the gate, which is a hurdle the keep line clears in one line, and the removal list holds a test with no §10 row back. An unreadable test file exits 2 and never reports clean. The baseline lists every entry on every run. The sign waits on the next two rows | security | the next two rows |
-| Does the removal list hold a trust-path test back when the trust paths were not read in full? (blocking for the security sign) | `--removal-list` decides each test from its §10 rows alone and prints neither the trust line nor the §10-read notes. When the plant marks a trust path and its source index fails, times out or is older, a trust node cannot be opened, or the answer is partial, a test that imports a trust-path file and carries a §10 row of origin design (a pin of `JWT_ALGORITHMS == ["RS256"]` under a design row) is printed `-> removable on confirmation`, exit 0, with no word that the trust paths went unread. In a consulted run the same test is spared. The hold-back is soft enforcement (a tool refuses); it fails open here, and the owner's confirmation, a judgment, then rests on a list that misstates the rule the failing line promises: a test on a trust path is never removed to clear a flag. Reproduced on 2026-11-11 in a plant installed into a `git init`ed directory, with `docs/graph/source-index.py` replaced by a script that exits 1, and again with the trust node made unreadable | open. Smallest fix: `--removal-list` prints the trust line and any §10-read note above the batch, and when the plant marks a trust path whose state is `not consulted` or `partial`, each test that a bug or security-control row does not already hold back prints `-> NOT REMOVABLE AUTOMATICALLY (the trust paths were not read in full; repair what the trust line names first)`; a case beside X601 with the source index replaced by a failing script gates it | architect | the fix and its RED |
-| Should the plant's spec lint and the worth check read a §10 Test cell the same way? (should-fix) | the plant's `spec-lint.py` refuses a Test cell whose name holds a space (`tests/frame.test.ts::frame policy denies embedding` is "not file::name"), so a TypeScript or JavaScript test with an ordinary title cannot carry a lint-clean security-control row, though the worth check reads that row and spares by it; the spec lint accepts `./tests/x.py::test_y`, which the worth check matches to no test, so the test is flagged and listed with no §10 row. A row naming `file::test_y` also spares every class's `test_y` in that file (a spare too many, harmless to a control) | open. Smallest fix: the spec lint's Test-cell name accepts a title up to the cell's end, and the worth check normalises the cell's path (`posixpath.normpath`) before it compares; both fail toward a flag and a hold-back, never toward a removal | architect | the next point release |
+| Does the security review accept sparing by declaration? | in a plant that marks trust paths the word list is off, so a security test off those paths with no §10 row is flagged where 8.5.0 spared it by a word; a trust path reached through a link the source index does not see, and a §10 Test cell spelled otherwise than the test's `path::name`, spare nothing; a trust path the check cannot consult falls back to the word list | reviewed on 2026-11-11: the gate verdicts are accepted. A §10 origin of bug or security control and a trust path reached by a static or a literal dynamic import spare; a non-literal dynamic import reaches the source index's floor and spares too; a test that drives the application over HTTP calls code and is spared as logic. What stays flagged in a plant that marks trust paths (a control off them with no §10 row, a setting named for its effect, a control whose row says origin design) fails the gate, which is a hurdle the keep line clears in one line, and the removal list holds a test with no §10 row back. An unreadable test file exits 2 and never reports clean. The baseline lists every entry on every run. The sign waits on the next two rows, both closed on 2026-11-11; the security reviewer re-verifies them and ticks | security | the security reviewer's re-verification |
+| Does the removal list hold a trust-path test back when the trust paths were not read in full? (blocking for the security sign) | `--removal-list` decides each test from its §10 rows alone and prints neither the trust line nor the §10-read notes. When the plant marks a trust path and its source index fails, times out or is older, a trust node cannot be opened, or the answer is partial, a test that imports a trust-path file and carries a §10 row of origin design (a pin of `JWT_ALGORITHMS == ["RS256"]` under a design row) is printed `-> removable on confirmation`, exit 0, with no word that the trust paths went unread. In a consulted run the same test is spared. The hold-back is soft enforcement (a tool refuses); it fails open here, and the owner's confirmation, a judgment, then rests on a list that misstates the rule the failing line promises: a test on a trust path is never removed to clear a flag. Reproduced on 2026-11-11 in a plant installed into a `git init`ed directory, with `docs/graph/source-index.py` replaced by a script that exits 1, and again with the trust node made unreadable | closed on 2026-11-11: `--removal-list` prints the trust line and any §10-read note above the batch, and when the plant marks a trust path whose state is `not consulted` or `partial`, each test no other hold-back already holds prints `-> NOT REMOVABLE AUTOMATICALLY (the trust paths were not read in full: <reason>; re-run once they are)` (WORTH_REMOVAL_LIST_HOLDS_BACK_WHEN_THE_TRUST_PATHS_WERE_NOT_READ, X940, seen red on the review's reproduction first). The failing line now offers the §10 origin and the trust marking as remedies too, the review's accepted limit on its wording (WORTH_FAILURE_NAMES_THE_DECLARATIONS_THAT_SPARE, X942). The security sign in §0 waits on the security reviewer's re-verification | architect | closed |
+| Should the plant's spec lint and the worth check read a §10 Test cell the same way? (should-fix) | the plant's `spec-lint.py` refuses a Test cell whose name holds a space (`tests/frame.test.ts::frame policy denies embedding` is "not file::name"), so a TypeScript or JavaScript test with an ordinary title cannot carry a lint-clean security-control row, though the worth check reads that row and spares by it; the spec lint accepts `./tests/x.py::test_y`, which the worth check matches to no test, so the test is flagged and listed with no §10 row. A row naming `file::test_y` also spares every class's `test_y` in that file (a spare too many, harmless to a control) | closed on 2026-11-11: the spec lint's Test-cell name runs to the end of the cell (a spaced title, `Class::method`) and both tools read the cell's path normalised (`posixpath.normpath`), so a row the lint accepts is the row the check matches (SPEC-0005 SPEC_LINT_READS_A_TEST_CELL_AS_THE_WORTH_CHECK_DOES, X941; WORTH_SPARES_BY_SECTION_10_ORIGIN, X943; each seen red first). Every spec and fixture the seed holds lints byte for byte as before. A row naming `file::test_y` still spares every class's `test_y` in that file, the harmless spare the review names | architect | closed |
 | Should a test that reads a file a setup hook had the code under test write be spared? | WORTH_SPARES_LOGIC_TESTS spares a test that reads a file the code under test wrote, yet a setup hook that calls the build was not read, so the test was flagged: a false positive | closed on 2026-11-11: setup hooks are read as logic (WORTH_SETUP_OUTPUT_IS_NOT_A_LITERAL, X800). A setup file named only in the runner's configuration stays a limit (SETUP_FILE_OUTSIDE_THE_TEST_IS_NOT_READ) | architect | closed |
 | Should a TypeScript call into the code under test whose name is a read helper be spared? | an imported `resolve(...)` read as `path.resolve`, and `match` on an imported object as `String.match`: two false positives | closed on 2026-11-11: an imported name is code under test unless its module is a Node built-in, and a string method reads only a value already read or an upper-case imported constant (WORTH_IMPORTED_CALL_IS_CODE_UNDER_TEST, X801) | architect | closed |
 | Should `test.each` and `it.each` be read, or named as not read? | a parametrized TypeScript test was skipped with nothing in the report | closed on 2026-11-11: a literal table is read, any other table and a computed title are listed and counted as not checked, in both languages (WORTH_UNREAD_TEST_IS_NOT_CHECKED, X802) | architect | closed |
@@ -966,3 +1067,23 @@ words) were `red` on the tool as it stood at 8.5.0, then green. A row of
   is fixed and gated. No fixture row was added: the blocking case is a property
   of `--removal-list` in a plant whose tools fail, which the verdict tables do
   not hold.
+- 2026-11-11 — the security review's findings fixed. The blocking one: the
+  removal list prints the trust line and any spec it could not read above the
+  batch, and while a plant's marked trust paths are not read in full (not
+  consulted, or consulted in part) it holds every test in the batch back with
+  the reason, so a security control on a trust path is never offered for
+  removal because a plant tool failed. The should-fix one: a Test cell's path
+  is read normalised and its name runs to the end of the cell in both the
+  check and the plant's spec lint (SPEC-0005). The failing line and a refused
+  baseline write now offer the §10 origin and the trust marking after the keep
+  line and the strengthening. Two contracts added
+  (WORTH_REMOVAL_LIST_HOLDS_BACK_WHEN_THE_TRUST_PATHS_WERE_NOT_READ,
+  WORTH_FAILURE_NAMES_THE_DECLARATIONS_THAT_SPARE),
+  WORTH_SPARES_BY_SECTION_10_ORIGIN and
+  SECURITY_CONTROL_OUTSIDE_THE_SPARE_IS_FLAGGED restated in place with §1, §6,
+  §8 and AC-13, and two accepted limits of the review recorded as failure
+  modes: DELETED_BASELINE_IS_WRITTEN_AFRESH (detective) and
+  FLOOR_REACH_NAMES_THE_TEST_ITSELF (judgment). X940, X942 and X943 were seen
+  failing on the tool as it stood, the review's reproduction among them, then
+  green. §11 closes the two rows; the §0 sign-offs stand as given, and the
+  security reviewer re-verifies before ticking.
