@@ -2,7 +2,7 @@
 status: back-written
 status_date: 2026-11-10
 owner: architect
-status_evidence: tests/test-brief.sh (X570 to X575, wired into tests/run.sh through the brief step) and tests/test-worth-check.sh (X603, X604), each case seen failing against the composer without the merged kind and against an effort-scale node without the band line before the code and the line landed
+status_evidence: tests/test-brief.sh (X570 to X575 and X730, X731, wired into tests/run.sh through the brief step) and tests/test-worth-check.sh (X603, X604), each case seen failing against the composer without the merged kind and against an effort-scale node without the band line before the code and the line landed
 ---
 
 # SPEC-0008: who writes the test
@@ -13,7 +13,7 @@ status_evidence: tests/test-brief.sh (X570 to X575, wired into tests/run.sh thro
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-11-10
-- **Last reviewed:** 2026-11-10
+- **Last reviewed:** 2026-11-11
 - **Related grill section:** docs/plans/grill-8.5.0-tester-surfaces.md §9,
   the increment that carries step T9 (to be added by the session)
 - **Related ADRs:** adr-0034-a-test-is-owed-only-where-it-can-catch-something
@@ -25,7 +25,12 @@ status_evidence: tests/test-brief.sh (X570 to X575, wired into tests/run.sh thro
 - **Design latitude:** narrow. The owner decided on 2026-11-10 that for
   low-risk logic off trust paths the implementer writes the test and the code
   in one spawn, and that the low-risk band is the two lowest effort labels,
-  `low` and `medium-low`, recorded as a default the owner can move
+  `low` and `medium-low`, recorded as a default the owner can move; the
+  owner decided on 2026-11-11 that a bug reproduction owes a tester when it
+  arrives as a §10 row of origin `bug` in a spec'd increment, and that a
+  contained-lane defect fix keeps one worker writing the reproduction test
+  and the fix, the test seen failing before the fix and kept, the reviewer a
+  separate spawn
 - **Supersedes:** none
 - **Superseded by:** none
 - **Sign-offs:** product [ ] · architect [ ] · tester [ ] · security [ ]
@@ -99,7 +104,8 @@ names it and which shares a contract with it) is read with it.
 - **And:** a tester brief composes, exit 0
 
 ### Contract: STATEFUL_CONCURRENT_OR_BUG_REPRODUCTION_OWES_A_TESTER
-- **Given:** a low-band RED whose contract a §10 risk row of origin `bug`
+- **Given:** a low-band RED in a spec'd increment (its `Spec contracts:`
+  cites a `SPEC-NNNN/SLUG`) whose contract a §10 risk row of origin `bug`
   covers, or a low-band increment briefed with `--alone <reason>`
 - **When:** the merged brief is composed
 - **Then:** it exits 2 with `its test reproduces a bug (SPEC-NNNN §10 origin
@@ -132,6 +138,24 @@ names it and which shares a contract with it) is read with it.
   covers, `killed <path::name>` or `survived-all <path::name>`, and still
   makes the pass mandatory for security, data-integrity and money contracts
   only
+
+### Contract: CONTAINED_LANE_DEFECT_COMPOSES_ONE_IMPLEMENTER_BRIEF
+- **Given:** a plant that marks a trust path, and a low-band increment off
+  trust paths whose `Spec contracts:` reads `none` (the contained lane,
+  `tiers.contained-lane`), whose title names the defect it reproduces, and
+  which cites its reproduction test
+- **When:** `brief.py --role implementer --kind merged --increments N --unit u` runs
+- **Then:** it exits 0 and the brief asks for the reproduction test seen
+  failing for the right reason before any code, and the spawn log record
+  carries `"merged": [N]`
+- **And:** a tester brief for the same increment names the merged path
+
+### Contract: CONTAINED_LANE_DEFECT_KEEPS_THE_OTHER_REASONS
+- **Given:** a contained-lane defect, as above, whose fix touches a path a
+  `trust: true` crosscut claims
+- **When:** the merged brief is composed
+- **Then:** it exits 2 naming `on a trust path (<path>: <crosscut>)`, and the
+  line names no bug reproduction among its reasons
 
 ### Contract: TESTER_BRIEF_NAMES_THE_MERGED_PATH
 - **Given:** a low-band RED off trust paths
@@ -177,7 +201,7 @@ low-risk band (low, medium-low); compose --role tester (delegation.effort-scale)
   brief, RED first; maps to LOW_BAND_INCREMENT_COMPOSES_ONE_IMPLEMENTER_BRIEF,
   TESTER_BRIEF_NAMES_THE_MERGED_PATH
 - [x] AC-2: a trust path, a label above the band, stateful or concurrent code
-  and a bug reproduction keep a tester; maps to TRUST_PATH_INCREMENT_OWES_A_TESTER,
+  and a spec'd increment's bug reproduction keep a tester; maps to TRUST_PATH_INCREMENT_OWES_A_TESTER,
   ABOVE_BAND_INCREMENT_OWES_A_TESTER,
   STATEFUL_CONCURRENT_OR_BUG_REPRODUCTION_OWES_A_TESTER
 - [x] AC-3: the band has one home the owner can move; maps to
@@ -185,6 +209,11 @@ low-risk band (low, medium-low); compose --role tester (delegation.effort-scale)
 - [x] AC-4: the worker that wrote a test that catches nothing removes it, and
   the mutation pass names each test it killed nothing with; maps to
   WRITER_REMOVES_A_TEST_THAT_CATCHES_NOTHING, MUTATION_PASS_REPORTS_EACH_TEST
+- [x] AC-5: a contained-lane defect fix keeps one worker for its
+  reproduction test and its fix, and every other reason still owes a
+  tester; maps to
+  CONTAINED_LANE_DEFECT_COMPOSES_ONE_IMPLEMENTER_BRIEF,
+  CONTAINED_LANE_DEFECT_KEEPS_THE_OTHER_REASONS
 
 ## 10. Test mapping
 
@@ -197,6 +226,8 @@ Each case carries its label and the slug it asserts in its `ok`/`bad` line.
 | ABOVE_BAND_INCREMENT_OWES_A_TESTER | X572 a medium increment | tests/test-brief.sh | integration (fresh install) | green |
 | STATEFUL_CONCURRENT_OR_BUG_REPRODUCTION_OWES_A_TESTER | X573 a bug-origin §10 row; `--alone` | tests/test-brief.sh | integration (fresh install) | green |
 | LOW_BAND_IS_READ_FROM_THE_EFFORT_SCALE_NODE | X574 the band line moved in the installed node | tests/test-brief.sh | integration (fresh install) | green |
+| CONTAINED_LANE_DEFECT_COMPOSES_ONE_IMPLEMENTER_BRIEF | X730 a contained-lane defect: merged brief composed and logged; the tester notice | tests/test-brief.sh | integration (fresh install) | green |
+| CONTAINED_LANE_DEFECT_KEEPS_THE_OTHER_REASONS | X731 a contained-lane defect on a trust path | tests/test-brief.sh | integration (fresh install) | green |
 | TESTER_BRIEF_NAMES_THE_MERGED_PATH | X575 the notice on a tester brief | tests/test-brief.sh | integration (fresh install) | green |
 | WRITER_REMOVES_A_TEST_THAT_CATCHES_NOTHING | X603 the installed charters' pointer resolves to a section holding each removal rule | tests/test-worth-check.sh | integration (fresh install) | green |
 | MUTATION_PASS_REPORTS_EACH_TEST | X604 the installed mutation-at-end section: a line per test, mandatory classes unchanged | tests/test-worth-check.sh | integration (fresh install) | green |
@@ -219,3 +250,10 @@ Each case carries its label and the slug it asserts in its `ok`/`bad` line.
   MUTATION_PASS_REPORTS_EACH_TEST, with X603 and X604 in
   `tests/test-worth-check.sh`, each seen failing against the charters and
   nodes without the text, then green.
+- 2026-11-11 — the owner decided on 2026-11-11 that a bug reproduction owes a
+  tester only in a spec'd increment and that a contained-lane defect fix keeps
+  one worker: STATEFUL_CONCURRENT_OR_BUG_REPRODUCTION_OWES_A_TESTER scoped to
+  spec'd increments, and CONTAINED_LANE_DEFECT_COMPOSES_ONE_IMPLEMENTER_BRIEF
+  and CONTAINED_LANE_DEFECT_KEEPS_THE_OTHER_REASONS added with X730 and X731
+  in `tests/test-brief.sh`, both seen failing against the composer that read
+  a contained-lane title naming a reproduction as a bug, then green.

@@ -59,8 +59,8 @@ effort label (`delegation.effort-scale` in
 `docs/graph/method/delegation-cycle-economy.md`), covering only the
 spec contracts the brief names. You are owed where an increment cites a
 §10 test and its label is above the low-risk band, it is on a trust
-path, it is stateful or concurrent, or its test reproduces a bug;
-otherwise one implementer writes the test and the code. The brief hands you the contract text
+path, it is stateful or concurrent, or a spec'd §10 `bug` row names it;
+else one implementer writes test and code. The brief hands you the contract text
 and the target test paths; work from those. Load the stack expertise
 the brief names (`docs/graph/templates/prompts/graph-session-bootstrap.md`,
 "Stack expertise"). If the brief asks for more increments than that

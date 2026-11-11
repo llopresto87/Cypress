@@ -71,8 +71,9 @@ flags nothing changes.
 implementer brief of the merged path (`tiers.execution-paths`): the briefed
 increments, with each cited RED's own GREEN, must sit inside the low-risk band
 the `delegation.effort-scale` line names, off every trust path the plant marks,
-not stateful or concurrent (`--alone`), and reproduce no bug (a §10 row of
-origin `bug`). Otherwise exit 2 with one line naming every reason a tester RED
+not stateful or concurrent (`--alone`), and, where a spec contract is cited,
+reproduce no bug (a §10 row of origin `bug`); a contained-lane defect, which
+cites no spec contract, keeps one worker for its reproduction. Otherwise exit 2 with one line naming every reason a tester RED
 spawn is owed; a plant that marks no trust path reads the doubt as one. The
 brief gains a section asking for the test seen failing before the code and
 both runs recorded, the effort is the `increment` row's, and the spawn record
@@ -590,8 +591,11 @@ def who_writes_the_test(plan: Path, increments: str, alone: str, security_path: 
     words = " ".join(rows[n][0] + " " + " ".join(rows[n][1].values()) for n in wanted)
     if alone or re.search(r"\b(stateful|concurren\w*)\b", words, re.I):
         owed.append(f"stateful or concurrent ({alone or 'the increment says so'})")
-    bugs = bug_origins(sorted({s for n in cites for s in slugs(n)}))
-    if bugs or re.search(r"\b(bug|regression|reproduc\w*)\b", " ".join(rows[n][0] for n in cites), re.I):
+    # a bug reproduction owes a tester in a spec'd increment; a contained-lane
+    # defect (no spec contract over it, `tiers.contained-lane`) keeps one worker
+    specd = [n for n in cites if slugs(n)]
+    bugs = bug_origins(sorted({s for n in specd for s in slugs(n)}))
+    if bugs or re.search(r"\b(bug|regression|reproduc\w*)\b", " ".join(rows[n][0] for n in specd), re.I):
         owed.append(f"its test reproduces a bug ({', '.join(bugs) or 'the increment says so'})")
     return owed, hardest, cites
 

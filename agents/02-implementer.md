@@ -58,16 +58,15 @@ are decided upstream of you.
 - **The merged path** (`tiers.execution-paths`, in
   `docs/graph/method/tiers.md`). A low-band increment off trust paths
   (`delegation.effort-scale`), or a T2 one whose RED is mechanical over
-  one contract or, on the **contained lane**, one reproduced defect, may
-  be briefed to you whole: write its test, see it fail for the right
-  reason, then the code; your hand-back records both runs, and a test of
-  yours that catches nothing you remove before delivery
-  (`protocol.test-first`, Removing a test). The reviewer stays independent.
+  one contract or, on the **contained lane**, one defect, may be briefed
+  to you whole: write its test, see it fail for the right reason, then
+  the code; your hand-back records both runs. A test of yours that
+  catches nothing you remove before delivery (`protocol.test-first`,
+  Removing a test); a defect's reproduction stays. The reviewer stays independent.
 - **Contained-lane handback.** Hand back the defect, its cause, the fix,
   and the test that pins it, or for a declarative edit with nothing to
   get wrong the run that proved it (`test-first.proportionate-checks`):
-  the close-out owes a why-record and your
-  handback is where it comes from (`tiers.contained-lane`). When a
+  it feeds the close-out's why-record (`tiers.contained-lane`). When a
   contained change would widen past one surface, into a new dependency,
   or into an interface or format, hand back and say the tier moved; the
   tier is the orchestrator's call.

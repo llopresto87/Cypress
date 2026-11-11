@@ -43,10 +43,11 @@ normal and cheap.
 | **T2** | a contained change (bounded, local, reversible) reached by either lane: the *covered lane*, already authorized by an active spec contract and plan line; or the *contained lane*, small enough that a regression test plus a why-record are the proportional authorization (`tiers.contained-lane`) | Spawn the minimal worker set. One implementer, briefed with the contract text (covered lane) or the defect and its reproduction (contained lane), may own RED→GREEN when the increment covers one contract and the RED is mechanical; else split tester/implementer. The reviewer stays independent. Close-out spawn (`protocol.canonize`) + full delivery. No brainstorm, no specify pass, no grill refutation. |
 | **T3** | anything that creates or changes behavior at a scale the contained lane cannot hold, or changes architecture, contracts, dependencies, or is ambiguous, **and anything no other row clearly covers** | Full funnel: brainstorm* → specify → grill → test-first → verify → close-out → deliver. All doing delegated to clean-context specialists. |
 
-**The merged path** (`tiers.execution-paths`) also takes a low-band
-increment off trust paths at any tier (`delegation.effort-scale`): one
-implementer sees its tests fail for the right reason, then writes the
-code; its hand-back records both runs.
+**The merged path** (`tiers.execution-paths`): one implementer sees its
+tests fail for the right reason, then writes the code; its hand-back
+records both runs. It takes a low-band increment off trust paths at any
+tier (`delegation.effort-scale`) and a contained-lane defect fix, whose
+reproduction test stays; each spec'd increment's §10 `bug` row owes a tester.
 
 ## T2's contained lane — a small change no spec covers
 
@@ -82,9 +83,6 @@ What the lane produces, and what it does not:
 | A **why-record** at close-out: what was wrong, why this fix, which test pins it — an ADR when a real choice was made among options, otherwise the plant `changelog.md` entry (`protocol.canonize`) | A grill refutation spawn, an architect pass, a devil's-advocate pass |
 | A `grill.md` line added on entry — bookkeeping, so the plan-of-record stays a record of what happened | A full `grill` pass |
 | The independent reviewer audit and the gates the change's blast radius earns (`protocol.verify`) | Any discount on verification — depth follows blast radius, never the lane |
-
-The lane trades the *spec* for the *test plus the why*, and keeps the
-test, the review, the gates, and the record.
 
 ## The hard edges
 
