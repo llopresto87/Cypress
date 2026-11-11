@@ -74,7 +74,12 @@ the `delegation.effort-scale` line names, off every trust path the plant marks,
 not stateful or concurrent (`--alone`), and, where a spec contract is cited,
 reproduce no bug (a §10 row of origin `bug`); a contained-lane defect, which
 cites no spec contract, keeps one worker for its reproduction. Otherwise exit 2 with one line naming every reason a tester RED
-spawn is owed; a plant that marks no trust path reads the doubt as one. The
+spawn is owed; a plant that marks no trust path reads the doubt as one. Every
+reading fails closed: a band line, a trust-path claim (the nodes directory, a
+node that does not open or parse, a crosscut below `nodes/`, an increment
+naming no path in `Files touched:`, read through grill-lint.py's own path
+reader, or graph-lint.py not answering) or a §10 origin that cannot be read is
+a reason of its own, naming what could not be read and what fixes it. The
 brief gains a section asking for the test seen failing before the code and
 both runs recorded, the effort is the `increment` row's, and the spawn record
 gains `merged`. A tester brief for an increment that qualifies names the
@@ -505,54 +510,146 @@ def evidence_owed(plan: Path, increments: str) -> list[str]:
         return []
 
 
-def low_band() -> list[str]:
-    """The effort labels of the low-risk band, from its one home: the
-    `**The low-risk band** is ...` line of `delegation.effort-scale`."""
-    node = GRAPH / "method" / "delegation-cycle-economy.md"
-    text = node.read_text(encoding="utf-8") if node.is_file() else ""
-    m = re.search(r"\*\*The low-risk band\*\* is ([^(]*)\(", text)
-    return re.findall(r"`([\w-]+)`", m.group(1)) if m else []
+def _load(name: str, file: str):
+    """A module beside this file, loaded by path (stdlib only, no bytecode)."""
+    sys.dont_write_bytecode = True
+    spec = importlib.util.spec_from_file_location(name, GRAPH / file)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
-def trust_marked() -> bool:
-    """Whether the plant marks any trust path: a crosscut node with `trust: true`."""
-    for p in (GRAPH / "nodes").rglob("*.md") if (GRAPH / "nodes").is_dir() else []:
-        head = p.read_text(encoding="utf-8", errors="replace").split("---", 2)
-        fm = head[1] if len(head) == 3 else ""
-        if re.search(r"^kind:\s*crosscut\s*$", fm, re.M) and re.search(r"^trust:\s*true\s*$", fm, re.M | re.I):
-            return True
-    return False
+BAND_NODE = "method/delegation-cycle-economy.md"
+BAND_FIX = "restore the `**The low-risk band** is ...` line (delegation.effort-scale)"
 
 
-def bug_origins(slugs: list[str]) -> list[str]:
-    """`SPEC-NNNN §10 origin bug` for each contract a §10 risk row of origin
-    `bug` covers, read through spec-lint.py's own row reader."""
+def low_band() -> tuple[list[str], str]:
+    """(the effort labels of the low-risk band, "") from its one home, the
+    `**The low-risk band** is ...` line of `delegation.effort-scale`; or ([], the
+    reason it cannot be read), which refuses the merged brief (fail closed)."""
+    unread = "the low-risk band cannot be read: "
     try:
-        sys.dont_write_bytecode = True
-        spec = importlib.util.spec_from_file_location("cypress_spec_lint", GRAPH / "spec-lint.py")
-        sl = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(sl)
-    except Exception:
-        return []
+        text = (GRAPH / BAND_NODE).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as e:
+        why = "is missing" if isinstance(e, FileNotFoundError) else f"does not open ({e.__class__.__name__})"
+        return [], f"{unread}{BAND_NODE} {why}; {BAND_FIX}"
+    m = re.search(r"\*\*The low-risk band\*\* is ([^(]*)\(", text)
+    if not m:
+        return [], f"{unread}{BAND_NODE} has no `**The low-risk band** is` line; {BAND_FIX}"
+    labels = re.findall(r"`([\w-]+)`", m.group(1))
+    if not labels:
+        return [], f"{unread}its line in {BAND_NODE} names no label before the first `(`; {BAND_FIX}"
+    return labels, ""
+
+
+def path_like(piece: str) -> bool:
+    """A `Files touched:` piece that names a file or a directory, not prose."""
+    return "/" in piece or bool(re.search(r"\.\w+$|[*?]", piece))
+
+
+def trust_reasons(paths: dict) -> list[str]:
+    """The trust-path reasons a tester RED spawn is owed for {increment: [path]}:
+    a claim of a `trust: true` crosscut (`graph-lint.py --trust-claims`), a plant
+    that marks none, and every claim that cannot be read (fail closed): the nodes
+    directory missing, a node that does not open or parse, a crosscut below
+    `nodes/` where graph-lint.py reads no node, an increment naming no path, and
+    graph-lint.py not answering. Each unread reason names what fixes it."""
+    unread = "the trust-path claims cannot be read: "
+    nodes = GRAPH / "nodes"
+    if not nodes.is_dir():
+        return [unread + "docs/graph/nodes/ is missing; restore it, the directory graph-lint.py --trust-claims reads"]
+    try:
+        fm = _load("cypress_frontmatter", "frontmatter.py")
+    except Exception as e:
+        return [unread + f"frontmatter.py does not load ({e.__class__.__name__}); restore docs/graph/frontmatter.py"]
+    marked, broken, below = False, [], []
+    for p in sorted(nodes.rglob("*.md")):
+        if p.name.startswith("_") or p.name == "index.md":
+            continue
+        rel = p.relative_to(nodes).as_posix()
+        try:
+            text = p.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as e:
+            broken.append(f"nodes/{rel} does not open ({getattr(e, 'strerror', None) or e.__class__.__name__})")
+            continue
+        if p.parent != nodes:
+            if re.search(r"^kind:\s*crosscut\s*$", text.split("\n---", 2)[0], re.M):
+                below.append(f"docs/graph/nodes/{rel}")
+            continue
+        try:
+            meta, _body = fm.parse(text, p)
+        except fm.FrontmatterError as e:
+            broken.append(str(e))
+            continue
+        if meta.get("kind") == "crosscut" and str(meta.get("trust", "")).strip().lower() == "true":
+            marked = True
     out = []
+    if broken:
+        out.append(unread + "; ".join(broken) + "; repair it so graph-lint.py --trust-claims answers")
+    if below:
+        out.append(unread + ", ".join(below) + " sits below nodes/, where graph-lint.py reads no node; "
+                   "move it up into docs/graph/nodes/")
+    if out:
+        return out
+    if not marked:
+        return ["the plant marks no trust path, so the doubt is read as one"]
+    for n, ps in paths.items():
+        if not ps:
+            out.append(f"increment {n} names no path under Files touched, so its trust path cannot be read; "
+                       f"name the files it touches")
+    files = sorted({p for ps in paths.values() for p in ps})
+    if not files:
+        return out
+    r = None
+    try:
+        r = subprocess.run([sys.executable, str(GRAPH / "graph-lint.py"), "--trust-claims", *files],
+                           capture_output=True, text=True, timeout=60)
+        claims = json.loads(r.stdout)["claims"]
+        if r.returncode != 0 or not isinstance(claims, dict):
+            raise ValueError("no claims")
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+        why = ((r.stderr if r else "").strip().splitlines() or [""])[-1]
+        return out + [unread + "graph-lint.py --trust-claims did not answer" + (f" ({why})" if why else "")
+                      + "; run it and repair what it names"]
+    if claims:
+        out.append("on a trust path (" + "; ".join(f"{p}: {', '.join(i)}" for p, i in sorted(claims.items())) + ")")
+    return out
+
+
+def bug_origins(slugs: list[str]) -> tuple[list[str], str]:
+    """(`SPEC-NNNN §10 origin bug` for each contract a §10 risk row of origin
+    `bug` covers, read through spec-lint.py's own row reader, "") or ([], the
+    reason the rows cannot be read), which refuses the merged brief (fail closed)."""
+    if not slugs:
+        return [], ""
+    unread = "the §10 origins cannot be read: "
+    try:
+        sl = _load("cypress_spec_lint", "spec-lint.py")
+    except Exception as e:
+        return [], unread + f"spec-lint.py does not load ({e.__class__.__name__}); restore docs/graph/spec-lint.py"
+    out, closed = [], []
     for ref in slugs:
         sid, _, slug = ref.partition("/")
         for f in sorted((GRAPH / "specs").glob(f"{sid}-*.md")):
-            rows = sl.risk_rows(sl.section_lines(f.read_text(encoding="utf-8", errors="replace"), 10))
+            try:
+                text = f.read_text(encoding="utf-8", errors="replace")
+            except OSError as e:
+                closed.append(f"{f.name} does not open ({e.strerror or e.__class__.__name__})")
+                continue
+            rows = sl.risk_rows(sl.section_lines(text, 10))
             if any(r["origin"].lower() == "bug" and slug in re.findall(r"[A-Z][A-Z0-9_]+", r["covers"])
                    for r in rows):
                 out.append(f"{sid} §10 origin bug")
-    return sorted(set(out))
+    if closed:
+        return [], unread + "; ".join(sorted(set(closed))) + "; make it readable"
+    return sorted(set(out)), ""
 
 
 def who_writes_the_test(plan: Path, increments: str, alone: str, security_path: bool):
     """(reasons a tester RED spawn is owed, hardest label, increments citing a §10 test)
     for the briefed increments (`delegation.effort-scale`); no reasons means one
     implementer writes the test and the code (`tiers.execution-paths`)."""
-    sys.dont_write_bytecode = True
-    spec = importlib.util.spec_from_file_location("cypress_grill_lint", GRAPH / "grill-lint.py")
-    gl = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(gl)
+    gl = _load("cypress_grill_lint", "grill-lint.py")
     text = gl.strip_comments(plan.read_text(encoding="utf-8", errors="replace"))
     wanted = [int(x) for x in increments.split(",") if x.strip()]
     rows = {n: (title, {k.split("(")[0].strip(): v.strip() for k, v in gl.fields(block).items()})
@@ -566,35 +663,29 @@ def who_writes_the_test(plan: Path, increments: str, alone: str, security_path: 
     # each cited RED's own GREEN joins the reading: its code is what the test judges
     wanted += [g for g in rows for n in cites if g not in wanted and slugs(g) & slugs(n)
                and re.search(rf"\bincrement {n}\b", rows[g][1].get("Depends on", ""))]
-    band = low_band()
+    band, band_unread = low_band()
     order = list(LABELS)
     labels = [rows[n][1].get("Effort", "").split()[0] if rows[n][1].get("Effort") else "" for n in wanted]
     hardest = max(labels, key=lambda x: order.index(x) if x in order else len(order))
-    owed = []
+    owed = [band_unread] if band_unread else []
     above = [x for x in labels if x not in band]
-    if above:
-        owed.append(f"label {above[0] or 'none'} is above the low-risk band ({', '.join(band) or 'none recorded'})")
+    if above and not band_unread:
+        owed.append(f"label {above[0] or 'none'} is above the low-risk band ({', '.join(band)})")
     if security_path:
         owed.append("on a trust path (--security-path)")
-    elif not trust_marked():
-        owed.append("the plant marks no trust path, so the doubt is read as one")
     else:
-        files = [p for n in wanted for p in re.findall(r"`([^`]+)`", rows[n][1].get("Files touched", ""))]
-        try:
-            r = subprocess.run([sys.executable, str(GRAPH / "graph-lint.py"), "--trust-claims", *files],
-                               capture_output=True, text=True, timeout=60)
-            claims = json.loads(r.stdout)["claims"] if files else {}
-        except (OSError, ValueError, KeyError, subprocess.SubprocessError):
-            claims = {"(unread)": ["graph-lint.py --trust-claims did not answer"]}
-        if claims:
-            owed.append("on a trust path (" + "; ".join(f"{p}: {', '.join(i)}" for p, i in sorted(claims.items())) + ")")
+        # `Files touched:` is free text: its paths come through grill-lint.py's own reader
+        owed += trust_reasons({n: [p for p in gl.path_pieces(rows[n][1].get("Files touched", "")) if path_like(p)]
+                               for n in wanted})
     words = " ".join(rows[n][0] + " " + " ".join(rows[n][1].values()) for n in wanted)
     if alone or re.search(r"\b(stateful|concurren\w*)\b", words, re.I):
         owed.append(f"stateful or concurrent ({alone or 'the increment says so'})")
     # a bug reproduction owes a tester in a spec'd increment; a contained-lane
     # defect (no spec contract over it, `tiers.contained-lane`) keeps one worker
     specd = [n for n in cites if slugs(n)]
-    bugs = bug_origins(sorted({s for n in specd for s in slugs(n)}))
+    bugs, bugs_unread = bug_origins(sorted({s for n in specd for s in slugs(n)}))
+    if bugs_unread:
+        owed.append(bugs_unread)
     if bugs or re.search(r"\b(bug|regression|reproduc\w*)\b", " ".join(rows[n][0] for n in specd), re.I):
         owed.append(f"its test reproduces a bug ({', '.join(bugs) or 'the increment says so'})")
     return owed, hardest, cites

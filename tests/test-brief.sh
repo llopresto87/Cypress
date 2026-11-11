@@ -471,6 +471,105 @@ x731=0; got="$(mg 15 implementer merged 13)"
   && ! grep -q "reproduces a bug" <<<"$got" \
   || { bad "X731 CONTAINED_LANE_DEFECT_KEEPS_THE_OTHER_REASONS" "trust path: $got"; x731=1; }
 [[ $x731 == 0 ]] && ok "X731 CONTAINED_LANE_DEFECT_KEEPS_THE_OTHER_REASONS: a contained-lane defect on a trust path owes a tester for the trust path, never for the reproduction"
+# X740 to X748 (SPEC-0008): the merged brief fails closed. A band, a trust-path
+# claim or a §10 origin that cannot be read refuses it, naming what could not be
+# read and what fixes it, and the tester brief still composes; a `design`-origin
+# §10 row keeps the merged brief that a `bug`-origin row on the same increment
+# refuses. Increments 1,3 (low, off the trust path crosscut.vault claims)
+# compose the merged brief whenever every reading answers (X570).
+"$PY" - "$d/grill.md" <<'PY'
+import sys
+p = sys.argv[1]; t = open(p).read()
+inc = lambda n, title, slug, files, tests, phase, dep: (
+    f"### Increment {n} — {title}\n- Spec contracts: {slug}\n- Files touched: {files}\n- Tests to write (RED): {tests}\n"
+    f"- Rollback path: revert\n- Effort: low\n- Phase: {phase}\n- Depends on: {dep}\n\n")
+extra = (inc(14, "RED ledger", "SPEC-0001/LEDGER", "`tests/test_ledger.sh`", "ledger.case_one", "RED", "none")
+         + inc(15, "GREEN ledger", "SPEC-0001/LEDGER", "app/vault/ledger.py", "none — increment 14 wrote them", "GREEN", "increment 14")
+         + inc(16, "RED tally", "SPEC-0001/TALLY", "the tally tests", "tally.case_one", "RED", "none")
+         + inc(17, "RED render", "SPEC-0010/RENDER_IS_STABLE", "`tests/test_render.sh`", "render.case_one", "RED", "none"))
+open(p, "w").write(t.replace("## 15. Changelog", extra + "## 15. Changelog"))
+PY
+refused() {  # refused LABEL CASE ID INCREMENTS WANT... -> the merged brief exits 2 naming each WANT; a tester brief composes
+  local label="$1" case="$2" id="$3" incs="$4" got w; shift 4
+  got="$(mg "$id" implementer merged "$incs")"
+  [[ "${got%%|*}" == 2 ]] && grep -qF "owe" <<<"$got" && grep -qF "a tester RED spawn:" <<<"$got" \
+    || { bad "$label" "$case: not refused: $got"; return 1; }
+  for w in "$@"; do grep -qF -- "$w" <<<"$got" || { bad "$label" "$case: refusal lacks '$w': $got"; return 1; }; done
+  [[ "$(rc_of "$id.t" tester red "${incs%%,*}" --label low)" == 0 ]] || { bad "$label" "$case: tester brief refused"; return 1; }
+}
+x740=0; cp "$EN" "$T/economy.bak"
+"$PY" - "$EN" <<'PY'
+import re, sys
+p = sys.argv[1]; t = open(p).read()
+open(p, "w").write(re.sub(r"^- \*\*The low-risk band\*\* is .*\n", "", t, count=1, flags=re.M))
+PY
+refused "X740 BAND_UNREADABLE_REFUSES_THE_MERGED_BRIEF" "band line removed" 20 1,3 "the low-risk band cannot be read" "delegation-cycle-economy.md has no" \
+  "restore the \`**The low-risk band** is ...\` line (delegation.effort-scale)" || x740=1
+"$PY" - "$T/economy.bak" "$EN" <<'PY'
+import sys
+t = open(sys.argv[1]).read()
+open(sys.argv[2], "w").write(t.replace("**The low-risk band** is `low` and `medium-low` (", "**The low-risk band** is the owner's to set (", 1))
+PY
+refused "X740 BAND_UNREADABLE_REFUSES_THE_MERGED_BRIEF" "band line naming no label" 21 1,3 "the low-risk band cannot be read" "names no label" || x740=1
+rm -f "$EN"
+refused "X740 BAND_UNREADABLE_REFUSES_THE_MERGED_BRIEF" "effort-scale node missing" 22 1,3 "the low-risk band cannot be read" "delegation-cycle-economy.md" "restore" || x740=1
+cp "$T/economy.bak" "$EN"
+[[ "$(rc_of 23 implementer merged 1,3)" == 0 ]] || { bad "X740 BAND_UNREADABLE_REFUSES_THE_MERGED_BRIEF" "the restored band refuses"; x740=1; }
+[[ $x740 == 0 ]] && ok "X740 BAND_UNREADABLE_REFUSES_THE_MERGED_BRIEF (failure BAND_LINE_MISSING): a missing band line, a line naming no label and a missing node refuse the merged brief, naming the line to restore"
+NG="$T/docs/graph/nodes"
+x741=0; mv "$NG" "$T/nodes.away"
+refused "X741 TRUST_CLAIMS_UNREADABLE_REFUSES_THE_MERGED_BRIEF" "nodes directory missing" 24 1,3 "the trust-path claims cannot be read" "docs/graph/nodes/ is missing" "restore" || x741=1
+mv "$T/nodes.away" "$NG"
+[[ $x741 == 0 ]] && ok "X741 TRUST_CLAIMS_UNREADABLE_REFUSES_THE_MERGED_BRIEF: a missing nodes directory is named apart from a plant that marks no trust path"
+x742=0; printf -- '---\nid: crosscut.broken\nkind: crosscut\ntrust: true\nload_when:\n  - "src/**"\n' > "$NG/crosscut.broken.md"
+refused "X742 TRUST_CLAIMS_UNREADABLE_REFUSES_THE_MERGED_BRIEF" "unterminated frontmatter" 25 1,3 "the trust-path claims cannot be read" "crosscut.broken.md: unterminated frontmatter" \
+  "repair it so graph-lint.py --trust-claims answers" || x742=1
+rm -f "$NG/crosscut.broken.md"
+[[ $x742 == 0 ]] && ok "X742 TRUST_CLAIMS_UNREADABLE_REFUSES_THE_MERGED_BRIEF: a node whose frontmatter cannot be read refuses the merged brief, naming the node"
+x743=0; printf -- '---\nid: crosscut.sealed\ntier: 2\ntrust: true\nkind: crosscut\norigin: project\ntitle: sealed\nowns:\n  - sealed.menu\nload_when:\n  - "src/**"\nest_tokens: 100\n---\n\nSealed.\n' > "$NG/crosscut.sealed.md"
+chmod 000 "$NG/crosscut.sealed.md"
+if [[ -r "$NG/crosscut.sealed.md" ]]; then
+  ok "X743 TRUST_CLAIMS_UNREADABLE_REFUSES_THE_MERGED_BRIEF: skipped, this user reads a mode-000 file"
+else
+  refused "X743 TRUST_CLAIMS_UNREADABLE_REFUSES_THE_MERGED_BRIEF" "unreadable node" 26 1,3 "the trust-path claims cannot be read" "crosscut.sealed.md" || x743=1
+  [[ $x743 == 0 ]] && ok "X743 TRUST_CLAIMS_UNREADABLE_REFUSES_THE_MERGED_BRIEF: a node the composer cannot open refuses the merged brief, naming the node"
+fi
+chmod 644 "$NG/crosscut.sealed.md"; rm -f "$NG/crosscut.sealed.md"
+x744=0; mkdir -p "$NG/vault"; mv "$WV" "$NG/vault/crosscut.vault.md"
+refused "X744 TRUST_CLAIMS_UNREADABLE_REFUSES_THE_MERGED_BRIEF" "trust crosscut below nodes/" 27 9,10 "nodes/vault/crosscut.vault.md" "move it up" || x744=1
+mv "$NG/vault/crosscut.vault.md" "$WV"; rmdir "$NG/vault"
+[[ $x744 == 0 ]] && ok "X744 TRUST_CLAIMS_UNREADABLE_REFUSES_THE_MERGED_BRIEF: a trust crosscut below nodes/, which graph-lint.py reads no node from, refuses the merged brief"
+x745=0; GL="$T/docs/graph/graph-lint.py"; mv "$GL" "$T/graph-lint.away"
+refused "X745 TRUST_CLAIMS_UNREADABLE_REFUSES_THE_MERGED_BRIEF" "graph-lint.py not answering" 28 1,3 "the trust-path claims cannot be read" "graph-lint.py --trust-claims did not answer" \
+  "run it and repair what it names" || x745=1
+mv "$T/graph-lint.away" "$GL"
+[[ $x745 == 0 ]] && ok "X745 TRUST_CLAIMS_UNREADABLE_REFUSES_THE_MERGED_BRIEF: graph-lint.py --trust-claims not answering refuses the merged brief, naming the fix"
+x746=0
+refused "X746 TRUST_CLAIMS_UNREADABLE_REFUSES_THE_MERGED_BRIEF" "an unquoted trust path" 29 14,15 "on a trust path (app/vault/ledger.py: crosscut.vault)" || x746=1
+refused "X746 TRUST_CLAIMS_UNREADABLE_REFUSES_THE_MERGED_BRIEF" "no path named" 30 16 "increment 16 names no path under Files touched" "name the files it touches" || x746=1
+[[ $x746 == 0 ]] && ok "X746 TRUST_CLAIMS_UNREADABLE_REFUSES_THE_MERGED_BRIEF: Files touched is read through grill-lint.py's path reader, and an increment naming no path refuses the merged brief"
+x747=0; SL="$T/docs/graph/spec-lint.py"; mv "$SL" "$T/spec-lint.away"
+refused "X747 BUG_ORIGINS_UNREADABLE_REFUSES_THE_MERGED_BRIEF" "spec-lint.py missing" 31 11 "the §10 origins cannot be read" "spec-lint.py" "restore" || x747=1
+mv "$T/spec-lint.away" "$SL"
+S9="$T/docs/graph/specs/SPEC-0009-retry.md"; chmod 000 "$S9"
+if [[ ! -r "$S9" ]]; then
+  refused "X747 BUG_ORIGINS_UNREADABLE_REFUSES_THE_MERGED_BRIEF" "spec unreadable" 32 11 "the §10 origins cannot be read" "SPEC-0009-retry.md" || x747=1
+fi
+chmod 644 "$S9"
+[[ $x747 == 0 ]] && ok "X747 BUG_ORIGINS_UNREADABLE_REFUSES_THE_MERGED_BRIEF: a §10 origin the composer cannot read refuses the merged brief, naming what to restore"
+x748=0; S10="$T/docs/graph/specs/SPEC-0010-render.md"
+printf '# SPEC-0010\n\n## 10. Test mapping\n\n| Risk (what breaks, for whom) | Test (file::name, lowest level) | Covers | Origin | Status |\n|---|---|---|---|---|\n| A page renders twice | tests/test_render.sh::render_is_stable | RENDER_IS_STABLE | design | pending |\n' > "$S10"
+got="$(mg 33 implementer merged 17)"
+[[ "${got%%|*}" == 0 ]] && grep -qF "write the test increment 17 cites" "$T/mg.out" \
+  || { bad "X748 DESIGN_ORIGIN_ROW_KEEPS_THE_MERGED_BRIEF" "design origin refused: $got"; x748=1; }
+"$PY" - "$S10" <<'PY'
+import sys
+p = sys.argv[1]; t = open(p).read(); open(p, "w").write(t.replace("| design |", "| bug |", 1))
+PY
+got="$(mg 34 implementer merged 17)"
+[[ "${got%%|*}" == 2 ]] && grep -qF "increment 17 owes a tester RED spawn: its test reproduces a bug (SPEC-0010 §10 origin bug)" <<<"$got" \
+  || { bad "X748 DESIGN_ORIGIN_ROW_KEEPS_THE_MERGED_BRIEF" "bug origin on the same increment: $got"; x748=1; }
+[[ $x748 == 0 ]] && ok "X748 DESIGN_ORIGIN_ROW_KEEPS_THE_MERGED_BRIEF: a design-origin §10 row composes the merged brief; the same row of origin bug owes a tester"
 rm -f "$WV"
 rc=0; (cd "$T" && "$PY" docs/graph/brief.py --role nobody --spawn-id s --task t --route r --part part.txt) >/dev/null 2>&1 || rc=$?
 [[ $rc -ne 0 ]] && ok "unknown role refused" || bad "unknown role" "exit 0"
