@@ -39,7 +39,7 @@ when it is a Git work tree, plus each nested work tree a node names in
   strings that name a template; YAML scalars, with Compose `build`, bind-mount
   `volumes` and secret `file:` keys; Dockerfile `COPY` and `ADD` sources; and
   nginx `include` paths mapped through the Compose bind mounts. These readers
-  are stack-keyed modules in `source_readers.py`; each links only a path the
+  are stack-keyed sections of one module, `source_readers.py`; each links only a path the
   inventory holds, so a library import or a container path makes no record.
 
 A mention in Markdown is not a link. A hook command written in a host

@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 8.5.1
+- Version documented: 8.6.0
 - Repository role: this repo is the seed, the product shipped into other
   projects; it holds no `docs/graph/` of its own.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -1107,9 +1107,10 @@ claude-code, opencode and prime-agent. For each tool it:
    writes no anchor at install, and `source-index.py`, whose cache under
    `.cypress/source-index/` the last step below builds and any query
    rebuilds when its key changes (ADR-0029; guide:
-   [`documentation/source-index.md`](documentation/source-index.md)), with the two modules they load by
-   path: `source_paths.py`, the seed's path rules, and `plant_walk.py`, the
-   walk over one plant's files. It places the model map
+   [`documentation/source-index.md`](documentation/source-index.md)), with the three modules they load by
+   path: `source_paths.py`, the seed's path rules, `plant_walk.py`, the
+   walk over one plant's files, and `source_readers.py`, the source index's
+   stack readers. It places the model map
    `docs/graph/models.md` when it is missing (the plant owns it from then
    on);
 5. installs the canonical prompt as `EXPERT_SEED_INSTALL_PROMPT.md` at the target

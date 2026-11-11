@@ -204,7 +204,7 @@ Keyed by `legal-corpus/<scope>/<instrument-slug>.md`, one page per instrument
 
 | Scope (subfolder) | Examples |
 |---|---|
-| `eu` | `gdpr.md`, `nis2.md`, `cra.md`, `mdr.md`, `eprivacy-directive.md`, `psd2.md`, `sca-rts-2018-389.md`, `edpb-guidelines-02-2023.md` |
+| `eu` | `gdpr.md`, `nis2.md`, `cra.md`, `mdr.md`, `eprivacy-directive.md`, `psd2.md`, `sca-rts-2018-389.md`, `edpb-guidelines-02-2023.md`, `edpb-guidelines-03-2026.md` |
 | `international` | `iso-27001.md` |
 | `national` | `it-codice-privacy.md`, `it-workers-statute.md`, `it-accounting-retention.md` |
 | `case-law` | `index.md`, a multi-entry router page (see below) |
