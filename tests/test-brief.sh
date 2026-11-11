@@ -379,7 +379,11 @@ inc = lambda n, title, slug, files, tests, effort, phase, dep: (
 extra = (inc(9, "RED vault", "SPEC-0001/VAULT", "tests/test_vault.sh", "vault.case_one", "low", "RED", "none")
          + inc(10, "GREEN vault", "SPEC-0001/VAULT", "app/vault/lock.py", "none — increment 9 wrote them", "low", "GREEN", "increment 9")
          + inc(11, "RED retry", "SPEC-0009/RETRY_IS_IDEMPOTENT", "tests/test_retry.sh",
-               'SPEC-0009 §10 rows: "Retry after timeout double-charges"', "medium-low", "RED", "none"))
+               'SPEC-0009 §10 rows: "Retry after timeout double-charges"', "medium-low", "RED", "none")
+         + inc(12, "reproduce and fix the empty-input crash", "none — contained lane (tiers.contained-lane)",
+               "tests/test_parse.sh` and `app/parse.py", "parse.empty_input_regression", "low", "RED and GREEN", "none")
+         + inc(13, "reproduce and fix the stale lock", "none — contained lane (tiers.contained-lane)",
+               "tests/test_lock.sh` and `app/vault/lock.py", "lock.stale_regression", "low", "RED and GREEN", "none"))
 assert "### Increment 8" in t
 open(sys.argv[2], "w").write(t.replace("## 15. Changelog", extra + "## 15. Changelog"))
 PY
@@ -447,6 +451,26 @@ x575=0; got="$(mg 12 tester red 1 --label low)"
 [[ "${got%%|*}" == 0 ]] && grep -qF "brief: increment 1 is in the low-risk band off trust paths: one implementer spawn writes its test and code (--role implementer --kind merged; tiers.execution-paths)" <<<"$got" \
   || { bad "X575 TESTER_BRIEF_NAMES_THE_MERGED_PATH" "eligible: $got"; x575=1; }
 [[ $x575 == 0 ]] && ok "X575 TESTER_BRIEF_NAMES_THE_MERGED_PATH: a tester brief for a low-band increment off trust paths names the merged path to the caller; a trust-path one does not"
+# X730 to X731 (SPEC-0008): a contained-lane defect (no spec contract over it)
+# keeps one worker writing its reproduction test and the fix; a bug-origin §10
+# row in a spec'd increment still owes a tester (X573)
+x730=0; got="$(mg 13 implementer merged 12)"
+[[ "${got%%|*}" == 0 ]] && grep -qF "write the test increment 12 cites and see it fail for the right reason before any code" "$T/mg.out" \
+  || { bad "X730 CONTAINED_LANE_DEFECT_COMPOSES_ONE_IMPLEMENTER_BRIEF" "contained defect: $got"; x730=1; }
+"$PY" - "$d/spawns.jsonl" <<'PY' || { bad "X730 CONTAINED_LANE_DEFECT_COMPOSES_ONE_IMPLEMENTER_BRIEF" "merged not logged"; x730=1; }
+import json, sys
+r = [json.loads(l) for l in open(sys.argv[1])][-1]
+assert r["spawn_id"] == "e8.13" and r["merged"] == [12], r
+PY
+got="$(mg 14 tester red 12 --label low)"
+[[ "${got%%|*}" == 0 ]] && grep -qF "brief: increment 12 is in the low-risk band off trust paths" <<<"$got" \
+  || { bad "X730 CONTAINED_LANE_DEFECT_COMPOSES_ONE_IMPLEMENTER_BRIEF" "tester notice: $got"; x730=1; }
+[[ $x730 == 0 ]] && ok "X730 CONTAINED_LANE_DEFECT_COMPOSES_ONE_IMPLEMENTER_BRIEF: a contained-lane defect composes one implementer brief that writes the reproduction test, sees it fail, then fixes"
+x731=0; got="$(mg 15 implementer merged 13)"
+[[ "${got%%|*}" == 2 ]] && grep -qF "increment 13 owes a tester RED spawn: on a trust path (app/vault/lock.py: crosscut.vault);" <<<"$got" \
+  && ! grep -q "reproduces a bug" <<<"$got" \
+  || { bad "X731 CONTAINED_LANE_DEFECT_KEEPS_THE_OTHER_REASONS" "trust path: $got"; x731=1; }
+[[ $x731 == 0 ]] && ok "X731 CONTAINED_LANE_DEFECT_KEEPS_THE_OTHER_REASONS: a contained-lane defect on a trust path owes a tester for the trust path, never for the reproduction"
 rm -f "$WV"
 rc=0; (cd "$T" && "$PY" docs/graph/brief.py --role nobody --spawn-id s --task t --route r --part part.txt) >/dev/null 2>&1 || rc=$?
 [[ $rc -ne 0 ]] && ok "unknown role refused" || bad "unknown role" "exit 0"
