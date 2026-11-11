@@ -89,3 +89,23 @@ tests/adversarial/ts/adversarial-headers.test.ts::permissions policy in an objec
 tests/adversarial/ts/adversarial-headers.test.ts::opener policy under a response subscript	spared	header-shaped key: Cross-Origin-Opener-Policy under a subscript of a response's headers
 tests/adversarial/ts/adversarial-headers.test.ts::hint names a header	flagged	header-shaped value: a read-back whose compared value is a header name
 tests/adversarial/ts/adversarial-headers.test.ts::referrer constant	spared	header-shaped key: a constant named for Referrer-Policy
+tests/adversarial/python/test_adversarial_security.py::test_generated_token_length	spared	round 4: a token length computed by the code under test
+tests/adversarial/python/test_adversarial_security.py::test_token_length_setting	spared	round 4: a token length setting
+tests/adversarial/python/test_adversarial_security.py::test_billing_needs_the_owner_role	spared	round 4: a role required for a route
+tests/adversarial/python/test_adversarial_security.py::test_sign_in_rate_limit	spared	round 4: a rate limit keyed by login
+tests/adversarial/python/test_adversarial_security.py::test_lockout_threshold	spared	round 4: a lockout threshold setting
+tests/adversarial/python/test_adversarial_security.py::test_password_hash_prefix	spared	round 4: a password hash prefix computed by the code under test
+tests/adversarial/python/test_adversarial_security.py::test_allowed_origins_list	spared	round 4: a CORS origin allow-list
+tests/adversarial/python/test_adversarial_security.py::test_allowed_host_membership	spared	round 4: a host allow-list membership
+tests/adversarial/python/test_adversarial_security.py::test_foreign_host_not_allowed	spared	round 4: a foreign host absent from the allow-list
+tests/adversarial/python/test_adversarial_security.py::test_redirect_to_another_host_is_refused	spared	round 4: a redirect target check
+tests/adversarial/python/test_adversarial_security.py::test_csrf_cookie_name	spared	round 4: a CSRF cookie name
+tests/adversarial/python/test_adversarial_security.py::test_jwt_algorithms_allowed	spared	round 4: a JWT algorithm allow-list
+tests/adversarial/ts/adversarial-security.test.ts::generated token length	spared	round 4: a token length computed by the code under test
+tests/adversarial/ts/adversarial-security.test.ts::billing needs the owner role	spared	round 4: a role required for a route
+tests/adversarial/ts/adversarial-security.test.ts::sign-in rate limit	spared	round 4: a rate limit under a login property
+tests/adversarial/ts/adversarial-security.test.ts::lockout threshold	spared	round 4: a lockout threshold setting
+tests/adversarial/ts/adversarial-security.test.ts::allowed origins contain the app	spared	round 4: a CORS origin allow-list membership
+tests/adversarial/ts/adversarial-security.test.ts::redirect to another host is refused	spared	round 4: a redirect target check
+tests/adversarial/ts/adversarial-security.test.ts::csrf cookie name	spared	round 4: a CSRF cookie name
+tests/adversarial/ts/adversarial-security.test.ts::jwt algorithms allowed	spared	round 4: a JWT algorithm allow-list
