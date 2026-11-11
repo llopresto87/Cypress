@@ -33,10 +33,13 @@ status_evidence: tests/test-growth-audit.sh (X665 to X671, X720 to X724) and tes
   reported clean
 - **Supersedes:** none
 - **Superseded by:** none
-- **Sign-offs:** product [ ] · architect [ ] · tester [ ]
+- **Sign-offs:** product [ ] · architect [ ] · tester [x]
   Back-written on 2026-11-10 by the implementer of the round's F3 and F4
   work, after each case was seen red and then green; no promotion was signed.
-  The round's architect and tester review it before it is promoted.
+  The round's architect and tester review it before it is promoted. Tester
+  (independent) 2026-11-11: each contract is held by a case that runs the
+  audit, a graft rehearsal or the cycle driver and watches exit codes,
+  records and lines.
 
 ## 1. Summary
 
@@ -407,3 +410,10 @@ all-ABSENT plant; the cycle cases on a copy of one fresh install. Every row was
   without `--after-graft`, then green on the real code; the source grep is
   gone, and the `protocols/graft.md` text check stays for the prose half. The
   contract's wording and its §10 row follow.
+- 2026-11-11 — the independent tester re-reviewed X723 and signed as tester
+  in §0. The rehearsal holds the contract by its outcome, with a control: the
+  same copy audited as a fresh growth fails, so the passing gate comes from
+  the option and not from a plant with nothing open. The `--plan` half of the
+  coverage step changes only the wording of its prompt, which no gate reads,
+  so the rehearsal does not watch it; that is accepted as the contract's soft
+  part.

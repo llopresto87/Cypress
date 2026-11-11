@@ -33,10 +33,14 @@ status_evidence: tests/test-brief.sh (X570 to X575, X730, X731 and X740 to X748,
   separate spawn
 - **Supersedes:** none
 - **Superseded by:** none
-- **Sign-offs:** product [ ] · architect [ ] · tester [ ] · security [ ]
+- **Sign-offs:** product [ ] · architect [ ] · tester [x] · security [ ]
   Back-written on 2026-11-10 by the implementer of step T9 from the owner's
   words, after the RED of X570 to X575 and the code; no promotion was signed.
-  The round's architect and tester review it before it is promoted.
+  The round's architect and tester review it before it is promoted. Tester
+  (independent) 2026-11-11: every brief-composer contract and failure mode is
+  held by a case that runs the installed composer and watches its exit code,
+  refusal line and spawn log; X603 and X604 are text checks, stated as such in
+  §11.
 
 ## 1. Summary
 
@@ -357,3 +361,15 @@ Each case carries its label and the slug it asserts in its `ok`/`bad` line.
   (DESIGN_ORIGIN_ROW_KEEPS_THE_MERGED_BRIEF) was green at its first run and
   stays as X573's design-origin control. §11 states what X603 and X604 hold
   and their ADR-0003 classes; the tester sign is still the round's to give.
+- 2026-11-11 — the independent tester re-reviewed X740 to X748 and signed as
+  tester in §0. Each fail-closed case breaks one reading in a fresh install
+  (the band line, the nodes directory, a node, `graph-lint.py`, the path
+  reader, `spec-lint.py`, a spec), sees the merged brief refused with the
+  reading and its fix named, sees the tester brief compose, and restores the
+  reading; X740 sees the restored band compose again, and X748 holds the
+  design-origin control X573 lacked. The tester accepts the classification
+  of X603 and X604 as text checks of documentation rules (ADR-0003 soft for
+  the installed text, judgment for the act), stated in §11, and accepts the
+  cited-spec-missing path as documented there with the plan lint's finding
+  behind it. Two mode-000 arms (X743, the unreadable spec of X747) are
+  skipped where the user reads such a file, and X747's skip prints no line.
