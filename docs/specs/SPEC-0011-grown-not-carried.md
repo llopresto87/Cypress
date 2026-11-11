@@ -193,11 +193,18 @@ under `docs/graph/templates/knowledge-graph/` and says so on an `engine:` line.
   does once the node owns the key; without the option the `HOLLOW` stands
 
 ### Contract: GRAFT_AUDITS_AS_AFTER_A_GRAFT
-- **Given:** the two places a graft runs the coverage audit
-- **When:** `tools/graft-run.py` builds its coverage step, and a reader follows
-  `protocols/graft.md` Phase 5 and `graft.gate.coverage`
-- **Then:** each runs `growth-audit.py` with `--after-graft`, `--plan` and
-  the lint alike, and graft.md runs no coverage audit without it
+- **Given:** a plant whose every coverage row passes and whose needs are open,
+  none declined, committed to Git
+- **When:** `tools/graft-run.py` rehearses a graft of it into a stage
+- **Then:** the coverage log of the rehearsal carries each open need as a
+  `note: plant need <id> is not configured for this plant` line and no
+  `UNGROWN      plant need` verdict, and the gate table's
+  `graft.gate.coverage` row is `PASS`
+- **And:** the stage copy the rehearsal leaves, audited with no option as a
+  fresh growth, fails with `UNGROWN      plant need <id>`; and a reader
+  following `protocols/graft.md` Phase 5 and `graft.gate.coverage` runs
+  `growth-audit.py` with `--after-graft`, `--plan` and the lint alike (prose,
+  held by review and by a text check)
 
 ### Contract: NEED_BLOCKS_NO_DAILY_WORK
 - **Given:** a plant fresh from `install.sh`
@@ -360,7 +367,7 @@ all-ABSENT plant; the cycle cases on a copy of one fresh install. Every row was
 | OPEN_NEED_BLOCKS_A_FRESH_GROWTH | X720 scn_x720: five open needs fail the lint as UNGROWN with what satisfies each and the decline form; declined, exit 0; seen red first (exit 0, notes only) | tests/test-growth-audit.sh | integration (fixture) | green |
 | PLAN_SAYS_WHERE_AN_OPEN_NEED_GOES | X721 scn_x720: the fresh plan's line says the gate fails, the after-graft plan's names the report section; seen red first (no such tail; the option unknown) | tests/test-growth-audit.sh | integration (fixture) | green |
 | TESTING_IDIOM_IS_A_NOTE_AFTER_A_GRAFT | X722 scn_x671: after a graft the gap is a note, no HOLLOW, the exit code as with the key; seen red first (the option unknown) | tests/test-growth-audit.sh | integration (fixture) | green |
-| GRAFT_AUDITS_AS_AFTER_A_GRAFT | X723 scn_x723: graft-run.py's two coverage calls and graft.md's commands carry the option; seen red first (graft-run.py passed none) | tests/test-growth-audit.sh | unit (source) | green |
+| GRAFT_AUDITS_AS_AFTER_A_GRAFT | X723 scn_x723: graft-run.py rehearses a green plant with five open needs; its coverage log notes each and its coverage gate is PASS, while the stage copy audited as a fresh growth fails UNGROWN; graft.md's commands carry the option (text check); seen red first with graft-run.py's coverage step built without `--after-graft` (no note in the coverage log) | tests/test-growth-audit.sh | integration (graft-run rehearsal) | green |
 | NEED_BLOCKS_NO_DAILY_WORK | X724 scn_x724: an installed plant places no growth-audit.py, and only graph-lint.py names the record, reading no needs; characterization, green before the change | tests/test-growth-audit.sh | integration (fixture) | green |
 | CYCLE_DRIVER_NAMES_A_PLAN_WITHOUT_INCREMENTS | X663 the template plan of a fresh install: one stderr line, exit 2; seen red first (an empty cycle, exit 0) | tests/test-cycle.sh | integration (temp install) | green |
 | CYCLE_DRIVER_FALLS_BACK_TO_THE_TEMPLATE_ENGINE | X664 an older plant engine: the report through the template with its engine line; both engines older: the refusal; seen red first (refused at the first engine) | tests/test-cycle.sh | integration (temp install) | green |
@@ -373,7 +380,6 @@ all-ABSENT plant; the cycle cases on a copy of one fresh install. Every row was
 | Should the rows that predate the needs (collections, agents, experts, inventory) also turn to notes after a graft? | they still fail a graft's coverage gate, as they fail a fresh growth; the owner's decision of 2026-11-11 named the needs and the testing idiom | unchanged: they block in both runs, never day to day | owner | the owner's answer |
 | How does a plant decline a language's testing idiom? | a fresh growth fails on it until the node owns the key, and no `needs` row carries it | the node owns the key; the row has no decline form yet | owner | the first plant whose language has no test idiom of its own |
 | Should the testing idiom be owed by a framework row too? | a test framework is the idiom's other home | a `language` row owes it; its node may compose a framework's | architect | the first plant whose idiom lives in its framework |
-| Should GRAFT_AUDITS_AS_AFTER_A_GRAFT be held by a run of `graft-run.py`? | X723 greps `tools/graft-run.py` for the argument tuple the same change added, a read-back of source: it turns red if the call is built another way that still passes the option, and stays green while the tuple sits in code that never runs; the `protocols/graft.md` half is prose, kind `review` | the source grep is the evidence | tester | a rehearsal over the GR plant of `tests/test-graft-tools.sh` with an open need, whose coverage step passes and lists the need as a note |
 
 ## 12. Changelog
 
@@ -391,3 +397,13 @@ all-ABSENT plant; the cycle cases on a copy of one fresh install. Every row was
   cases run the audit or the driver and watch exit codes, records and lines.
   X723 reads back source text for GRAFT_AUDITS_AS_AFTER_A_GRAFT; the tester
   sign is withheld until that contract has a run behind it (§11).
+- 2026-11-11 — the open question on X723 is closed: GRAFT_AUDITS_AS_AFTER_A_GRAFT
+  is now held by a run. X723 rehearses a graft with `tools/graft-run.py` over
+  the green all-ABSENT plant with its five needs open (its one inventory row an
+  incidental dependency, so the graft's own re-plan owes nothing new) and
+  watches the outcome: each need is a note in the coverage log, the coverage
+  gate passes, and the same stage copy audited as a fresh growth fails
+  UNGROWN. The case was seen red with graft-run.py's coverage step built
+  without `--after-graft`, then green on the real code; the source grep is
+  gone, and the `protocols/graft.md` text check stays for the prose half. The
+  contract's wording and its §10 row follow.

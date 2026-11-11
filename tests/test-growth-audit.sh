@@ -1405,14 +1405,40 @@ grep -q "PLANT NEED   trust-paths — not configured for this plant: .*the cover
 echo "  X721 PLAN_SAYS_WHERE_AN_OPEN_NEED_GOES — OK"
 }
 
-# X723 both places a graft runs the audit say it is after a graft
+# X723 a graft runs the audit as after a graft: graft-run's rehearsal of a plant
+# with open needs reports them as notes and its coverage gate passes, while the
+# same plant audited as a fresh growth fails on them
 scn_x723() {
-local f
-for f in "\"growth-audit.py\", copy, seed, \"--plan\", \"--after-graft\")" \
-         "\"growth-audit.py\", copy, seed, \"--after-graft\")"; do
-  grep -qF -- "$f" "$ROOT/tools/graft-run.py" \
-    || fail "X723 GRAFT_AUDITS_AS_AFTER_A_GRAFT: tools/graft-run.py runs no $f"
-done
+local d="$TMP/x723" p="$TMP/x723/plant" log row f
+# the green all-ABSENT plant, its one inventory row an incidental dependency
+# grown with its index line, so the graft's own re-plan owes it nothing new
+fixture renamed "$p"; printf '<Project/>\n' > "$p/app.csproj"
+patch_record "$p" 'r["inventory"] = [{"kind": "dependency", "name": "leftpad", "version": "1.0",
+                   "significance": "incidental", "evidence": ["app.csproj:1"]}]'
+plan "$p"
+printf '| leftpad | 1.0 | — | build | healthy | MIT | 2026-11-11 |\n' >> "$p/docs/graph/libraries/index.md"
+patch_record "$p" 'cover("libraries/", "docs/graph/libraries/index.md")'
+printf '\n%s\n' "$(printf 'The build pads one column of its report with leftpad, pinned at 1.0 in app.csproj line 1. %.0s' 1 2 3 4 5 6)" >> "$p/docs/graph/libraries/index.md"
+ga "$p"; rc_is 0 "X723 GRAFT_AUDITS_AS_AFTER_A_GRAFT: setup: the plant, its needs declined, did not pass a fresh growth"
+undecline "$p"
+ga "$p"; rc_is 1 "X723 GRAFT_AUDITS_AS_AFTER_A_GRAFT: setup: the plant with open needs passed a fresh growth"
+has "UNGROWN      plant need trust-paths" "X723 GRAFT_AUDITS_AS_AFTER_A_GRAFT: setup: a fresh growth did not fail on the open need"
+lacks "UNGROWN      dependency" "X723 GRAFT_AUDITS_AS_AFTER_A_GRAFT: setup: a fresh growth failed on more than the open needs"
+env GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 git -C "$p" init -q
+env GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 git -C "$p" add -A
+env GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 git -C "$p" -c user.name=fixture -c user.email=fixture@example.invalid commit -q -m plant
+python3 "$ROOT/tools/graft-run.py" "$p" "$ROOT" --stage "$d/stage" >"$d/run.out" 2>&1 || true
+log="$(find "$d/stage" -name coverage.txt -print | head -1)"
+[ -n "$log" ] || { cat "$d/run.out" >&2; fail "X723 GRAFT_AUDITS_AS_AFTER_A_GRAFT: the rehearsal wrote no coverage log"; }
+out="$(cat "$log")"
+has "note: plant need trust-paths is not configured for this plant" "X723 GRAFT_AUDITS_AS_AFTER_A_GRAFT: the rehearsal's audit did not report the open need as a note"
+lacks "UNGROWN      plant need" "X723 GRAFT_AUDITS_AS_AFTER_A_GRAFT: the rehearsal's audit failed on an open need"
+row="$(grep -E '^graft\.gate\.coverage:' "$d/run.out" || true)"
+grep -Eq '^graft\.gate\.coverage:[[:space:]]*PASS' <<<"$row" \
+  || { cat "$d/run.out" >&2; fail "X723 GRAFT_AUDITS_AS_AFTER_A_GRAFT: an open need blocked the graft's coverage gate: $row"; }
+# the stage copy the graft left, audited as a fresh growth, still fails on the need
+ga "$d/stage/plant"; rc_is 1 "X723 GRAFT_AUDITS_AS_AFTER_A_GRAFT: the grafted copy with open needs passed a fresh growth"
+has "UNGROWN      plant need trust-paths" "X723 GRAFT_AUDITS_AS_AFTER_A_GRAFT: the grafted copy audited as a fresh growth did not fail on the open need"
 for f in "python3 <seed>/tools/growth-audit.py <plant> <seed> --plan --after-graft" \
          "python3 <seed>/tools/growth-audit.py <plant> <seed> --after-graft"; do
   grep -qF -- "$f" "$ROOT/protocols/graft.md" \
