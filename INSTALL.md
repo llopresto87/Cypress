@@ -435,7 +435,7 @@ frontmatter it cannot read without a word, so run `install.sh opencode
 `opencode.json` with the earlier top-level `subagent_depth` (with the remedy
 for a graft, which keeps your file, beside the re-install), a missing plugin or
 hook core, and an agent whose loaded prompt lacks a rule that must reach its
-role; a re-install fixes each. It also names a lead whose launch list no longer
+role or still carries a sentence that rule retired; a re-install fixes each. It also names a lead whose launch list no longer
 matches your roster (run `install.sh opencode --recompose-agents`) and an agent
 of yours whose `tools:` names a tool the opencode permission table lacks, which
 the install denies to that agent; remove the name from the charter. `opencode2 debug agents`

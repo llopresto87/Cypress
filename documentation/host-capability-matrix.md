@@ -259,7 +259,10 @@ parity here; the differences are budget mechanics, not enforcement.
   charter without `Task` launches nothing. The lead's list also allows each
   agent the plant authored that passes the agent lint, generated from the
   roster at install (the owner's decision of 2026-11-11), and
-  `install.sh opencode --check` reports a list that no longer matches. Observed on OpenCode 2.2.6: a
+  `install.sh opencode --check` reports a list that no longer matches. Every
+  seed agent is on some list (the architect's names `legal`), and the seed's
+  roster gate, `tools/roster-justification.py --gaps`, fails an agent no list
+  names unless its frontmatter says `launched_by: none  # <reason>`. Observed on OpenCode 2.2.6: a
   coordinator whose rules allow only one agent was refused another by the host
   ("Permission denied: subagent"), and the allowed one ran. **mechanically
   enforced**, and the allowlist is held by the agent's own host rules rather
