@@ -6,7 +6,9 @@
 # the copy one fresh install placed, over a temp plant that holds the fixture
 # suite of tests/fixtures/worth/ under tests/; the verdict each fixture test is
 # owed is tests/fixtures/worth/expected.tsv, written by hand before the tool.
-# The check never runs over this repository's own suite, whose tests assert
+# X800 to X806 add an independent tester's adversarial tree and its verdict
+# table (adversarial.tsv), with the documented limits of known-gaps.tsv held at
+# the verdict that file records. The check never runs over this repository's own suite, whose tests assert
 # documentation text on purpose.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -389,6 +391,131 @@ rc=0; out="$(WC "$P" --removal-list 2>&1)" || rc=$?
 [[ $rc -eq 0 && "$(digest "$R")" == "$RBEFORE" ]] && grep -q '^removal batch — 9 test(s)' <<<"$out" \
   && ok "X591 WORTH_NEVER_EDITS_A_TEST: --removal-list exits 0 with tests flagged and leaves every file of the plant as it was" \
   || bad "X591 WORTH_NEVER_EDITS_A_TEST" "removal list rc $rc, plant changed: $([[ "$(digest "$R")" == "$RBEFORE" ]] && echo no || echo yes)"
+
+# X800 to X806: the independent tester's adversarial cases. The tree is
+# tests/fixtures/worth/adversarial/ and the verdict each case is owed is
+# adversarial.tsv, both written before the tool ran over them. A row of
+# known-gaps.tsv is a documented limit of the heuristic: it is held at the
+# verdict that file records, so a fix shows here and its row moves to the gate.
+A="$T/adv"; mkdir -p "$A/docs/graph" "$A/tests"; cp -R "$FX/adversarial" "$A/tests/"
+printf 'TEST_GLOBS = ["tests/**/*.*"]\n' > "$A/docs/graph/spec-lint.py"
+ABEFORE="$(digest "$A/tests")"
+rc=0; WC "$A" --json >"$T/adv.json" 2>"$T/adv.err" || rc=$?
+adv="$("$PY" - "$FX/adversarial.tsv" "$FX/known-gaps.tsv" "$T/adv.json" 2>&1 <<'PY' || true
+import json, sys
+try:
+    report = json.load(open(sys.argv[3], encoding="utf-8"))
+except ValueError as e:
+    print(f"JSON\tnone\tnone\tnone\tthe --json report does not parse: {e}"); sys.exit(0)
+got = {t["test"]: t["verdict"] for t in report.get("tests", [])}
+got.update({n["path"]: "not checked" for n in report.get("not_checked", []) if "::" in n["path"]})
+rows = lambda p: [l.rstrip("\n").split("\t") for l in open(p, encoding="utf-8")
+                  if l.strip() and not l.startswith("#")]
+gaps = {r[0]: r for r in rows(sys.argv[2])}
+owed = {r[0]: r for r in rows(sys.argv[1])}
+for test in gaps:
+    if test not in owed:
+        print(f"BAD\tnone\tnone\tgap\t{test}: a known gap that adversarial.tsv does not hold")
+for test, (_, verdict, what) in owed.items():
+    kind, want = ("gap", gaps[test][2]) if test in gaps else ("gated", verdict)
+    have = got.get(test, "not read")
+    print(f"{'OK' if have == want else 'BAD'}\t{verdict}\t{what}\t{kind}\t{test}: "
+          f"{'held at' if kind == 'gap' else 'owed'} {want}, got {have}")
+PY
+)"
+check_adv() {   # label contract pattern-on-what
+  local rows; rows="$(awk -F'\t' -v k="$3" '$1 == "JSON" || ($4 == "gated" && $3 ~ k)' <<<"$adv")"
+  if [[ -z "$rows" ]] || grep -q '^BAD\|^JSON' <<<"$rows"; then
+    bad "$1 $2" "$(grep -v '^OK' <<<"${rows:-JSON	none	none	none	no adversarial row matched $3}" | cut -f5 | tr '\n' ';')"
+  else
+    ok "$1 $2: $(wc -l <<<"$rows" | tr -d ' ') adversarial test(s) get the verdict adversarial.tsv owes ($3)"
+  fi
+}
+check_adv X800 WORTH_SETUP_OUTPUT_IS_NOT_A_LITERAL 'setUp|beforeAll'
+check_adv X801 WORTH_IMPORTED_CALL_IS_CODE_UNDER_TEST 'named (resolve|match|get|find)'
+check_adv X802 WORTH_UNREAD_TEST_IS_NOT_CHECKED 'parametrize|test[.]each'
+check_adv X803 WORTH_SPARING_READS_DECLARATIONS_NOT_CONTENT 'https|hex colour|cookies|security test'
+check_adv X804 WORTH_GUARD_DOES_NOT_SPARE_A_READ_BACK 'False flag|false flag|non-empty guard'
+check_adv X805 WORTH_LITERAL_BUILT_FROM_LITERALS_IS_A_LITERAL 'joined|concatenated|inline snapshot|string methods only'
+check_adv X806 WORTH_FLAGS_A_READ_BACK_TEST '.'
+gaps="$(awk -F'\t' '$1 == "JSON" || $4 == "gap"' <<<"$adv")"
+[[ -n "$gaps" ]] && ! grep -q '^BAD\|^JSON' <<<"$gaps" \
+  && ok "X806 HEURISTIC_SPARES_A_READ_BACK: the $(wc -l <<<"$gaps" | tr -d ' ') documented limit(s) of known-gaps.tsv keep the verdict that file records" \
+  || bad "X806 HEURISTIC_SPARES_A_READ_BACK" "$(grep -v '^OK' <<<"${gaps:-JSON	none	none	none	known-gaps.tsv holds no row}" | cut -f5 | tr '\n' ';')"
+[[ "$(digest "$A/tests")" == "$ABEFORE" ]] \
+  && ok "X591 WORTH_NEVER_EDITS_A_TEST: the adversarial run changed no test file" \
+  || bad "X591 WORTH_NEVER_EDITS_A_TEST" "the adversarial tree changed under the check"
+
+# X802 WORTH_UNREAD_TEST_IS_NOT_CHECKED: a parametrized test whose table is not
+# written as literals, and a test whose title is computed, are each named and
+# counted as not checked, never read as clean and never left out.
+N="$T/n"; mkdir -p "$N/docs/graph" "$N/tests"
+printf 'TEST_GLOBS = ["tests/**/*.*"]\n' > "$N/docs/graph/spec-lint.py"
+cat > "$N/tests/test_param.py" <<'EOF'
+import pytest
+
+from app.data import CASES
+from app.settings import NAV, ROUTES, SUBMIT_LABEL
+
+
+@pytest.mark.parametrize("path,handler", CASES)
+def test_routes_from_a_computed_table(path, handler):
+    assert ROUTES[path] == handler
+
+
+def test_nav_links():
+    assert "/private" not in NAV
+    assert "/home" in NAV
+
+
+def test_label_is_set():
+    assert SUBMIT_LABEL != ""
+
+
+def test_label_is_truthy_and_send():
+    assert SUBMIT_LABEL
+    assert SUBMIT_LABEL == "Send"
+EOF
+cat > "$N/tests/each.test.ts" <<'EOF'
+import { expect, test } from "vitest";
+import { CASES } from "../src/cases";
+import { SUBMIT_LABEL } from "../src/labels";
+
+test.each(CASES)("label is %s", (want) => {
+  expect(SUBMIT_LABEL).toBe(want);
+});
+
+test.each`
+  want
+  ${"Send"}
+`("tagged label is $want", ({ want }) => {
+  expect(SUBMIT_LABEL).toBe(want);
+});
+
+for (const want of ["Send"]) {
+  test(`label is ${want}`, () => {
+    expect(SUBMIT_LABEL).toBe(want);
+  });
+}
+EOF
+rc=0; out="$(WC "$N" 2>&1)" || rc=$?
+grep -qx 'tests/test_param.py::test_routes_from_a_computed_table  not checked (parametrized)' <<<"$out" \
+  && grep -qx 'tests/each.test.ts::label is %s  not checked (parametrized)' <<<"$out" \
+  && grep -qx 'tests/each.test.ts::tagged label is $want  not checked (parametrized)' <<<"$out" \
+  && grep -qx 'tests/each.test.ts::line 17  not checked (computed title)' <<<"$out" \
+  && grep -qx 'worth-check: 1 flagged (0 in baseline), 2 files read, 4 not checked (computed title: 1 test(s); parametrized: 3 test(s))' <<<"$out" \
+  && ! grep -qi 'clean' <<<"$out" \
+  && ok "X802 WORTH_UNREAD_TEST_IS_NOT_CHECKED: a parametrized test with a computed table and a test with a computed title are named and counted as not checked" \
+  || bad "X802 WORTH_UNREAD_TEST_IS_NOT_CHECKED" "rc $rc: $out"
+
+# X804 WORTH_GUARD_DOES_NOT_SPARE_A_READ_BACK: a truthiness or non-empty guard
+# beside a read-back spares nothing, a guard alone spares, and the absence of a
+# named value stays a negative control.
+rc=0; WC "$N" --json >"$T/n.json" 2>&1 || rc=$?
+v="$("$PY" -c 'import json,sys; r=json.load(open(sys.argv[1])); print(" ".join(t["name"]+"="+t["verdict"] for t in r["tests"]))' "$T/n.json" 2>&1 || true)"
+[[ "$v" == "test_nav_links=spared test_label_is_set=spared test_label_is_truthy_and_send=flagged" ]] \
+  && ok "X804 WORTH_GUARD_DOES_NOT_SPARE_A_READ_BACK: a guard beside a read-back spares nothing; a guard alone and a named absence spare the test" \
+  || bad "X804 WORTH_GUARD_DOES_NOT_SPARE_A_READ_BACK" "got: $v"
 
 # X591 WORTH_NEVER_EDITS_A_TEST: every run above left the fixture suite's bytes as they were.
 [[ "$(digest "$P/tests")" == "$BEFORE" ]] \

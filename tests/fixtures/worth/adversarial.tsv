@@ -1,6 +1,7 @@
 # The verdict an independent tester owes each case of tests/fixtures/worth/adversarial/,
-# written by hand before worth-check.py was run over it. Not wired into the gate:
-# the cases the tool classifies otherwise are tests/fixtures/worth/known-gaps.tsv.
+# written by hand before worth-check.py was run over it. tests/test-worth-check.sh
+# (X800 to X806) gates every row at this verdict, except the documented limits of
+# tests/fixtures/worth/known-gaps.tsv, which it holds at the verdict recorded there.
 # Paths are as a test plant holds them (the adversarial tree copied under tests/).
 # Columns: test, verdict (flagged | spared), what the test is.
 tests/adversarial/python/test_adversarial.py::test_routes_parametrized	flagged	parametrized read-back of a config entry

@@ -12,15 +12,35 @@ A read-back test is red while a line is absent and green once it is present,
 so it catches nothing the change itself does not already show (ADR-0034). The
 check reads each test's assertions and flags a test only when every assertion
 compares a literal with a value the test reads back unchanged: a declared
-constant, a config entry, or text read from a file. It is a heuristic, static
-and without a model, and it errs toward sparing. It spares:
+constant, a config entry, or text read from a file. A literal built only from
+literals ("Se" + "nd", "".join([...]), [...].join("")) is a literal, and so is
+the text of toMatchInlineSnapshot. It is a heuristic, static and without a
+model, and it errs toward sparing. It spares:
 
   - a test that feeds inputs to logic: any call into the code under test, a
-    pattern, a condition, an order of precedence or a computed value;
-  - a regression test for a bug: a comment, docstring or name that names the
-    bug, the issue or the regression;
-  - a security negative control: an assertion that something is refused or
-    absent (`not in`, `!=`, `is False`, `.not.`), or a test about security;
+    pattern, a condition, an order of precedence or a computed value. An
+    imported TypeScript or JavaScript name is code under test whatever it is
+    called (an imported resolve() or router.match()); only a name from a Node
+    built-in module (fs, path, url) or a global reads a value, and a string
+    method reads a value only on a value already read or an imported constant
+    written in upper case;
+  - a test that reads a file a setup hook in its scope had code write: a
+    unittest setUp, setUpClass or asyncSetUp, a pytest setup_* function, an
+    autouse fixture in the file or in a conftest.py under the plant root, a
+    beforeAll, beforeEach or before in the test's block or at the file's top;
+  - a regression test for a bug: a name or title, decorator or marker,
+    comment above or inside, or docstring that names the bug, the issue, the
+    regression or a ticket (`#412` counts, except on a line about a colour);
+  - a security control: one of the same declarations, or an identifier the
+    test reads, names a security subject. Words inside a string literal
+    never count, and a URL in a comment is read without its scheme;
+  - a negative control: an assertion that a named value is absent or refused
+    (`"/admin" not in nav`, `.not.toContain("/admin")`, an expected exception);
+  - a test whose only assertions are guards: a value is set or not empty
+    (`!= ""`, `is not None`, a bare `assert x`, toBeTruthy, toBeDefined,
+    toBeFalsy, toBeNull, assertIsNone, assertFalse(x)). A guard beside a
+    read-back spares nothing, and a False, None, false or null literal compared
+    for equality (`is False`, toBe(false)) is a read-back like any other;
   - a test with no assertion it can read.
 
 It never flags by a test's name or length, and it never removes or edits a
@@ -31,8 +51,24 @@ same source docs/graph/source-index.py reads; the file is read, never
 imported. It reads Python (with ast) and TypeScript or JavaScript. Every other
 test file is listed as `not checked (<language>)`, and a file that does not
 parse is `not checked` with the reason: an unread file is never reported as
-passing. A plant whose spec-lint.py is missing or sets no TEST_GLOBS gets one
+passing. A parametrized test (pytest parametrize, test.each, it.each) is read
+with each parameter taking the literal values of its table; one whose table is
+not written as literals (a computed table, a tagged template, object rows) is
+listed as `path::name  not checked (parametrized)`, and a test whose title is
+computed as `path::line N  not checked (computed title)`; the summary counts
+each. A plant whose spec-lint.py is missing or sets no TEST_GLOBS gets one
 line saying the check is not configured, and exit 0.
+
+Known limits. These read-backs are spared, since a miss costs nothing and a
+false flag costs an author a test: an assertion inside a helper function the
+test calls; a constant held equal to a golden file, which reads as two homes
+with no literal between them; a snapshot held in a file the runner writes
+(toMatchSnapshot, a snapshot fixture); a fixture parameter's value; a test
+whose name says regression; a test inside describe.each, whose parameters read
+as logic. One limit can flag a good test: a setup file named only in the
+runner's configuration (jest globalSetup, vitest setupFiles) is not read, so a
+file it builds reads as a literal; keep such a test with a keep line naming
+the setup file.
 
 Keep a test that earns its place with a comment line directly above it (any
 comment syntax), for example:
@@ -108,18 +144,40 @@ OTHER_LANGUAGES = {".sh": "shell", ".bash": "shell", ".zsh": "shell", ".bats": "
 COMMENT = {"python": "#", "typescript": "//", "javascript": "//"}
 
 KEEP_RE = re.compile(r"worth-check:\s*keep\b\s*[—–:-]*\s*(.*?)\s*(?:\*/)?\s*$")
-# A comment, docstring, name or title naming a bug spares the test (ADR-0034:
-# a bug reproduction is always written and stays).
-REGRESSION_RE = re.compile(r"\b(?:regress\w*|bugs?|issues?|reproduc\w*|hotfix\w*|incidents?)\b"
-                           r"|#\d+", re.I)
+# The regression and security spares read what the author declared about the
+# test: its name or title, its decorators or markers, the comments above and
+# inside it, its docstring and (security only) the identifiers it reads. They
+# never read the words inside a string literal, so a URL, a colour code or a
+# line of banner copy spares nothing.
+# A declaration naming a bug spares the test (ADR-0034: a bug reproduction is
+# always written and stays).
+REGRESSION_RE = re.compile(r"\b(?:regress\w*|bugs?|issues?|reproduc\w*|hotfix\w*|incidents?)\b", re.I)
 TICKET_RE = re.compile(r"\b[A-Z][A-Z0-9]+-\d+\b")
-# Words that make a test a security control; read over the test's whole text
-# with identifiers split into words.
+# `#412` names an issue, except on a line about a colour, where `#112233` is a
+# colour code; a token with hex letters (`#0055ff`) never matches.
+ISSUE_REF_RE = re.compile(r"(?<![\w#&])#\d+\b")
+COLOUR_RE = re.compile(r"\b(?:colou?rs?|hex|rgba?|palette|css)\b", re.I)
+URL_RE = re.compile(r"\b[a-z][a-z0-9+.-]*://\S*", re.I)
+# Words that make a test a security control. `debug` is here because a debug
+# mode left on in production leaks internals; `cookie` is not, because banner
+# copy names cookies (a session cookie names its session).
 SECURITY_RE = re.compile(
     r"\b(?:secur\w*|auth\w*|csrf|xsrf|xss|inject\w*|travers\w*|secrets?|passw\w*|tokens?|"
     r"permission\w*|forbid\w*|denied|deny|sanitiz\w*|escap\w*|privileg\w*|csp|cors|tls|ssl|"
-    r"https|cookies?|session\w*|admin\w*|login|logout|credential\w*|encrypt\w*|decrypt\w*|"
+    r"https|session\w*|admin\w*|login|logout|credential\w*|encrypt\w*|decrypt\w*|debug|"
     r"nonce|unsafe|untrusted|malicious|attack\w*|exploit\w*)\b", re.I)
+# Setup hooks: a hook that runs code makes a file the test then reads output of
+# that code, not a literal the change adds.
+PY_HOOKS = {"setUp", "setUpClass", "asyncSetUp", "setup_method", "setup_class", "setup",
+            "setup_function", "setup_module", "setUpModule", "pytest_sessionstart"}
+PY_FILE_READS = {"read_text", "read_bytes", "open"}
+PY_TESTCASE_BASES = {"object", "TestCase", "unittest.TestCase", "IsolatedAsyncioTestCase",
+                     "unittest.IsolatedAsyncioTestCase"}
+JS_HOOKS = {"beforeAll", "beforeEach", "before"}
+JS_FILE_READS = {"readFileSync", "readFile"}
+# A str method over literals with literal arguments is folded into a literal.
+FOLD_STR_METHODS = {"join", "upper", "lower", "strip", "lstrip", "rstrip", "replace", "format",
+                    "casefold", "title", "capitalize"}
 
 # Python: the calls that read a value back rather than compute one.
 PY_READ_FUNCS = {"open", "Path", "PurePath", "PurePosixPath", "len", "str", "bytes", "list",
@@ -137,20 +195,30 @@ PY_POSITIVE = {"assertEqual", "assertEquals", "assertIn", "assertRegex", "assert
                "assertCountEqual", "assertListEqual", "assertDictEqual", "assertSetEqual",
                "assertTupleEqual", "assertSequenceEqual", "assertMultiLineEqual", "assertIs",
                "assertAlmostEqual"}
-PY_NEGATIVE = {"assertNotEqual", "assertNotEquals", "assertNotIn", "assertFalse", "assertIsNone",
-               "assertIsNot", "assertNotRegex", "assertNotAlmostEqual"}
+PY_NEGATIVE = {"assertNotEqual", "assertNotEquals", "assertNotIn", "assertIsNot", "assertNotRegex",
+               "assertNotAlmostEqual"}
+PY_GUARDS = {"assertIsNone", "assertIsNotNone"}
 
-# TypeScript and JavaScript.
+# TypeScript and JavaScript. A read call counts as a read only when its root
+# is a global, an assertion, or a name imported or required from a Node
+# built-in module; an imported name from anywhere else is code under test.
 JS_READ_CALLS = {"readFileSync", "fs.readFileSync", "fs.promises.readFile", "promises.readFile",
                  "fsp.readFile", "readFile", "path.join", "path.resolve", "path.dirname", "join",
                  "resolve", "dirname", "fileURLToPath", "url.fileURLToPath", "JSON.parse",
                  "String", "URL", "require", "expect", "assert"}
+JS_ALWAYS_READ = {"expect", "assert", "JSON", "String", "URL", "require"}
+NODE_BUILTINS = {"fs", "node:fs", "fs/promises", "node:fs/promises", "path", "node:path",
+                 "path/posix", "node:path/posix", "url", "node:url"}
 JS_READ_METHODS = {"toString", "trim", "trimStart", "trimEnd", "split", "toLowerCase",
-                   "toUpperCase", "includes", "startsWith", "endsWith", "indexOf", "match"}
+                   "toUpperCase", "includes", "startsWith", "endsWith", "indexOf", "match", "join"}
+CONST_NAME_RE = re.compile(r"[A-Z][A-Z0-9_]*")
 JS_POSITIVE = {"toBe", "toEqual", "toStrictEqual", "toContain", "toMatch", "toContainEqual",
-               "toHaveLength", "toMatchObject", "toHaveProperty", "toBeCloseTo"}
+               "toHaveLength", "toMatchObject", "toHaveProperty", "toBeCloseTo",
+               "toMatchInlineSnapshot"}
+JS_SNAPSHOT_FILE = {"toMatchSnapshot", "toMatchFileSnapshot"}
 JS_NO_LITERAL = {"toBeTruthy", "toBeDefined"}
 JS_NEGATIVE = {"toBeFalsy", "toBeNull", "toBeUndefined", "toBeNaN"}
+JS_TEST_MODIFIERS = {"only", "concurrent", "each", "fails", "sequential"}
 NODE_POSITIVE = {"equal", "strictEqual", "deepEqual", "deepStrictEqual", "match", "ok"}
 NODE_NEGATIVE = {"notEqual", "notStrictEqual", "notDeepEqual", "notDeepStrictEqual",
                  "doesNotMatch"}
@@ -288,6 +356,24 @@ def words(text: str) -> str:
     return re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", text.replace("_", " "))
 
 
+def names_a_bug(declared: str) -> bool:
+    """A name, title, marker, comment or docstring that names a bug, an issue,
+    a regression or a ticket. A bare `#<digits>` counts on a line that is not
+    about a colour."""
+    for line in declared.splitlines():
+        if REGRESSION_RE.search(line) or TICKET_RE.search(line):
+            return True
+        if ISSUE_REF_RE.search(line) and not COLOUR_RE.search(line):
+            return True
+    return False
+
+
+def about_security(declared: str) -> bool:
+    """The declaration and the identifiers a test reads name a security
+    subject; a URL in a comment is read without its scheme."""
+    return bool(SECURITY_RE.search(words(URL_RE.sub(" ", declared))))
+
+
 def keep_reason(lines: list[str], first: int, prefixes: tuple) -> tuple[bool, str | None]:
     """(a keep line is there, its reason) from the comment lines directly above
     1-based line `first`."""
@@ -315,6 +401,14 @@ def comments_above(lines: list[str], first: int, prefixes: tuple) -> str:
 LIT, DECL, READ, LOGIC = "literal", "declared", "read", "logic"
 
 
+class NoFold(Exception):
+    """An expression that is not a constant built from literals."""
+
+
+class NotReadable(Exception):
+    """A parametrize table the check cannot read as literals."""
+
+
 def combine(kinds) -> str:
     kinds = set(kinds)
     for k in (LOGIC, READ, DECL):
@@ -334,17 +428,32 @@ def dotted(node) -> str | None:
     return None
 
 
-class PyTest:
-    """One Python test function, read statement by statement."""
+def substantive(value) -> bool:
+    """A literal that names something: not empty, zero, None or False."""
+    if value is None or value is False or isinstance(value, (list, tuple, dict, set)) and not value:
+        return False
+    return not (isinstance(value, (int, float, str, bytes)) and not value)
 
-    def __init__(self, fn, module_env: dict):
+
+class PyTest:
+    """One Python test function, read statement by statement. `params` maps a
+    parametrized argument to the literal values its table gives it; `hooked`
+    says a setup hook in scope runs code, so a file the test reads is output of
+    that code."""
+
+    def __init__(self, fn, module_env: dict, params: dict | None = None, hooked: bool = False):
         self.module_env = module_env
         self.env: dict = {}
+        self.params: dict = dict(params or {})
+        self.values: dict = {}                    # a local bound to a folded literal
+        self.hooked = hooked
         self.logic = False
         self.assertions: list[tuple[str, list]] = []   # (status, literal nodes)
+        if fn is None:
+            return
         a = fn.args
         for arg in a.posonlyargs + a.args + a.kwonlyargs + [x for x in (a.vararg, a.kwarg) if x]:
-            self.env[arg.arg] = LOGIC
+            self.env[arg.arg] = LIT if arg.arg in self.params else LOGIC
         self.block(fn.body, top=True)
 
     def name(self, n: str) -> str:
@@ -396,21 +505,76 @@ class PyTest:
             return LOGIC
         f = e.func
         if isinstance(f, ast.Name):
+            if self.hooked and f.id == "open":
+                return LOGIC
             return READ if f.id in PY_READ_FUNCS and f.id not in self.env else LOGIC
         if isinstance(f, ast.Attribute):
             name = dotted(f)
+            if self.hooked and (name in ("io.open", "codecs.open") or f.attr in PY_FILE_READS):
+                return LOGIC
             if name in PY_READ_DOTTED:
                 return READ
             if name in PY_RE_FUNCS:
                 first = e.args[0] if e.args else None
                 return READ if isinstance(first, ast.Constant) else LOGIC
-            if f.attr in PY_READ_METHODS and self.ev(f.value) in (READ, LIT):
+            base = self.ev(f.value)
+            if f.attr in FOLD_STR_METHODS and base == LIT and args == LIT:
+                return LIT                          # "".join(["Se", "nd"]) is a literal
+            if f.attr in PY_READ_METHODS and base in (READ, LIT):
                 return READ
         return LOGIC
 
-    def bind(self, target, kind: str) -> None:
+    def fold(self, e):
+        """The value of a constant built from literals; NoFold otherwise."""
+        if isinstance(e, ast.Constant):
+            return e.value
+        if isinstance(e, ast.Name) and e.id in self.values:
+            return self.values[e.id]
+        if isinstance(e, (ast.List, ast.Tuple)):
+            return [self.fold(x) for x in e.elts]
+        if isinstance(e, ast.BinOp) and isinstance(e.op, (ast.Add, ast.Mult)):
+            left, right = self.fold(e.left), self.fold(e.right)
+            try:
+                return left + right if isinstance(e.op, ast.Add) else left * right
+            except (TypeError, OverflowError, MemoryError):
+                raise NoFold from None
+        if isinstance(e, ast.Call) and isinstance(e.func, ast.Attribute) \
+                and e.func.attr in FOLD_STR_METHODS and not e.keywords:
+            base = self.fold(e.func.value)
+            if isinstance(base, str):
+                try:
+                    return getattr(base, e.func.attr)(*[self.fold(a) for a in e.args])
+                except (TypeError, ValueError, IndexError, KeyError):
+                    raise NoFold from None
+        raise NoFold
+
+    def shown(self, nodes) -> list:
+        """The literals an assertion reads back: a parametrized argument shows
+        the values of its table, and a constant built from literals shows the
+        one literal it folds into."""
+        out = []
+        for n in nodes:
+            if isinstance(n, ast.Name) and n.id in self.params:
+                out += [ast.Constant(v) for v in self.params[n.id]]
+                continue
+            try:
+                v = self.fold(n)
+            except (NoFold, RecursionError):
+                out.append(n)
+                continue
+            out.append(n if isinstance(n, ast.Constant) else ast.Constant(v))
+        return out
+
+    def bind(self, target, kind: str, value=None) -> None:
         if isinstance(target, ast.Name):
             self.env[target.id] = kind
+            self.values.pop(target.id, None)
+            self.params.pop(target.id, None)
+            if kind == LIT and value is not None:
+                try:
+                    self.values[target.id] = self.fold(value)
+                except (NoFold, RecursionError):
+                    pass
         elif isinstance(target, (ast.Tuple, ast.List)):
             for t in target.elts:
                 self.bind(t, kind)
@@ -439,8 +603,11 @@ class PyTest:
             k = self.ev(st.value)
             if k == LOGIC:
                 self.logic = True
+            if isinstance(st, ast.AugAssign):
+                self.bind(st.target, k)
+                return
             for t in (st.targets if isinstance(st, ast.Assign) else [st.target]):
-                self.bind(t, k)
+                self.bind(t, k, st.value)
         elif isinstance(st, (ast.With, ast.AsyncWith)):
             for item in st.items:
                 k = self.ev(item.context_expr)
@@ -477,8 +644,12 @@ class PyTest:
         attr = e.func.attr
         if attr == "assertTrue" and e.args:
             self.assertions.append(self.judge(e.args[0]))
+        elif attr == "assertFalse" and e.args:
+            self.assertions.append(self.judge(ast.UnaryOp(op=ast.Not(), operand=e.args[0])))
+        elif attr in PY_GUARDS and e.args:
+            self.assertions.append((LOGIC, []) if self.ev(e.args[0]) == LOGIC else ("guard", []))
         elif attr in PY_NEGATIVE:
-            self.assertions.append(("negative", []))
+            self.assertions.append(self.operands(e.args[:2], negative=True))
         elif attr in PY_POSITIVE:
             self.assertions.append(self.operands(e.args[:2], negative=False))
         else:
@@ -486,20 +657,38 @@ class PyTest:
         return True
 
     def operands(self, nodes, negative: bool):
+        """An assertion's status from its operands. With negative polarity it
+        is a negative control when it names a value that must be absent, and a
+        guard, which spares nothing, when that value is empty, zero, None or
+        False. A False or None literal compared for equality is a literal like
+        any other."""
         kinds = [self.ev(n) for n in nodes]
         if LOGIC in kinds:
             return LOGIC, []
         lits = [n for n, k in zip(nodes, kinds) if k == LIT]
-        if negative or any(isinstance(n, ast.Constant) and (n.value is False or n.value is None)
-                           for n in lits):
-            return "negative", []
+        if negative:
+            return ("negative", []) if self.names_a_value(lits) else ("guard", [])
         if lits and any(k in (READ, DECL) for k in kinds):
-            return "readback", lits
+            return "readback", self.shown(lits)
         return "no literal", []
+
+    def names_a_value(self, nodes) -> bool:
+        for n in nodes:
+            if isinstance(n, ast.Name) and n.id in self.params:
+                if any(substantive(v) for v in self.params[n.id]):
+                    return True
+            elif isinstance(n, ast.Name) and n.id in self.values:
+                if substantive(self.values[n.id]):
+                    return True
+            elif any(isinstance(c, ast.Constant) and substantive(c.value) for c in ast.walk(n)):
+                return True
+        return False
 
     def judge(self, e):
         if isinstance(e, ast.UnaryOp) and isinstance(e.op, ast.Not):
-            return "negative", []
+            if self.ev(e.operand) == LOGIC:
+                return LOGIC, []
+            return ("negative", []) if self.names_a_value([e.operand]) else ("guard", [])
         if isinstance(e, ast.Compare):
             neg = any(isinstance(op, (ast.NotEq, ast.NotIn, ast.IsNot)) for op in e.ops)
             return self.operands([e.left] + e.comparators, negative=neg)
@@ -508,27 +697,32 @@ class PyTest:
             for status in (LOGIC, "negative", "no literal"):
                 if any(p[0] == status for p in parts):
                     return status, []
-            return "readback", [n for p in parts for n in p[1]]
+            if any(p[0] == "readback" for p in parts):
+                return "readback", [n for p in parts for n in p[1]]
+            return "guard", []
         k = self.ev(e)
         if k == LOGIC:
             return LOGIC, []
         if isinstance(e, ast.Call) and k == READ:
             lits = [a for a in e.args if isinstance(a, ast.Constant)]
             if lits:
-                return "readback", lits
+                return "readback", self.shown(lits)
+        if isinstance(e, (ast.Name, ast.Attribute, ast.Subscript)):
+            return "guard", []                      # the truthiness of a value read back
         return "no literal", []
 
 
 def py_literal(node) -> str:
-    if isinstance(node, ast.Constant) and isinstance(node.value, str):
-        return json.dumps(node.value, ensure_ascii=False)
+    if isinstance(node, ast.Constant):
+        if isinstance(node.value, str):
+            return json.dumps(node.value, ensure_ascii=False)
+        return repr(node.value)
     return ast.unparse(node)
 
 
 def py_module_env(tree) -> dict:
     env: dict = {}
-    probe = PyTest.__new__(PyTest)
-    probe.module_env, probe.env, probe.logic, probe.assertions = env, {}, False, []
+    probe = PyTest(None, env)
     for st in tree.body:
         if isinstance(st, (ast.Import, ast.ImportFrom)):
             for a in st.names:
@@ -545,7 +739,105 @@ def py_module_env(tree) -> dict:
     return env
 
 
-def read_python(rel: str, src: str) -> list[dict]:
+def is_autouse(fn) -> bool:
+    for d in fn.decorator_list:
+        if isinstance(d, ast.Call) and (dotted(d.func) or "").split(".")[-1] == "fixture" and any(
+                k.arg == "autouse" and isinstance(k.value, ast.Constant) and k.value.value
+                for k in d.keywords):
+            return True
+    return False
+
+
+def runs_code(fn, env: dict) -> bool:
+    """A hook body that calls anything but a read: a build, a write, a client."""
+    probe = PyTest(None, env)
+    a = fn.args
+    for arg in a.posonlyargs + a.args + a.kwonlyargs:
+        probe.env[arg.arg] = LOGIC
+    return any(isinstance(node, ast.Call) and probe.call(node) == LOGIC
+               for st in fn.body for node in ast.walk(st))
+
+
+def hooks_run_code(body, env: dict) -> bool:
+    """A setup hook among one scope's statements, an autouse fixture included,
+    that runs code."""
+    return any(isinstance(st, (ast.FunctionDef, ast.AsyncFunctionDef))
+               and (st.name in PY_HOOKS or is_autouse(st)) and runs_code(st, env) for st in body)
+
+
+_CONFTEST: dict = {}
+
+
+def conftest_hooked(root: Path | None, rel: str) -> bool:
+    """A conftest.py between the plant root and the test file holds an autouse
+    fixture or a session hook that runs code."""
+    if root is None:
+        return False
+    d = Path(rel).parent
+    while True:
+        p = root / d / "conftest.py"
+        if p not in _CONFTEST:
+            try:
+                tree = ast.parse(p.read_text(encoding="utf-8"))
+                _CONFTEST[p] = hooks_run_code(tree.body, py_module_env(tree))
+            except (OSError, SyntaxError, ValueError, UnicodeDecodeError, RecursionError):
+                _CONFTEST[p] = False
+        if _CONFTEST[p]:
+            return True
+        if d == d.parent:
+            return False
+        d = d.parent
+
+
+def py_parametrize(decorators) -> dict:
+    """Each parametrized argument -> the literal values its table gives it.
+    An indirect table feeds fixtures, which stay logic; a table that is not
+    written as literals raises NotReadable."""
+    out: dict = {}
+    for d in decorators:
+        if not (isinstance(d, ast.Call) and (dotted(d.func) or "").endswith("parametrize")):
+            continue
+        kw = {k.arg: k.value for k in d.keywords}
+        if "indirect" in kw:
+            continue
+        names_node = d.args[0] if d.args else kw.get("argnames")
+        values_node = d.args[1] if len(d.args) > 1 else kw.get("argvalues")
+        try:
+            names = ast.literal_eval(names_node)
+        except (ValueError, TypeError, SyntaxError, RecursionError):
+            raise NotReadable from None
+        names = [n.strip() for n in names.split(",")] if isinstance(names, str) else list(names)
+        if not isinstance(values_node, (ast.List, ast.Tuple)) or not all(
+                isinstance(n, str) for n in names):
+            raise NotReadable
+        rows = []
+        for elt in values_node.elts:
+            if isinstance(elt, ast.Call) and (dotted(elt.func) or "").endswith("param"):
+                elt = elt.args[0] if len(elt.args) == 1 else ast.Tuple(elts=list(elt.args), ctx=ast.Load())
+            try:
+                row = ast.literal_eval(elt)
+            except (ValueError, TypeError, SyntaxError, RecursionError):
+                raise NotReadable from None
+            if len(names) > 1:
+                if not isinstance(row, (tuple, list)) or len(row) != len(names):
+                    raise NotReadable
+                rows.append(list(row))
+            else:
+                rows.append([row])
+        for k, n in enumerate(names):
+            out[n] = [r[k] for r in rows]
+    return out
+
+
+def mark_text(d) -> str:
+    """A decorator as the declaration it makes: a parametrize table's values
+    are data, so only its name counts."""
+    name = dotted(d.func if isinstance(d, ast.Call) else d) or ""
+    return name if name.endswith("parametrize") else ast.unparse(d)
+
+
+def read_python(rel: str, src: str, root: Path | None = None):
+    """(the tests read, the tests listed as not checked) of one Python file."""
     try:
         tree = ast.parse(src, filename=rel)
     except SyntaxError as e:
@@ -561,28 +853,54 @@ def read_python(rel: str, src: str) -> list[dict]:
     except (tokenize.TokenError, SyntaxError):
         pass
     env = py_module_env(tree)
+    classes = {st.name: st for st in tree.body if isinstance(st, ast.ClassDef)}
+
+    def class_hooked(cls, seen=()) -> bool:
+        if hooks_run_code(cls.body, env):
+            return True
+        for b in cls.bases:
+            name = dotted(b) or ""
+            if name in classes and name not in seen:
+                if class_hooked(classes[name], seen + (cls.name,)):
+                    return True
+            elif name not in PY_TESTCASE_BASES:
+                return True                 # a base the check cannot see: its setUp may build
+        return False
+
+    module_hooked = hooks_run_code(tree.body, env) or conftest_hooked(root, rel)
     found = []
     for st in tree.body:
         if isinstance(st, (ast.FunctionDef, ast.AsyncFunctionDef)) and st.name.startswith("test"):
-            found.append((st.name, st))
+            found.append((st.name, st, [], module_hooked))
         elif isinstance(st, ast.ClassDef):
+            hooked = module_hooked or class_hooked(st)
             for m in st.body:
                 if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef)) and m.name.startswith("test"):
-                    found.append((f"{st.name}::{m.name}", m))
-    out = []
-    for name, fn in found:
+                    found.append((f"{st.name}::{m.name}", m, st.decorator_list, hooked))
+    out, unread = [], []
+    for name, fn, outer, hooked in found:
+        decorators = list(outer) + fn.decorator_list
+        try:
+            params = py_parametrize(decorators)
+        except NotReadable:
+            unread.append({"path": f"{rel}::{name}", "reason": "parametrized", "language": "python"})
+            continue
         first = min([fn.lineno] + [d.lineno for d in fn.decorator_list])
         last = fn.end_lineno or fn.lineno
-        t = PyTest(fn, env)
+        t = PyTest(fn, env, params, hooked)
         above = comments_above(lines, first, ("#",))
         inside = "\n".join(c for n, c in comments.items() if first <= n <= last)
         doc = ast.get_docstring(fn) or ""
+        marks = "\n".join(mark_text(d) for d in decorators)
+        ids = {n.id for n in ast.walk(fn) if isinstance(n, ast.Name)} \
+            | {n.attr for n in ast.walk(fn) if isinstance(n, ast.Attribute)} \
+            | {a.arg for a in ast.walk(fn.args) if isinstance(a, ast.arg)}
+        declared = f"{above}\n{inside}\n{doc}\n{words(name)}\n{words(marks)}"
         kept, reason = keep_reason(lines, first, ("#",))
         out.append(verdict(rel, name, first, "python", t.logic, t.assertions,
-                           marker_text=f"{above}\n{inside}\n{doc}\n{words(name)}",
-                           whole_text=words("\n".join(lines[first - 1:last]) + "\n" + above),
+                           declared=declared, security_text=declared + "\n" + " ".join(sorted(ids)),
                            literal_of=py_literal, kept=kept, reason=reason))
-    return out
+    return out, unread
 
 
 # --- TypeScript and JavaScript ----------------------------------------------
@@ -808,7 +1126,27 @@ class JsFile:
         self.toks, self.comments = js_lex(src)
         self.lines = src.splitlines()
         self.top: dict = {}          # top-level name -> DECL | READ | LOGIC
+        self.origin: dict = {}       # an imported or required name -> its module
+        self.bound: dict = {}        # a name -> the literal tokens it stands for, in one test
+        self.hooked = False          # a setup hook in scope of the test being read runs code
+        self.parent: list[int] = []  # each token's innermost enclosing "{", or -1
+        self.close: dict = {}        # an opening "{" -> its closing "}"
+        stack: list[int] = []
+        for k, t in enumerate(self.toks):
+            self.parent.append(stack[-1] if stack else -1)
+            if t.kind == "punc" and t.value == "{":
+                stack.append(k)
+            elif t.kind == "punc" and t.value == "}" and stack:
+                self.close[stack.pop()] = k
         self.module_scan()
+
+    def read_value(self, root: str, local: set) -> bool:
+        """A value already read: a local, a top-level value read in this file,
+        or an imported constant written in upper case. Any other imported name
+        is code under test, so a method on it is a call into that code."""
+        if root in local or self.top.get(root) == READ:
+            return True
+        return self.top.get(root) == DECL and bool(CONST_NAME_RE.fullmatch(root))
 
     def call_kind(self, toks, j: int, params: set, local: set) -> str:
         """READ when the call opening at toks[j] ('(') reads a value, else LOGIC."""
@@ -821,10 +1159,12 @@ class JsFile:
                 chain.append(toks[k - 2].value)
                 k -= 2
             else:
-                chain.append(")")               # a method on a call's result
+                chain.append(")")               # a method on a call's result or a literal
                 break
         chain.reverse()
         name = ".".join(chain)
+        if self.hooked and chain[-1] in JS_FILE_READS:
+            return LOGIC                         # output of the code a setup hook ran
         if chain[0] == ")":
             if chain[-1] in JS_READ_METHODS or chain[-1].startswith("to") or chain[-1] == "not":
                 return READ
@@ -833,9 +1173,11 @@ class JsFile:
         if root in params:
             return LOGIC
         if name in JS_READ_CALLS or (root == "assert" and len(chain) == 2):
-            return READ
-        if len(chain) > 1 and chain[-1] in JS_READ_METHODS and (
-                root in local or self.top.get(root) in (READ, DECL)):
+            if root in JS_ALWAYS_READ or self.origin.get(root) in NODE_BUILTINS or (
+                    root not in self.top and root not in local):
+                return READ
+            return LOGIC                         # an imported resolve() is code under test
+        if len(chain) > 1 and chain[-1] in JS_READ_METHODS and self.read_value(root, local):
             return READ
         return LOGIC
 
@@ -848,11 +1190,17 @@ class JsFile:
             elif t.kind == "punc" and t.value in (")", "]", "}"):
                 depth -= 1
             elif depth == 0 and t.kind == "id" and t.value == "import":
-                j = i + 1
+                j, names = i + 1, []
                 while j < len(toks) and not (toks[j].kind in ("str",) or toks[j].value in ("from", ";")):
                     if toks[j].kind == "id" and toks[j].value not in ("type", "as"):
-                        self.top[toks[j].value] = DECL
+                        names.append(toks[j].value)
                     j += 1
+                source = toks[j + 1].value if j + 1 < len(toks) and toks[j].value == "from" \
+                    and toks[j + 1].kind == "str" else None
+                for nm in names:
+                    self.top[nm] = DECL
+                    if source is not None:
+                        self.origin[nm] = source
                 i = j
                 continue
             elif depth == 0 and t.kind == "id" and t.value in ("const", "let", "var"):
@@ -868,8 +1216,11 @@ class JsFile:
                     end = js_statement_end(toks, j + 1)
                     rhs = toks[j + 1:end]
                     kind = READ
-                    if any(r.kind == "id" and r.value == "require" for r in rhs):
-                        kind = DECL
+                    for r, nxt in zip(rhs, rhs[2:]):
+                        if r.kind == "id" and r.value == "require" and nxt.kind == "str":
+                            kind = DECL
+                            for nm in names:
+                                self.origin[nm] = nxt.value
                     for k in range(j + 1, end):
                         if toks[k].kind == "punc" and toks[k].value == "(" and \
                                 self.call_kind(toks, k, set(), set()) == LOGIC:
@@ -887,27 +1238,27 @@ class JsFile:
                 self.top[toks[i + 1].value] = DECL
             i += 1
 
-    def tests(self) -> list[dict]:
-        toks, out = self.toks, []
-        for i, t in enumerate(toks):
-            if t.kind != "id" or t.value not in ("test", "it"):
-                continue
-            if i and toks[i - 1].kind == "punc" and toks[i - 1].value in (".", "?."):
-                continue
-            j = i + 1
-            if j + 1 < len(toks) and toks[j].value == "." and toks[j + 1].value == "only":
-                j += 2
-            if j >= len(toks) or toks[j].value != "(" or toks[j].kind != "punc":
-                continue
-            close = matching(toks, j, "(", ")")
-            args = split_args(toks[j + 1:close])
-            if len(args) < 2 or len(args[0]) != 1 or args[0][0].kind not in ("str", "tmpl") \
-                    or args[0][0].subst:
-                continue
-            out.append(self.one(args[0][0].value, t.line, args[1]))
-        return out
+    @staticmethod
+    def is_fn(arg: list[Tok]) -> bool:
+        """A function literal: `function`, or an arrow at the argument's top level."""
+        k = 1 if arg and arg[0].value == "async" else 0
+        if k < len(arg) and arg[k].kind == "id" and arg[k].value == "function":
+            return True
+        depth = 0
+        for t in arg:
+            if t.kind == "punc" and t.value in ("(", "[", "{"):
+                depth += 1
+            elif t.kind == "punc" and t.value in (")", "]", "}"):
+                depth -= 1
+            elif depth == 0 and t.kind == "punc" and t.value == "=>":
+                return True
+        return False
 
-    def one(self, title: str, line: int, fn: list[Tok]) -> dict:
+    @staticmethod
+    def fn_parts(fn: list[Tok]):
+        """(parameter names in order, or None when one is destructured; the
+        parameter name set; the body tokens) of a function literal."""
+        order: list | None = []
         params: set = set()
         k = 0
         if k < len(fn) and fn[k].value == "async":
@@ -919,31 +1270,114 @@ class JsFile:
         if k < len(fn) and fn[k].value == "(":
             end = matching(fn, k, "(", ")")
             params = {x.value for x in fn[k + 1:end] if x.kind == "id"} - JS_GLOBALS
+            for part in split_args(fn[k + 1:end]):
+                if not part or part[0].kind != "id":
+                    order = None
+                elif order is not None:
+                    order.append(part[0].value)
             k = end + 1
         elif k < len(fn) and fn[k].kind == "id":
-            params = {fn[k].value}
+            params, order = {fn[k].value}, [fn[k].value]
             k += 1
         if k < len(fn) and fn[k].value == "=>":
             k += 1
         if k < len(fn) and fn[k].value == "{":
             end = matching(fn, k, "{", "}")
-            body = fn[k + 1:end]
-        else:
-            body = fn[k:]
+            return order, params, fn[k + 1:end]
+        return order, params, fn[k:]
+
+    def hook_scopes(self) -> list[tuple[int, int]]:
+        """The token span each setup hook that runs code applies to: its
+        enclosing block, or the whole file for a hook at the top."""
+        toks, spans = self.toks, []
+        for i, t in enumerate(toks):
+            if t.kind != "id" or t.value not in JS_HOOKS or i + 1 >= len(toks) \
+                    or toks[i + 1].value != "(":
+                continue
+            if i >= 2 and toks[i - 1].value in (".", "?.") and toks[i - 2].value not in ("test", "it"):
+                continue
+            close = matching(toks, i + 1, "(", ")")
+            fn = next((a for a in reversed(split_args(toks[i + 2:close])) if self.is_fn(a)), None)
+            if fn is None:
+                continue
+            _, params, body = self.fn_parts(fn)
+            logic, _ = self.read_body(body, params)
+            if logic:
+                p = self.parent[i]
+                spans.append((0, len(toks)) if p < 0 else (p, self.close.get(p, len(toks))))
+        self.bound = {}
+        return spans
+
+    def tests(self):
+        """(the tests read, the tests listed as not checked)."""
+        toks, out, unread = self.toks, [], []
+        scopes = self.hook_scopes()
+        for i, t in enumerate(toks):
+            if t.kind != "id" or t.value not in ("test", "it"):
+                continue
+            if i and toks[i - 1].kind == "punc" and toks[i - 1].value in (".", "?."):
+                continue
+            j, mods = i + 1, []
+            while j + 1 < len(toks) and toks[j].value == "." and toks[j + 1].kind == "id":
+                mods.append(toks[j + 1].value)
+                j += 2
+            if not set(mods) <= JS_TEST_MODIFIERS:
+                continue                          # test.skip, test.describe, test.beforeAll ...
+            table = None
+            if "each" in mods:
+                if j < len(toks) and toks[j].kind == "tmpl":
+                    table, j = "tagged", j + 1
+                elif j < len(toks) and toks[j].value == "(":
+                    end = matching(toks, j, "(", ")")
+                    table, j = toks[j + 1:end], end + 1
+                else:
+                    continue
+            if j >= len(toks) or toks[j].value != "(" or toks[j].kind != "punc":
+                continue
+            close = matching(toks, j, "(", ")")
+            args = split_args(toks[j + 1:close])
+            fn = next((a for a in args[1:] if self.is_fn(a)), None)
+            if len(args) < 2 or fn is None:
+                continue
+            titled = len(args[0]) == 1 and args[0][0].kind in ("str", "tmpl") and not args[0][0].subst
+            if not titled:
+                unread.append({"path": f"{self.rel}::line {t.line}", "reason": "computed title",
+                               "language": self.lang})
+                continue
+            title = args[0][0].value
+            bound = {}
+            if table is not None:
+                order, _, _ = self.fn_parts(fn)
+                bound = js_each_table(table, order)
+                if bound is None:
+                    unread.append({"path": f"{self.rel}::{title}", "reason": "parametrized",
+                                   "language": self.lang})
+                    continue
+            self.hooked = any(a < i < b for a, b in scopes)
+            try:
+                out.append(self.one(title, t.line, fn, bound))
+            finally:
+                self.hooked, self.bound = False, {}
+        return out, unread
+
+    def one(self, title: str, line: int, fn: list[Tok], bound: dict) -> dict:
+        _, params, body = self.fn_parts(fn)
+        self.bound = dict(bound)
+        params = params - set(bound)
         logic, assertions = self.read_body(body, params)
         first_line = line
         kept, reason = keep_reason(self.lines, first_line, ("//", "/*", "*"))
         above = comments_above(self.lines, first_line, ("//", "/*", "*"))
         last = max([x.line for x in fn] or [line])
         inside = "\n".join(c for n, c in self.comments.items() if line <= n <= last)
-        text = " ".join(x.value for x in body if x.kind in ("id", "str", "tmpl"))
+        ids = " ".join(x.value for x in body if x.kind == "id")
+        declared = f"{above}\n{inside}\n{title}"
         return verdict(self.rel, title, line, self.lang, logic, assertions,
-                       marker_text=f"{above}\n{inside}\n{title}",
-                       whole_text=words(f"{above}\n{title}\n{text}"),
+                       declared=declared, security_text=f"{declared}\n{words(ids)}",
                        literal_of=js_literal, kept=kept, reason=reason)
 
     def read_body(self, body: list[Tok], params: set):
-        local = set()
+        local = set(self.bound)
         for i, t in enumerate(body):
             if t.kind == "id" and t.value in ("const", "let", "var"):
                 j = i + 1
@@ -951,6 +1385,10 @@ class JsFile:
                     if body[j].kind == "id":
                         local.add(body[j].value)
                     j += 1
+                if t.value == "const" and j == i + 2 and j < len(body) and body[j].value == "=":
+                    folded = js_fold(body[j + 1:js_statement_end(body, j + 1)])
+                    if folded is not None:
+                        self.bound[body[i + 1].value] = [Tok("str", folded, body[i + 1].line)]
         logic = False
         for i, t in enumerate(body):
             if (t.kind == "tmpl" and t.subst) or (t.kind == "punc" and t.value == "=>") or \
@@ -1008,36 +1446,136 @@ class JsFile:
                 out.append(self.node_assert(method, split_args(body[at + 1:end])))
         return out
 
-    @staticmethod
-    def operand_status(groups: list[list[Tok]], negative: bool):
-        flat = [t for g in groups for t in g]
-        if negative or any(t.kind == "punc" and t.value == "!" for t in flat[:1]):
-            return "negative", []
-        bools = [t for t in flat if t.kind == "id" and t.value in ("false", "null", "undefined")]
-        if bools:
-            return "negative", []
-        lits = [t for t in flat if t.kind in ("str", "num", "regex") or (t.kind == "tmpl" and not t.subst)]
+    def expand(self, toks: list[Tok]) -> list[Tok]:
+        """A name bound to literals (a test.each column, a const folded from
+        literals) stands for those literals."""
+        out = []
+        for k, t in enumerate(toks):
+            prop = k and toks[k - 1].kind == "punc" and toks[k - 1].value in (".", "?.")
+            if t.kind == "id" and t.value in self.bound and not prop:
+                out += self.bound[t.value]
+            else:
+                out.append(t)
+        return out
+
+    def operand_status(self, groups: list[list[Tok]], negative: bool):
+        """An assertion's status from its operands. With negative polarity
+        (`.not`, a leading `!`, a not- method) it is a negative control when it
+        names a value that must be absent, and a guard, which spares nothing,
+        when that value is empty, zero, null, undefined or false. A false or
+        null literal compared for equality is a literal like any other."""
+        flat = self.expand([t for g in groups for t in g])
+        if flat[:1] and flat[0].kind == "punc" and flat[0].value == "!":
+            negative = True
+        lits = [t for t in flat if t.kind in ("str", "num", "regex")
+                or (t.kind == "tmpl" and not t.subst)
+                or (t.kind == "id" and t.value in ("false", "null", "undefined"))]
         trues = [t for t in flat if t.kind == "id" and t.value == "true"]
         names = [t for t in flat if t.kind == "id" and t.value not in JS_LITERAL_WORDS]
+        if negative:
+            return ("negative", []) if any(js_substantive(t) for t in lits + trues) else ("guard", [])
         if (lits or trues) and names:
             return "readback", lits or trues
         return "no literal", []
 
+    @staticmethod
+    def bare(toks: list[Tok]) -> bool:
+        """A value read as it is, with no call: `FLAG`, `config.debug`."""
+        return bool(toks) and not any(t.kind == "punc" and t.value == "(" for t in toks)
+
     def expect(self, subject, matcher, margs, negative):
         if matcher in JS_NEGATIVE:
-            return "negative", []
+            return ("guard", []) if self.bare(subject) else self.operand_status([subject], True)
         if matcher in JS_NO_LITERAL or matcher is None:
-            return ("negative", []) if negative else ("no literal", [])
+            if negative or self.bare(subject):
+                return "guard", []
+            return self.operand_status([subject], False)
+        if matcher in JS_SNAPSHOT_FILE or (matcher == "toMatchInlineSnapshot" and not margs):
+            return "no literal", []               # the literal is in a file the runner writes
         if matcher not in JS_POSITIVE:
             return LOGIC, []
         return self.operand_status([subject, margs], negative)
 
     def node_assert(self, method, args):
         if method in NODE_NEGATIVE:
-            return "negative", []
+            return self.operand_status(args[:2], True)
         if method not in NODE_POSITIVE:
             return LOGIC, []
+        if method == "ok" and args and self.bare(args[0]):
+            return "guard", []
         return self.operand_status(args[:1] if method == "ok" else args[:2], False)
+
+
+def js_substantive(tok: Tok) -> bool:
+    if tok.kind in ("str", "tmpl"):
+        return tok.value != ""
+    if tok.kind == "num":
+        return tok.value.rstrip("n").strip("0.") != ""
+    if tok.kind == "id":
+        return tok.value == "true"
+    return True
+
+
+def js_fold(rhs: list[Tok]) -> str | None:
+    """The string a const initializer built only from literals folds into:
+    "Se" + "nd", or ["Se", "nd"].join("")."""
+    def lit(t):
+        return t.kind == "str" or (t.kind == "tmpl" and not t.subst)
+    if rhs and all(lit(t) if k % 2 == 0 else (t.kind == "punc" and t.value == "+")
+                   for k, t in enumerate(rhs)) and len(rhs) % 2 == 1:
+        return "".join(t.value for t in rhs[::2])
+    if len(rhs) >= 6 and rhs[0].value == "[" and rhs[0].kind == "punc":
+        try:
+            end = matching(rhs, 0, "[", "]")
+        except NotParsed:
+            return None
+        items = split_args(rhs[1:end])
+        tail = rhs[end + 1:]
+        if not all(len(x) == 1 and lit(x[0]) for x in items):
+            return None
+        if [t.value for t in tail[:3]] == [".", "join", "("] and tail[-1].value == ")":
+            sep = tail[3:-1]
+            if not sep:
+                return ",".join(x[0].value for x in items)
+            if len(sep) == 1 and lit(sep[0]):
+                return sep[0].value.join(x[0].value for x in items)
+    return None
+
+
+def js_each_table(table, order) -> dict | None:
+    """Each parameter of a test.each / it.each -> the literal tokens its table
+    gives it, or None when the table is not an array of literal rows (a tagged
+    template, a computed table, objects, destructured parameters)."""
+    if table == "tagged" or order is None or not table:
+        return None
+    if not (table[0].kind == "punc" and table[0].value == "[") or \
+            matching(table, 0, "[", "]") != len(table) - 1:
+        return None
+
+    def literal(part):
+        if len(part) == 1 and (part[0].kind in ("str", "num") or (part[0].kind == "tmpl" and not part[0].subst)
+                               or (part[0].kind == "id" and part[0].value in JS_LITERAL_WORDS)):
+            return part[0]
+        if len(part) == 2 and part[0].value == "-" and part[1].kind == "num":
+            return Tok("num", "-" + part[1].value, part[1].line)
+        return None
+    rows = []
+    for row in split_args(table[1:-1]):
+        if row and row[0].kind == "punc" and row[0].value == "[" and row[-1].value == "]":
+            cells = [literal(c) for c in split_args(row[1:-1])]
+        else:
+            cells = [literal(row)]
+        if not cells or any(c is None for c in cells):
+            return None
+        rows.append(cells)
+    if not rows:
+        return None
+    out = {}
+    for k, name in enumerate(order):
+        if any(k >= len(r) for r in rows):
+            return None
+        out[name] = [r[k] for r in rows]
+    return out
 
 
 def js_literal(tok: Tok) -> str:
@@ -1046,7 +1584,7 @@ def js_literal(tok: Tok) -> str:
     return tok.value
 
 
-def read_js(rel: str, src: str, lang: str) -> list[dict]:
+def read_js(rel: str, src: str, lang: str):
     try:
         return JsFile(rel, src, lang).tests()
     except NotParsed as e:
@@ -1054,8 +1592,10 @@ def read_js(rel: str, src: str, lang: str) -> list[dict]:
 
 
 # --- the verdict --------------------------------------------------------------
-def verdict(path, name, line, lang, logic, assertions, marker_text, whole_text,
+def verdict(path, name, line, lang, logic, assertions, declared, security_text,
             literal_of, kept, reason) -> dict:
+    """`declared` is the test's name or title, markers, comments and docstring;
+    `security_text` adds the identifiers it reads. Neither holds a literal."""
     rec = {"test": f"{path}::{name}", "path": path, "name": name, "line": line,
            "language": lang, "verdict": "spared", "why": "", "literals": [],
            "assertions": len(assertions), "keep_without_reason": False}
@@ -1068,9 +1608,11 @@ def verdict(path, name, line, lang, logic, assertions, marker_text, whole_text,
         rec["why"] = "asserts an absence or a refusal: a negative control"
     elif "no literal" in statuses:
         rec["why"] = "an assertion reads back no literal"
-    elif REGRESSION_RE.search(marker_text) or TICKET_RE.search(marker_text):
+    elif "readback" not in statuses:
+        rec["why"] = "only guards that a value is set or empty; no literal is read back"
+    elif names_a_bug(declared):
         rec["why"] = "a regression test for a bug"
-    elif SECURITY_RE.search(whole_text):
+    elif about_security(security_text):
         rec["why"] = "a security control"
     else:
         lits, seen = [], set()
@@ -1162,10 +1704,12 @@ def run(args) -> int:
             continue
         src = read_source(root, rel)
         try:
-            tests += read_python(rel, src) if lang == "python" else read_js(rel, src, lang)
+            found, unread = read_python(rel, src, root) if lang == "python" else read_js(rel, src, lang)
         except NotParsed as e:
             not_checked.append({"path": rel, "reason": str(e), "language": lang})
             continue
+        tests += found
+        not_checked += [dict(n, test=True) for n in unread]
         read.append(rel)
 
     flagged = [t for t in tests if t["verdict"] == "flagged"]
@@ -1175,9 +1719,14 @@ def run(args) -> int:
     old = [t for t in flagged if t["in_baseline"]]
     now = {t["test"] for t in flagged}
     read_set = set(read)
-    shrinkable = sorted(e for e in base_set - now
+    unread_tests = {n["path"] for n in not_checked if n.get("test")}
+    shrinkable = sorted(e for e in base_set - now - unread_tests
                         if not args.paths or e.split("::", 1)[0] in read_set)
-    languages = sorted({n["language"] for n in not_checked})
+    languages = sorted({n["language"] for n in not_checked if not n.get("test")})
+    unread_reasons: dict = {}
+    for n in not_checked:
+        if n.get("test"):
+            unread_reasons[n["reason"]] = unread_reasons.get(n["reason"], 0) + 1
 
     if args.removal_list:
         return removal_list(root, flagged, args.spec)
@@ -1195,7 +1744,7 @@ def run(args) -> int:
                 f"is unchanged.")
             rc = 1
         else:
-            keep = sorted(now)
+            keep = sorted(now | (base_set & unread_tests))   # an unread test stays as it was
             base_path.parent.mkdir(parents=True, exist_ok=True)
             tmp = base_path.with_name(base_path.name + ".tmp")
             tmp.write_text(BASELINE_HEADER + "\n" + "".join(f"{e}\n" for e in keep), encoding="utf-8")
@@ -1208,8 +1757,10 @@ def run(args) -> int:
             old, new, shrinkable, rc = old + new, [], [], 0
 
     summary = (f"worth-check: {len(flagged)} flagged ({len(old)} in baseline), {len(read)} files "
-               f"read, {len(not_checked)} not checked"
-               + (f" (languages: {', '.join(languages)})" if languages else ""))
+               f"read, {len(not_checked)} not checked")
+    parts = ([f"languages: {', '.join(languages)}"] if languages else []) + [
+        f"{reason}: {n} test(s)" for reason, n in sorted(unread_reasons.items())]
+    summary += f" ({'; '.join(parts)})" if parts else ""
     if args.json:
         print(json.dumps({"schema": SCHEMA, "configured": True, "tests": tests,
                           "not_checked": not_checked, "shrinkable": shrinkable,

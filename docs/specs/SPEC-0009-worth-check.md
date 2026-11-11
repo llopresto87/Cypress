@@ -2,7 +2,7 @@
 status: implemented
 status_date: 2026-11-10
 owner: architect
-status_evidence: tests/test-worth-check.sh (X580 to X592, X600 to X602), wired into tests/run.sh, every §10 row green over the 16 contracts; each case was seen failing first on the missing tool, then passing against the fixture suite of tests/fixtures/worth/ and its hand-written verdict table
+status_evidence: tests/test-worth-check.sh (X580 to X592, X600 to X602, X800 to X806), wired into tests/run.sh, every §10 row green over the 22 contracts; each case was seen failing first on the missing tool or the unfixed heuristic, then passing against the fixture suite of tests/fixtures/worth/, its hand-written verdict table and the independent tester's adversarial table
 ---
 
 # SPEC-0009: the worth check
@@ -13,7 +13,7 @@ status_evidence: tests/test-worth-check.sh (X580 to X592, X600 to X602), wired i
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-11-10
-- **Last reviewed:** 2026-11-10
+- **Last reviewed:** 2026-11-11
 - **Related grill section:** docs/plans/grill-8.5.0-tester-surfaces.md, step T10
   (the worth check)
 - **Related ADRs:** adr-0034-a-test-is-owed-only-where-it-can-catch-something
@@ -29,7 +29,8 @@ status_evidence: tests/test-worth-check.sh (X580 to X592, X600 to X602), wired i
 - **Design latitude:** balanced. The owner decided on 2026-11-10 that the
   check reads Python and TypeScript or JavaScript and reports every other
   language as not checked, and that a grafted plant's baseline is decided per
-  plant after the owner sees it
+  plant after the owner sees it. The owner decided on 2026-11-11 that the
+  check keeps Python and TypeScript or JavaScript only
 - **Supersedes:** none
 - **Superseded by:** none
 - **Sign-offs:** product [x] · architect [x] · tester [x]
@@ -73,7 +74,8 @@ A plant runs `python3 docs/graph/worth-check.py` from its root. Each flagged
 test is one line that names the test, the literal it reads back, how many
 assertions it has, and the keep line to add if the test earns its place. A
 summary line counts the flagged tests, the ones in the baseline, the files read
-and the files not checked with their languages. When a flagged test is neither
+and the files not checked with their languages, and the tests not checked with
+their reasons. When a flagged test is neither
 kept nor in the baseline, a closing line says the run failed and what to do with
 each test, and the exit code is 1. A plant whose `docs/graph/spec-lint.py` is
 missing or sets no `TEST_GLOBS` gets one line saying the check is not
@@ -103,16 +105,88 @@ configured, and exit 0.
 
 ### Contract: WORTH_SPARES_BUG_REGRESSIONS
 - **Given:** a test whose comment directly above, comment inside, docstring,
-  name or title names a bug, an issue, a regression or a ticket
+  name, title, decorator or marker names a bug, an issue, a regression or a
+  ticket
 - **When:** the worth check reads it, even with the shape of a read-back
 - **Then:** the test is not flagged: a bug reproduction is always written and
   stays (ADR-0034)
 
 ### Contract: WORTH_SPARES_SECURITY_CONTROLS
-- **Given:** a test that asserts a refusal or an absence (`not in`, `!=`,
-  `is False`, `.not.`, an expected exception), or whose text is about security
+- **Given:** a test that asserts a named value is refused or absent
+  (`"/admin" not in nav`, `.not.toContain("/admin")`, an expected exception),
+  or whose name, title, decorator, marker, comment, docstring or an identifier
+  it reads names a security subject
 - **When:** the worth check reads it
 - **Then:** the test is not flagged
+
+### Contract: WORTH_SETUP_OUTPUT_IS_NOT_A_LITERAL
+- **Given:** a test that reads a file, in the scope of a setup hook that runs
+  code: a unittest `setUp`, `setUpClass` or `asyncSetUp`, a pytest `setup_*`
+  function, an autouse fixture in the file or in a `conftest.py` between the
+  plant root and the test, a base class the check cannot see, or a
+  `beforeAll`, `beforeEach` or `before` in the test's block or at the top of
+  its file
+- **When:** the worth check reads it
+- **Then:** the file the test reads counts as output of that code, and the test
+  is spared as feeding inputs to logic
+- **And:** a test outside the hook's block, and a test that reads only a
+  declared constant, is read as before
+
+### Contract: WORTH_IMPORTED_CALL_IS_CODE_UNDER_TEST
+- **Given:** a TypeScript or JavaScript test that calls a name imported from a
+  module of the plant, whatever the name (`resolve(...)`), or a method on an
+  imported object (`router.match(...)`)
+- **When:** the worth check reads it
+- **Then:** the call is code under test and the test is spared
+- **And:** a read call keeps counting as a read only when its name is a global,
+  an assertion, or comes from a Node built-in module (`fs`, `path`, `url`), and
+  a string method counts as a read only on a value already read or on an
+  imported constant written in upper case
+
+### Contract: WORTH_UNREAD_TEST_IS_NOT_CHECKED
+- **Given:** a parametrized test (pytest `parametrize`, `test.each`, `it.each`),
+  or a test whose title is computed
+- **When:** the worth check reads its file
+- **Then:** a table written as literals is read, each parameter taking the
+  values of its table, and a flagged line shows those values
+- **And:** a table that is not written as literals (a computed table, a tagged
+  template, object rows) is listed as `path::name  not checked (parametrized)`,
+  a computed title as `path::line N  not checked (computed title)`, the summary
+  counts each under `not checked (<reason>: N test(s))`, and no output calls
+  the test or the run clean
+
+### Contract: WORTH_SPARING_READS_DECLARATIONS_NOT_CONTENT
+- **Given:** a read-back test whose string literal holds a URL (`https://...`),
+  a word such as cookies, or whose comment or title holds a colour code
+  (`#112233`, `#0055ff`)
+- **When:** the worth check reads it
+- **Then:** the test is flagged: the regression and security spares read the
+  test's name or title, decorators or markers, comments, docstring and (for
+  security) the identifiers it reads, never the words inside a string literal;
+  a bare `#<digits>` names an issue except on a comment line about a colour, and
+  a URL in a comment is read without its scheme
+
+### Contract: WORTH_GUARD_DOES_NOT_SPARE_A_READ_BACK
+- **Given:** a test whose assertions are a guard beside a read-back: `!= ""`,
+  `is not None`, a bare `assert x`, `assertFalse(x)`, `assertIsNone(x)`,
+  `toBeTruthy`, `toBeDefined`, `toBeFalsy`, `toBeNull`, `toBeUndefined`, or a
+  negated assertion over an empty, zero, null or false value; and a test that
+  compares a read value with a `False`, `None`, `false` or `null` literal
+- **When:** the worth check reads them
+- **Then:** the guard spares nothing and the test is flagged, and a `False` or
+  `null` literal compared for equality is a read-back like any other literal
+- **And:** a test whose only assertions are guards is spared, and an assertion
+  that a named value is absent stays a negative control
+  (WORTH_SPARES_SECURITY_CONTROLS)
+
+### Contract: WORTH_LITERAL_BUILT_FROM_LITERALS_IS_A_LITERAL
+- **Given:** a read-back against a value built only from literals
+  (`"Se" + "nd"`, `"".join(["Se", "nd"])`, `["Se", "nd"].join("")`), a string
+  method chain on an imported constant (`SUBMIT_LABEL.trim()`), or a
+  `toMatchInlineSnapshot` whose text sits in the test
+- **When:** the worth check reads it
+- **Then:** the test is flagged, and the line shows the folded literal
+  (`"Send"`)
 
 ### Contract: WORTH_NEVER_FLAGS_BY_NAME_OR_LENGTH
 - **Given:** a test whose name promises logic and whose body reads a value back,
@@ -238,26 +312,40 @@ and defaults to `docs/graph/worth-baseline.txt`.
 ### What counts as a read-back
 
 A Python test is a function named `test*` at module level or in a class; a
-TypeScript or JavaScript test is a `test(` or `it(` call whose first argument
-is a literal title. A test is flagged when all of these hold:
+TypeScript or JavaScript test is a `test(` or `it(` call, with `.only`,
+`.concurrent`, `.each`, `.fails` or `.sequential`, whose first argument is a
+literal title and which takes a function literal. A test is flagged when all of
+these hold:
 
-- every call in its body reads a value rather than computing one: a file read,
-  a path join, a JSON parse, a string method on text already read, or the
-  assertion itself;
-- every name it reads is declared in the file or imported, never a parameter
-  or fixture of the test and never a value set up elsewhere;
-- it has at least one assertion, and every assertion compares at least one
-  literal with such a value, with positive polarity;
-- no comment, docstring, name or title marks it as a bug regression, and its
-  text is not about security;
+- every call in its body reads a value rather than computing one: a file read
+  with no setup hook in scope that runs code, a path join, a JSON parse, a
+  string method on text already read, or the assertion itself; in TypeScript or
+  JavaScript a read call comes from a global or a Node built-in module, and any
+  other imported name is code under test;
+- every name it reads is declared in the file or imported, a parameter whose
+  parametrize or `.each` table gives it literals, or a local built only from
+  literals; never a fixture of the test and never a value set up elsewhere;
+- at least one assertion compares a literal with such a value with positive
+  polarity (a `False`, `None`, `false` or `null` literal included); every other
+  assertion is such a read-back or a guard (a value is set or not empty);
+- no assertion names a value that must be absent or refused;
+- no name, title, decorator, marker, comment or docstring marks it as a bug
+  regression, and none of them, nor an identifier it reads, names a security
+  subject; the words inside a string literal never count;
 - no keep line with a reason sits directly above it.
+
+A parametrized test whose table is not written as literals, and a test whose
+title is computed, are not read: each is listed as not checked.
 
 ### Output and exit codes
 
 One line per flagged test (§4), a `worth-check: kept:` line per kept test, a
 `worth-check: shrinkable:` line per baseline entry that no longer flags, a
-`<path>  not checked (<reason>)` line per unread file, then
-`worth-check: N flagged (M in baseline), K files read, U not checked (languages: ...)`.
+`<path>  not checked (<reason>)` line per unread file, a
+`<path>::<name>  not checked (<reason>)` line per unread test, then
+`worth-check: N flagged (M in baseline), K files read, U not checked (languages: ...; <reason>: T test(s))`,
+where U counts the unread files and tests and the parenthesis names only what
+is there. An unread test in the baseline stays in it and is never shrinkable.
 Exit 0: nothing new is flagged, or the plant is not configured. Exit 1: a flagged
 test is neither kept nor in the baseline, or `--write-baseline` was refused.
 Exit 2: a usage error or an unreadable input. `--json` prints every test read
@@ -281,10 +369,25 @@ shrinks after the first write.
 ## 7. Failure modes
 
 ### Failure: HEURISTIC_SPARES_A_READ_BACK
-- **Trigger:** a read-back test calls a helper the check cannot see into, or
-  carries a security or bug word for an unrelated reason
+- **Trigger:** a read-back test the static reading cannot see through: an
+  assertion inside a helper the test calls; a constant held equal to a golden
+  file, which reads as two homes with no literal between them; a snapshot held
+  in a file the runner writes (`toMatchSnapshot`, a snapshot fixture); a
+  fixture parameter's value; a test inside `describe.each`; a name or marker
+  that says regression or names a security subject for an unrelated reason.
+  Each case the independent tester found is a row of
+  `tests/fixtures/worth/known-gaps.tsv`
 - **Response:** the test is spared; the check errs toward sparing by design
 - **Recovery:** a reviewer still applies `test-first.proportionate-checks`
+
+### Failure: SETUP_FILE_OUTSIDE_THE_TEST_IS_NOT_READ
+- **Trigger:** a test reads a file that a setup file named only in the
+  runner's configuration builds (jest `globalSetup`, vitest `setupFiles`, a
+  `conftest.py` outside the plant root)
+- **Response:** the file reads as a literal the change adds, so the test can be
+  flagged although it reads output of the code under test
+- **Recovery:** the author keeps the test with a keep line naming the setup
+  file; the check never edits the test
 
 ### Failure: ADOPTED_SUITE_FLAGS_ON_DAY_ONE
 - **Trigger:** a project adopted with an existing suite holds many read-back
@@ -328,13 +431,27 @@ worth-check: FAIL — 1 flagged test(s) are not in the baseline. ...
   WORTH_REMOVAL_LIST_NAMES_EACH_TEST,
   WORTH_REMOVAL_LIST_HOLDS_BACK_THE_NEVER_AUTOMATIC_KINDS,
   WORTH_REMOVAL_LIST_FOR_A_REOPENED_SPEC
+- [x] AC-7: a logic test is never flagged because a setup hook built the file it
+  reads or because an imported name looks like a read helper; maps to
+  WORTH_SETUP_OUTPUT_IS_NOT_A_LITERAL, WORTH_IMPORTED_CALL_IS_CODE_UNDER_TEST
+- [x] AC-8: a parametrized test is read from its literal table or named as not
+  checked, never skipped; the spares read what the author declared, a guard
+  beside a read-back spares nothing, and a literal built from literals is a
+  literal; maps to WORTH_UNREAD_TEST_IS_NOT_CHECKED,
+  WORTH_SPARING_READS_DECLARATIONS_NOT_CONTENT,
+  WORTH_GUARD_DOES_NOT_SPARE_A_READ_BACK,
+  WORTH_LITERAL_BUILT_FROM_LITERALS_IS_A_LITERAL
 
 ## 10. Test mapping
 
 (Owned by `tester`.) Each case runs the placed copy over a temp plant that holds
 the fixture suite of `tests/fixtures/worth/` under `tests/`, and the verdict each
 fixture test is owed is `tests/fixtures/worth/expected.tsv`, written before the
-tool. Every row was `red` on the missing tool first.
+tool. Every row was `red` on the missing tool first. X800 to X806 run the same
+copy over the independent tester's tree `tests/fixtures/worth/adversarial/`,
+whose verdicts `adversarial.tsv` were written before the tool ran over it; they
+were `red` on the heuristic as it stood on 2026-11-10, then green. A row of
+`known-gaps.tsv` is a documented limit, held at the verdict that file records.
 
 | Contract / Failure | Test case | Test file | Level | Status |
 |---|---|---|---|---|
@@ -354,18 +471,26 @@ tool. Every row was `red` on the missing tool first.
 | WORTH_REMOVAL_LIST_NAMES_EACH_TEST | X600 a design-origin test written now and an older one from the baseline, each with its row and what it leaves without evidence | tests/test-worth-check.sh | integration (fixture) | green |
 | WORTH_REMOVAL_LIST_HOLDS_BACK_THE_NEVER_AUTOMATIC_KINDS | X601 bug, security control, a legacy row with no origin, no §10 row | tests/test-worth-check.sh | integration (fixture) | green |
 | WORTH_REMOVAL_LIST_FOR_A_REOPENED_SPEC | X602 --spec narrows to the spec's tests, baseline included; an unknown spec exits 2 | tests/test-worth-check.sh | integration (fixture) | green |
-| HEURISTIC_SPARES_A_READ_BACK | none: the check errs toward sparing by design | none | none | none |
+| WORTH_SETUP_OUTPUT_IS_NOT_A_LITERAL | X800 a file a unittest setUp and a file a beforeAll had the code under test write are read and spared | tests/test-worth-check.sh | integration (fixture) | green |
+| WORTH_IMPORTED_CALL_IS_CODE_UNDER_TEST | X801 an imported resolve(), router.match(), router.get() and users.find() are code under test | tests/test-worth-check.sh | integration (fixture) | green |
+| WORTH_UNREAD_TEST_IS_NOT_CHECKED | X802 a parametrize table and a test.each table read as literals; a computed table, a tagged template and a computed title named and counted as not checked | tests/test-worth-check.sh | integration (fixture) | green |
+| WORTH_SPARING_READS_DECLARATIONS_NOT_CONTENT | X803 a URL, a hex colour in a comment and in a title, and banner copy about cookies flag; a csrf test spares | tests/test-worth-check.sh | integration (fixture) | green |
+| WORTH_GUARD_DOES_NOT_SPARE_A_READ_BACK | X804 is False, toBe(false), a non-empty guard and a truthiness guard beside a read-back flag; a guard alone and a named absence spare | tests/test-worth-check.sh | integration (fixture) | green |
+| WORTH_LITERAL_BUILT_FROM_LITERALS_IS_A_LITERAL | X805 a concatenated and a joined literal in each language, string methods on a constant, an inline snapshot | tests/test-worth-check.sh | integration (fixture) | green |
+| WORTH_FLAGS_A_READ_BACK_TEST | X806 every row of adversarial.tsv outside known-gaps.tsv gets the verdict the independent tester owes it | tests/test-worth-check.sh | integration (fixture) | green |
+| HEURISTIC_SPARES_A_READ_BACK | X806 each documented limit of known-gaps.tsv keeps the verdict that file records, so a fix moves its row | tests/test-worth-check.sh | integration (fixture) | green |
+| SETUP_FILE_OUTSIDE_THE_TEST_IS_NOT_READ | none: a runner's configuration is outside the test files the check reads; the keep line is the recovery | none | none | none |
 | ADOPTED_SUITE_FLAGS_ON_DAY_ONE | none: graft's baseline step reports the count, and the owner decides on a cleanup | none | none | none |
 
 ## 11. Open questions
 
 | Question | Why it matters | Current assumption | Owner | Resolves by |
 |---|---|---|---|---|
-| Should an independent tester review the fixture suite? | the fixtures and their verdicts were written by the spawn that built the tool | reviewed on 2026-11-11: the 34 rows of `expected.tsv` hold, and 29 adversarial cases (`tests/fixtures/worth/adversarial.tsv`) found the gaps of the next four rows, listed case by case in `tests/fixtures/worth/known-gaps.tsv`; the independent tester's sign waits on the first of them | tester | the tool's owner answers the next rows |
-| Should a test that reads a file a setup hook had the code under test write be spared? | WORTH_SPARES_LOGIC_TESTS spares a test that reads a file the code under test wrote, yet a unittest `setUp` or a `beforeAll` that calls the build is not read, so the test is flagged: a false positive that fails a plant's gate on a good test | flagged today | architect | a ruling: read setup hooks as logic, or narrow the contract to a write inside the test |
-| Should a TypeScript call into the code under test whose name is a read helper be spared? | an imported `resolve(...)` reads as `path.resolve`, and `match` on an imported object reads as `String.match`, so a precedence test is flagged: two false positives against WORTH_SPARES_LOGIC_TESTS; Python reads a method as a read only on a value already read | flagged today | architect | the TypeScript reader treats an imported name as code under test, as the Python reader does |
-| Should `test.each` and `it.each` be read, or named as not read? | a parametrized TypeScript test is skipped with nothing in the report, so a read file can hold an unread test that the summary counts as read | skipped silently | architect | the reader reads it or lists it as not checked |
-| Should the sparing heuristics narrow? | any `False`/`None`/`false` literal, one `!=` guard beside a read-back, the word `https` or `cookies` in a literal, a hex colour that matches `#<digits>`, and the word regression in a name each spare a plain read-back; HEURISTIC_SPARES_A_READ_BACK names helpers and unrelated words only, so these false negatives go beyond the failure mode as written | spared, by the contracts' letter | architect | §7 widened to name them, or the heuristics narrowed |
+| Should an independent tester review the fixture suite? | the fixtures and their verdicts were written by the spawn that built the tool | reviewed on 2026-11-11: the 34 rows of `expected.tsv` hold, and 29 adversarial cases (`tests/fixtures/worth/adversarial.tsv`) found the gaps of the next four rows. Closed on 2026-11-11 for the tool: the adversarial table is gated (X800 to X806), 16 of the 21 rows of `known-gaps.tsv` are fixed, and 5 stay as documented limits in `tests/fixtures/worth/known-gaps.tsv`; the independent tester's sign waits on the tester's re-review | tester | the independent tester re-reviews the fixed tool |
+| Should a test that reads a file a setup hook had the code under test write be spared? | WORTH_SPARES_LOGIC_TESTS spares a test that reads a file the code under test wrote, yet a setup hook that calls the build was not read, so the test was flagged: a false positive | closed on 2026-11-11: setup hooks are read as logic (WORTH_SETUP_OUTPUT_IS_NOT_A_LITERAL, X800). A setup file named only in the runner's configuration stays a limit (SETUP_FILE_OUTSIDE_THE_TEST_IS_NOT_READ) | architect | closed |
+| Should a TypeScript call into the code under test whose name is a read helper be spared? | an imported `resolve(...)` read as `path.resolve`, and `match` on an imported object as `String.match`: two false positives | closed on 2026-11-11: an imported name is code under test unless its module is a Node built-in, and a string method reads only a value already read or an upper-case imported constant (WORTH_IMPORTED_CALL_IS_CODE_UNDER_TEST, X801) | architect | closed |
+| Should `test.each` and `it.each` be read, or named as not read? | a parametrized TypeScript test was skipped with nothing in the report | closed on 2026-11-11: a literal table is read, any other table and a computed title are listed and counted as not checked, in both languages (WORTH_UNREAD_TEST_IS_NOT_CHECKED, X802) | architect | closed |
+| Should the sparing heuristics narrow? | any `False`/`None`/`false` literal, one `!=` guard beside a read-back, the word `https` or `cookies` in a literal, a hex colour that matches `#<digits>`, and the word regression in a name each spared a plain read-back | closed on 2026-11-11 for all but the name: the spares read declarations, never literals (X803); a guard spares nothing beside a read-back and a `False` literal is a literal (X804); a literal built from literals is one (X805). Left as limits under HEURISTIC_SPARES_A_READ_BACK, each a row of `known-gaps.tsv`: a name that says regression (the contract spares a name), a helper's assertion, a golden file, a snapshot file and a snapshot fixture | architect | closed |
 | Should a later language be read, shell first? | D4 reads Python and TypeScript or JavaScript only | every other language is listed as not checked | owner | a plant that needs it, named by the owner |
 
 ## 12. Changelog
@@ -391,3 +516,20 @@ tool. Every row was `red` on the missing tool first.
   `tests/fixtures/worth/known-gaps.tsv`. The independent tester's sign is
   withheld until §11's false positives are ruled on; the sign-offs of
   2026-11-10 stay as their authors gave them.
+- 2026-11-11 — the worth check fixed against the independent review. Six
+  contracts added (WORTH_SETUP_OUTPUT_IS_NOT_A_LITERAL,
+  WORTH_IMPORTED_CALL_IS_CODE_UNDER_TEST, WORTH_UNREAD_TEST_IS_NOT_CHECKED,
+  WORTH_SPARING_READS_DECLARATIONS_NOT_CONTENT,
+  WORTH_GUARD_DOES_NOT_SPARE_A_READ_BACK,
+  WORTH_LITERAL_BUILT_FROM_LITERALS_IS_A_LITERAL), WORTH_SPARES_BUG_REGRESSIONS
+  and WORTH_SPARES_SECURITY_CONTROLS restated in place (markers count; `is
+  False` and a bare `!=` no longer spare), the failure mode
+  SETUP_FILE_OUTSIDE_THE_TEST_IS_NOT_READ added, and
+  HEURISTIC_SPARES_A_READ_BACK widened to name each limit left. The adversarial
+  table is now gated: X800 to X806 were seen failing on the heuristic as it
+  stood, then green. `known-gaps.tsv` held 21 rows, one more than the entry
+  above counts (16 false negatives, not 15): the 4 false positives, the silent
+  skip and 11 of the 16 false negatives are fixed, 5 stay as limits in
+  `known-gaps.tsv`, and 24 of the 29 adversarial rows are gated at the verdict
+  the tester owes them. The 34 rows of `expected.tsv` pass unchanged. The owner decided on 2026-11-11 that
+  the check keeps Python and TypeScript or JavaScript only.
