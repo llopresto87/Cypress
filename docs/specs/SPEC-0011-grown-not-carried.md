@@ -373,6 +373,7 @@ all-ABSENT plant; the cycle cases on a copy of one fresh install. Every row was
 | Should the rows that predate the needs (collections, agents, experts, inventory) also turn to notes after a graft? | they still fail a graft's coverage gate, as they fail a fresh growth; the owner's decision of 2026-11-11 named the needs and the testing idiom | unchanged: they block in both runs, never day to day | owner | the owner's answer |
 | How does a plant decline a language's testing idiom? | a fresh growth fails on it until the node owns the key, and no `needs` row carries it | the node owns the key; the row has no decline form yet | owner | the first plant whose language has no test idiom of its own |
 | Should the testing idiom be owed by a framework row too? | a test framework is the idiom's other home | a `language` row owes it; its node may compose a framework's | architect | the first plant whose idiom lives in its framework |
+| Should GRAFT_AUDITS_AS_AFTER_A_GRAFT be held by a run of `graft-run.py`? | X723 greps `tools/graft-run.py` for the argument tuple the same change added, a read-back of source: it turns red if the call is built another way that still passes the option, and stays green while the tuple sits in code that never runs; the `protocols/graft.md` half is prose, kind `review` | the source grep is the evidence | tester | a rehearsal over the GR plant of `tests/test-graft-tools.sh` with an open need, whose coverage step passes and lists the need as a note |
 
 ## 12. Changelog
 
@@ -384,3 +385,9 @@ all-ABSENT plant; the cycle cases on a copy of one fresh install. Every row was
   contracts added (OPEN_NEED_BLOCKS_A_FRESH_GROWTH to NEED_BLOCKS_NO_DAILY_WORK),
   three amended to run after a graft, the `--after-graft` option recorded in §6,
   and the open question on a graft's gate answered.
+- 2026-11-11 — an independent tester read each contract and each cited case
+  (X665 to X671 and X720 to X724 in `tests/test-growth-audit.sh`, X663 and
+  X664 in `tests/test-cycle.sh`). Thirteen contracts are observable and their
+  cases run the audit or the driver and watch exit codes, records and lines.
+  X723 reads back source text for GRAFT_AUDITS_AS_AFTER_A_GRAFT; the tester
+  sign is withheld until that contract has a run behind it (§11).

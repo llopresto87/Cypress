@@ -239,6 +239,9 @@ Each case carries its label and the slug it asserts in its `ok`/`bad` line.
 | Question | Why it matters | Current assumption | Owner | Resolves by |
 |---|---|---|---|---|
 | Should `cycle.py` record a merged spawn's RED from its hand-back by itself? | the batch record's hashes are written when the orchestrator observes a RED | the orchestrator records it from the hand-back with `cycle.py record-red` | architect | a later round |
+| Should WRITER_REMOVES_A_TEST_THAT_CATCHES_NOTHING and MUTATION_PASS_REPORTS_EACH_TEST carry `Check: review`? | X603 and X604 grep the installed charters and nodes for the sentences the same change added: red while a line is absent, green once present, the read-back ADR-0034 removes; only X603's pointer-to-heading arm holds two homes equal | each is kind `test`, held by a text read-back | architect | a re-settled kind, with the reviewer confirming the prose, or a test that observes a removal |
+| Should BAND_LINE_MISSING and TRUST_CLAIMS_UNREADABLE each get a case? | both are claimed to fail safe "by construction" with no test; if the trust-claims read failed open, a trust-path increment would get a merged brief and lose its independent tester, the victim the owner's decision protects | residual, untested | tester | two cases: the band line removed, and `graph-lint.py --trust-claims` made to fail, each refusing the merged brief |
+| Should X573 hold a control row of origin `design`? | the bug arm cites a §10 row of origin `bug` only, so an implementation that refused any increment citing §10 rows would pass it | the reason text names origin bug | tester | an increment citing a `design`-origin row composes the merged brief |
 
 ## 12. Changelog
 
@@ -257,3 +260,10 @@ Each case carries its label and the slug it asserts in its `ok`/`bad` line.
   and CONTAINED_LANE_DEFECT_KEEPS_THE_OTHER_REASONS added with X730 and X731
   in `tests/test-brief.sh`, both seen failing against the composer that read
   a contained-lane title naming a reproduction as a bug, then green.
+- 2026-11-11 — an independent tester read each contract and each cited case
+  (X570 to X575, X730 and X731 in `tests/test-brief.sh`; X603 and X604 in
+  `tests/test-worth-check.sh`). The eight brief-composer contracts are
+  observable and their cases watch exit codes, refusal lines and the spawn
+  log. X603 and X604 read back the sentences the same change added, and the
+  two failure modes have no case; the tester sign is withheld and the
+  findings are in §11.

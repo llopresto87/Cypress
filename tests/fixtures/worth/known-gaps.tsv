@@ -1,0 +1,26 @@
+# The cases of tests/fixtures/worth/adversarial.tsv that worth-check.py, as of
+# 2026-11-11, classifies otherwise than the verdict an independent tester owes
+# them. Not wired into the gate: each row is a finding for the tool's owner.
+# Columns: test, owed, got, class (false-positive | false-negative | not-read),
+# the reason the tool printed and why the owed verdict holds.
+tests/adversarial/python/test_adversarial.py::TestBuiltPage::test_built_page_carries_the_label	spared	flagged	false-positive	reads back a literal; setUp has build_site write the file, so the test reads output of the code under test (WORTH_SPARES_LOGIC_TESTS)
+tests/adversarial/ts/adversarial.test.ts::built page carries the label	spared	flagged	false-positive	reads back a literal; beforeAll has buildSite write the file, so the test reads output of the code under test (WORTH_SPARES_LOGIC_TESTS)
+tests/adversarial/ts/adversarial.test.ts::route precedence through resolve	spared	flagged	false-positive	reads back a literal; an imported function named resolve is taken for path.resolve (JS_READ_CALLS), so a call into the code under test reads as a read
+tests/adversarial/ts/adversarial.test.ts::route precedence through router.match	spared	flagged	false-positive	reads back a literal; match on an imported object is taken for String.match (JS_READ_METHODS applied to an import); Python applies its read methods only to values already read
+tests/adversarial/ts/adversarial.test.ts::label is %s	flagged	not read	not-read	test.each(...)(title, fn) is not a test( call with a literal title, so the test is skipped and nothing in the report says so
+tests/adversarial/python/test_adversarial.py::test_routes_parametrized	flagged	spared	false-negative	feeds inputs to logic; a parametrize argument is read as logic (spec §6 spares a parameter by design)
+tests/adversarial/python/test_adversarial.py::test_label_through_a_helper	flagged	spared	false-negative	feeds inputs to logic; the assertion sits in a helper the check does not follow (HEURISTIC_SPARES_A_READ_BACK)
+tests/adversarial/python/test_adversarial.py::test_label_against_a_joined_literal	flagged	spared	false-negative	feeds inputs to logic; "".join over literals is read as logic, while "Se" + "nd" is read as a literal
+tests/adversarial/ts/adversarial.test.ts::label against a joined literal	flagged	spared	false-negative	feeds inputs to logic; [..].join("") over literals is read as logic
+tests/adversarial/python/test_adversarial.py::test_label_against_a_golden_file	flagged	spared	false-negative	an assertion reads back no literal; a declared constant held equal to a file the same change adds
+tests/adversarial/python/test_adversarial.py::test_label_rendered_for_a_snapshot	flagged	spared	false-negative	feeds inputs to logic; a snapshot fixture of a declared constant
+tests/adversarial/ts/adversarial.test.ts::label snapshot	flagged	spared	false-negative	feeds inputs to logic; toMatchSnapshot is not a known matcher, so it reads as logic
+tests/adversarial/ts/adversarial.test.ts::label inline snapshot	flagged	spared	false-negative	feeds inputs to logic; toMatchInlineSnapshot holds the literal in the test itself
+tests/adversarial/python/test_adversarial.py::test_regression_label_text	flagged	spared	false-negative	a regression test for a bug; the word regression in the name alone spares it (the spec's contract allows a name)
+tests/adversarial/python/test_adversarial.py::test_brand_colour	flagged	spared	false-negative	a regression test for a bug; the hex colour #112233 in a comment matches the issue pattern #<digits>
+tests/adversarial/ts/adversarial.test.ts::primary colour is #0055ff	flagged	spared	false-negative	a regression test for a bug; the hex colour #0055ff in the title matches the issue pattern #<digits>
+tests/adversarial/python/test_adversarial.py::test_api_base_url	flagged	spared	false-negative	a security control; the word https inside the literal URL makes the test about security
+tests/adversarial/ts/adversarial.test.ts::cookie banner text	flagged	spared	false-negative	a security control; the word cookies in banner copy makes the test about security
+tests/adversarial/python/test_adversarial.py::test_dark_mode_off_by_default	flagged	spared	false-negative	a negative control; any False or None literal reads as a refusal, with no security subject
+tests/adversarial/ts/adversarial.test.ts::banner hidden by default	flagged	spared	false-negative	a negative control; toBe(false) reads as a refusal, with no security subject
+tests/adversarial/python/test_adversarial.py::test_label_not_empty_and_is_send	flagged	spared	false-negative	a negative control; one != "" guard spares every other read-back assertion in the test
