@@ -11,8 +11,15 @@
 # the verdict that file records; X810 to X812 gate the tester's round-two rows
 # on keyed security settings, a setUp that only reads and a read in a describe
 # body, each with a plant of its own cases besides; X820 gates the rows on a
-# key shaped like an HTTP header name. The check never runs over this repository's own suite, whose tests assert
-# documentation text on purpose.
+# key shaped like an HTTP header name. X900 to X905 gate the sparing by
+# declaration the owner decided on 2026-11-11: a §10 row of origin bug or
+# security control, a test that reaches a file on a marked trust path (read
+# through the plant's source index), the word list only where neither speaks,
+# a failing line that never leads with removal, and an assertion the check
+# cannot see reported as not judged. X900 to X902 run in a plant installed into
+# a `git init`ed directory, as a plant's source index needs. The check never
+# runs over this repository's own suite, whose tests assert documentation text
+# on purpose.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PY="${PYTHON:-python3}"
@@ -45,6 +52,11 @@ if [[ -f "$W" ]] && cmp -s "$ROOT/tools/worth-check.py" "$W"; then
   [[ $rc -eq 0 ]] && grep -q 'worth-check: keep' <<<"$out" && grep -q 'verification' <<<"$out" \
     && ok "X592 WORTH_CHECK_IS_PLACED: docs/graph/worth-check.py is the seed's file and answers --help" \
     || bad "X592 WORTH_CHECK_IS_PLACED" "--help rc $rc: ${out:0:300}"
+  grep -q '^What it reads\.' <<<"$out" && grep -q '^What it spares, and why\.' <<<"$out" \
+    && grep -q '^What it does not judge\.' <<<"$out" && grep -qF 'graph-lint.py --trust-claims' <<<"$out" \
+    && grep -qF 'source-index.py affected-tests' <<<"$out" && grep -qF 'spares by declaration, not vocabulary' <<<"$out" \
+    && ok "X592 WORTH_CHECK_IS_PLACED: --help states what the check reads, what it spares and why, and what it does not judge" \
+    || bad "X592 WORTH_CHECK_IS_PLACED" "--help lacks a section on what it reads, spares or does not judge"
   rc=0; out="$(cd "$T/base" && "$PY" docs/graph/worth-check.py 2>&1)" || rc=$?
   [[ $rc -eq 0 ]] && grep -q '^worth-check: 0 flagged (0 in baseline), 0 files read, 0 not checked' <<<"$out" \
     && ok "X592 WORTH_CHECK_IS_PLACED: a fresh plant with no tests reads nothing and passes" \
@@ -130,9 +142,25 @@ grep -qF 'tests/ts/readback.test.ts::names the route  reads back /\/submit/, "su
   && ok "X580 WORTH_FLAGS_A_READ_BACK_TEST: the TypeScript line carries the language's comment syntax" \
   || bad "X580 WORTH_FLAGS_A_READ_BACK_TEST" "no TypeScript line for 'names the route': $(grep -F 'names the route' <<<"$out" || echo none)"
 grep -qx 'worth-check: 9 flagged (0 in baseline), 9 files read, 2 not checked (languages: go, shell)' <<<"$out" \
-  && grep -q '^worth-check: FAIL — 9 flagged test(s) are not in the baseline.*remove.*inputs.*keep' <<<"$out" \
+  && grep -q '^worth-check: FAIL — 9 flagged test(s) are not in the baseline.*keep.*inputs' <<<"$out" \
   && ok "X580 WORTH_FLAGS_A_READ_BACK_TEST: the summary counts and the failing line says what to do" \
   || bad "X580 WORTH_FLAGS_A_READ_BACK_TEST" "summary/footer: $(tail -3 <<<"$out")"
+
+# X904 WORTH_FAILURE_NEVER_LEADS_WITH_REMOVAL: the failing line and a refused
+# baseline write open with the keep line and the strengthening, and say plainly
+# that a trust-path, bug-origin or security-control test is never removed to
+# clear a flag.
+foot="$(grep '^worth-check: FAIL' <<<"$out" || true)"
+rest="${foot#*For each: }"
+first="${rest%%,*}"
+x904=0
+grep -qi 'remov' <<<"$first" && x904=1
+grep -qi '^keep it with a "worth-check: keep — <reason>" line' <<<"$rest" || x904=1
+grep -qF 'A test on a trust path, a test whose §10 origin is bug and a security-control test are never removed to clear a flag' <<<"$foot" || x904=1
+grep -qF 'keep it with its reason or strengthen it' <<<"$foot" || x904=1
+[[ $x904 == 0 ]] \
+  && ok "X904 WORTH_FAILURE_NEVER_LEADS_WITH_REMOVAL: the failing line leads with the keep line and the strengthening, and says a trust-path, bug or security-control test is never removed to clear a flag" \
+  || bad "X904 WORTH_FAILURE_NEVER_LEADS_WITH_REMOVAL" "footer: ${foot:-none}"
 
 # X584: a test with no assertion is never flagged; it is reported as read.
 mkdir -p "$T/q"; plant "$T/q"; rm -rf "$T/q/tests/"*
@@ -230,6 +258,12 @@ rc=0; out="$(WC "$B" --write-baseline 2>&1)" || rc=$?
   && grep -q 'refused' <<<"$out" && grep -q 'test_new_banner' <<<"$out" \
   && ok "X589 WORTH_BASELINE_ONLY_SHRINKS: --write-baseline refuses to add a test and leaves the file as it was" \
   || bad "X589 WORTH_BASELINE_ONLY_SHRINKS" "rc $rc: $out"
+refusal="$(grep 'write-baseline refused' <<<"$out" || true)"
+after="${refusal#*: tests/python/test_readback.py::test_new_banner. }"
+[[ -n "$refusal" && "$after" == Keep\ each\ with\ a* ]] && ! grep -qi 'remove each' <<<"$refusal" \
+  && grep -qF 'never removed to clear a flag' <<<"$refusal" \
+  && ok "X904 WORTH_FAILURE_NEVER_LEADS_WITH_REMOVAL: a refused baseline write opens with the keep line, never with removal" \
+  || bad "X904 WORTH_FAILURE_NEVER_LEADS_WITH_REMOVAL" "refusal: ${refusal:-none}"
 "$PY" - "$B/tests/python/test_readback.py" <<'PY'
 import sys
 p = sys.argv[1]
@@ -353,7 +387,7 @@ RBEFORE="$(digest "$R")"
 rc=0; out="$(WC "$R" --removal-list 2>&1)" || rc=$?
 e1="$(grep -A3 -F '. tests/test_removal.py::test_label_is_send' <<<"$out" || true)"
 [[ $rc -eq 0 ]] \
-  && grep -qx 'removal batch — 6 test(s) for the owner'"'"'s confirmation (nothing is removed by this list)' <<<"$out" \
+  && grep -qx 'removal batch — 4 test(s) for the owner'"'"'s confirmation (nothing is removed by this list)' <<<"$out" \
   && grep -q '^ *[0-9]\. tests/test_removal.py::test_label_is_send$' <<<"$e1" \
   && grep -q '^    flagged: only assertion reads back "Send" that the same change adds (worth-check)$' <<<"$e1" \
   && grep -q '^    §10 row: SPEC-0012 "Cosmetic label on the submit button" origin: design *-> removable on confirmation$' <<<"$e1" \
@@ -367,15 +401,20 @@ grep -q '^    flagged: .*(worth-check; in the baseline)$' <<<"$e2" \
   && grep -q '^    leaves without evidence: none' <<<"$e2" \
   && ok "X600 WORTH_REMOVAL_LIST_NAMES_EACH_TEST: an older test from the baseline is listed, and a contract another row still covers is not left without evidence" \
   || bad "X600 WORTH_REMOVAL_LIST_NAMES_EACH_TEST" "older test: ${e2:-not listed}"
-for pair in 'test_retry_label|origin: bug *-> NOT REMOVABLE AUTOMATICALLY (a bug reproduction stays)$' \
-            'test_title_text|origin: security control *-> NOT REMOVABLE AUTOMATICALLY (a security control; one that kills no mutant is a finding for the security agent)$' \
-            'test_footer_text|^    no §10 row -> NOT REMOVABLE AUTOMATICALLY'; do
-  t="${pair%%|*}"; want="${pair#*|}"
-  e="$(grep -A3 -F ". tests/test_removal.py::$t" <<<"$out" || true)"
-  grep -q "$want" <<<"$e" \
-    && ok "X601 WORTH_REMOVAL_LIST_HOLDS_BACK_THE_NEVER_AUTOMATIC_KINDS: $t" \
-    || bad "X601 WORTH_REMOVAL_LIST_HOLDS_BACK_THE_NEVER_AUTOMATIC_KINDS" "$t: ${e:-not listed}"
-done
+e="$(grep -A3 -F ". tests/test_removal.py::test_footer_text" <<<"$out" || true)"
+grep -q '^    no §10 row -> NOT REMOVABLE AUTOMATICALLY' <<<"$e" \
+  && ok "X601 WORTH_REMOVAL_LIST_HOLDS_BACK_THE_NEVER_AUTOMATIC_KINDS: test_footer_text, which no §10 row maps" \
+  || bad "X601 WORTH_REMOVAL_LIST_HOLDS_BACK_THE_NEVER_AUTOMATIC_KINDS" "test_footer_text: ${e:-not listed}"
+# A §10 origin of bug or security control spares the test before any list is
+# drawn (WORTH_SPARES_BY_SECTION_10_ORIGIN), so neither reaches the batch.
+rc=0; WC "$R" --json >"$T/rm.json" 2>&1 || rc=$?
+v="$("$PY" -c 'import json,sys; r={t["name"]: t["verdict"] + ":" + t["why"] for t in json.load(open(sys.argv[1]))["tests"]}
+print("|".join(n + "=" + r.get(n, "not-read:") for n in sys.argv[2:]))' \
+  "$T/rm.json" test_retry_label test_title_text 2>&1 || true)"
+! grep -q 'test_retry_label\|test_title_text' <<<"$out" \
+  && [[ "$v" == "test_retry_label=spared:§10 origin bug (SPEC-0012): a bug reproduction stays|test_title_text=spared:§10 origin security control (SPEC-0012): a security control stays" ]] \
+  && ok "X601 WORTH_REMOVAL_LIST_HOLDS_BACK_THE_NEVER_AUTOMATIC_KINDS: a test of §10 origin bug or security control is spared, so it never reaches the batch" \
+  || bad "X601 WORTH_REMOVAL_LIST_HOLDS_BACK_THE_NEVER_AUTOMATIC_KINDS" "bug and security-control rows: $v; batch: $(grep -c '^ *[0-9]\.' <<<"$out")"
 e6="$(grep -A3 -F '. tests/test_other.py::test_banner' <<<"$out" || true)"
 grep -q 'SPEC-0013 "BANNER_SAYS_HELLO" origin: not recorded *-> NOT REMOVABLE AUTOMATICALLY' <<<"$e6" \
   && ok "X601 WORTH_REMOVAL_LIST_HOLDS_BACK_THE_NEVER_AUTOMATIC_KINDS: a legacy row records no origin, so its test is held back" \
@@ -400,8 +439,26 @@ rc=0; out="$(WC "$P" --removal-list 2>&1)" || rc=$?
 # adversarial.tsv, both written before the tool ran over them. A row of
 # known-gaps.tsv is a documented limit of the heuristic: it is held at the
 # verdict that file records, so a fix shows here and its row moves to the gate.
-A="$T/adv"; mkdir -p "$A/docs/graph" "$A/tests"; cp -R "$FX/adversarial" "$A/tests/"
+A="$T/adv"; mkdir -p "$A/docs/graph/specs" "$A/tests"; cp -R "$FX/adversarial" "$A/tests/"
 printf 'TEST_GLOBS = ["tests/**/*.*"]\n' > "$A/docs/graph/spec-lint.py"
+# The regression-named read-back is mapped by a §10 row of origin design: the
+# row's origin decides, so its name spares nothing (WORTH_SPARES_BY_SECTION_10_ORIGIN).
+cat > "$A/docs/graph/specs/SPEC-0001-labels.md" <<'EOF'
+---
+status: implemented
+---
+# SPEC-0001: labels
+
+## 4. Functional contracts
+
+### Contract: SUBMIT_LABEL_IS_SEND
+
+## 10. Test design
+
+| Risk (what breaks, for whom) | Test (file::name, lowest level) | Covers | Origin | Status |
+|---|---|---|---|---|
+| The submit label reads wrong | tests/adversarial/python/test_adversarial.py::test_regression_label_text | SUBMIT_LABEL_IS_SEND | design | green |
+EOF
 ABEFORE="$(digest "$A/tests")"
 rc=0; WC "$A" --json >"$T/adv.json" 2>"$T/adv.err" || rc=$?
 adv="$("$PY" - "$FX/adversarial.tsv" "$FX/known-gaps.tsv" "$T/adv.json" 2>&1 <<'PY' || true
@@ -445,10 +502,15 @@ check_adv X810 WORTH_SECURITY_KEY_IS_A_DECLARATION 'key is a string'
 check_adv X811 WORTH_SETUP_THAT_ONLY_READS_IS_A_READ 'setUp only copies'
 check_adv X812 WORTH_DESCRIBE_BODY_READ_IS_A_READ 'read in the describe body'
 check_adv X820 WORTH_HEADER_NAME_KEY_IS_A_SECURITY_DECLARATION 'header-shaped|X-Frame-Options'
+check_adv X902 WORTH_VOCABULARY_ONLY_WITHOUT_A_DECLARATION 'round 4'
+check_adv X905 WORTH_UNSEEN_ASSERTION_IS_NOT_JUDGED 'reports it not judged'
+check_adv X900 WORTH_SPARES_BY_SECTION_10_ORIGIN 'named like a regression'
 gaps="$(awk -F'\t' '$1 == "JSON" || $4 == "gap"' <<<"$adv")"
-[[ -n "$gaps" ]] && ! grep -q '^BAD\|^JSON' <<<"$gaps" \
-  && ok "X806 HEURISTIC_SPARES_A_READ_BACK: the $(wc -l <<<"$gaps" | tr -d ' ') documented limit(s) of known-gaps.tsv keep the verdict that file records" \
-  || bad "X806 HEURISTIC_SPARES_A_READ_BACK" "$(grep -v '^OK' <<<"${gaps:-JSON	none	none	none	known-gaps.tsv holds no row}" | cut -f5 | tr '\n' ';')"
+ngaps="$(grep -cv '^#' "$FX/known-gaps.tsv" || true)"
+[[ "$(grep -c . <<<"$gaps" || true)" == "$ngaps" ]] && ! grep -q '^BAD\|^JSON' <<<"$gaps" \
+  && [[ -n "$adv" ]] && ! grep -q '^JSON' <<<"$adv" \
+  && ok "X806 HEURISTIC_SPARES_A_READ_BACK: the $ngaps documented limit(s) of known-gaps.tsv keep the verdict that file records" \
+  || bad "X806 HEURISTIC_SPARES_A_READ_BACK" "$(grep -v '^OK' <<<"${gaps:-JSON	none	none	none	the adversarial report did not answer}" | cut -f5 | tr '\n' ';')"
 [[ "$(digest "$A/tests")" == "$ABEFORE" ]] \
   && ok "X591 WORTH_NEVER_EDITS_A_TEST: the adversarial run changed no test file" \
   || bad "X591 WORTH_NEVER_EDITS_A_TEST" "the adversarial tree changed under the check"
@@ -661,6 +723,309 @@ v="$(kv 'nav read in the describe body carries help' 'page read beside a build h
 [[ "$v" == "flagged spared spared" ]] \
   && ok "X812 WORTH_DESCRIBE_BODY_READ_IS_A_READ: a const a describe body only reads is a read; beside a hook that runs code, or held in a let, it stays logic" \
   || bad "X812 WORTH_DESCRIBE_BODY_READ_IS_A_READ" "want flagged spared spared, got: $v"
+
+# X900 to X903: the sparing by declaration (the owner's decision of 2026-11-11).
+# The owner's check: in a plant installed into a `git init`ed directory, with a
+# spec whose §10 rows record origin security control and a crosscut node that
+# marks app/auth/** and config/auth.json as trust paths, tests pinning
+# JWT_ALGORITHMS == ["RS256"] and LOCKOUT_THRESHOLD == 5 are spared (i) by
+# their §10 row and (ii) by the trust-path file they import or read; the same
+# two pins with neither, their names free of the word list, are flagged.
+G="$T/g"; mkdir -p "$G"; git -C "$G" init -q
+bash "$ROOT/install.sh" claude-code --project-dir "$G" >/dev/null 2>&1 || true
+mkdir -p "$G/app/auth" "$G/config" "$G/tests" "$G/docs/graph/nodes" "$G/docs/graph/specs"
+printf 'JWT_ALGORITHMS = ["RS256"]\nLOCKOUT_THRESHOLD = 5\n' > "$G/app/auth/settings.py"
+printf 'JWT_ALGORITHMS = ["RS256"]\nLOCKOUT_THRESHOLD = 5\nJWT_LEEWAY = 30\nRETRY_LABEL = "Retry"\n' > "$G/app/rules.py"
+printf '{"lockout": 5}\n' > "$G/config/auth.json"
+printf -- '---\nid: crosscut.sign-in\ntier: 2\ntrust: true\nkind: crosscut\norigin: project\ntitle: sign-in\nowns:\n  - sign-in.menu\nload_when:\n  - "app/auth/**"\n  - "config/auth.json"\nest_tokens: 100\n---\n\nSign-in.\n' \
+  > "$G/docs/graph/nodes/crosscut.sign-in.md"
+cat > "$G/tests/test_rules_by_row.py" <<'EOF'
+from app.rules import JWT_ALGORITHMS, LOCKOUT_THRESHOLD, RETRY_LABEL
+
+
+def test_algorithms_pinned():
+    assert JWT_ALGORITHMS == ["RS256"]
+
+
+def test_threshold_pinned():
+    assert LOCKOUT_THRESHOLD == 5
+
+
+def test_retry_label_after_the_outage():
+    assert RETRY_LABEL == "Retry"
+EOF
+cat > "$G/tests/test_rules_design.py" <<'EOF'
+from app.rules import JWT_ALGORITHMS, LOCKOUT_THRESHOLD
+
+
+def test_jwt_algorithms_listed():
+    assert JWT_ALGORITHMS == ["RS256"]
+
+
+def test_regression_lockout_threshold():
+    assert LOCKOUT_THRESHOLD == 5
+EOF
+cat > "$G/tests/test_auth_settings.py" <<'EOF'
+from app.auth.settings import JWT_ALGORITHMS, LOCKOUT_THRESHOLD
+
+
+def test_algorithms_pinned():
+    assert JWT_ALGORITHMS == ["RS256"]
+
+
+def test_threshold_pinned():
+    assert LOCKOUT_THRESHOLD == 5
+EOF
+cat > "$G/tests/test_auth_config.py" <<'EOF'
+import json
+from pathlib import Path
+
+
+def test_threshold_in_config():
+    assert json.loads(Path("config/auth.json").read_text(encoding="utf-8"))["lockout"] == 5
+EOF
+cat > "$G/tests/test_off_trust.py" <<'EOF'
+from app.rules import JWT_LEEWAY
+
+
+def test_jwt_leeway_seconds():
+    assert JWT_LEEWAY == 30
+EOF
+cat > "$G/docs/graph/specs/SPEC-0001-sign-in.md" <<'EOF'
+---
+status: implemented
+---
+# SPEC-0001: sign-in
+
+## 4. Functional contracts
+
+### Contract: TOKENS_ARE_SIGNED_WITH_RS256
+
+### Contract: LOCKOUT_AFTER_FIVE_FAILURES
+
+### Contract: RETRY_LABEL_IS_SHOWN
+
+## 10. Test design
+
+| Risk (what breaks, for whom) | Test (file::name, lowest level) | Covers | Origin | Status |
+|---|---|---|---|---|
+| A token signed with a weak algorithm is accepted | tests/test_rules_by_row.py::test_algorithms_pinned | TOKENS_ARE_SIGNED_WITH_RS256 | security control | green |
+| An attacker guesses passwords without a lockout | tests/test_rules_by_row.py::test_threshold_pinned | LOCKOUT_AFTER_FIVE_FAILURES | security control | green |
+| The retry label vanished once and customers could not retry | tests/test_rules_by_row.py::test_retry_label_after_the_outage | RETRY_LABEL_IS_SHOWN | bug | green |
+| The algorithm list reads as written | tests/test_rules_design.py::test_jwt_algorithms_listed | TOKENS_ARE_SIGNED_WITH_RS256 | design | green |
+| The threshold reads as written | tests/test_rules_design.py::test_regression_lockout_threshold | LOCKOUT_AFTER_FIVE_FAILURES | design | green |
+EOF
+GBEFORE="$(digest "$G/tests")"
+rc=0; WC "$G" --json >"$T/g.json" 2>"$T/g.err" || rc=$?
+gv() {   # path::name=verdict for each named test of a --json report
+  "$PY" -c 'import json,sys; r={t["test"]: t["verdict"] for t in json.load(open(sys.argv[1]))["tests"]}
+print(" ".join(r.get(n, "not-read") for n in sys.argv[2:]))' "$@" 2>&1 || true; }
+gwhy() { "$PY" -c 'import json,sys; r={t["test"]: t["why"] for t in json.load(open(sys.argv[1]))["tests"]}
+print(r.get(sys.argv[2], "not-read"))' "$@" 2>&1 || true; }
+v="$(gv "$T/g.json" tests/test_rules_by_row.py::test_algorithms_pinned tests/test_rules_by_row.py::test_threshold_pinned \
+  tests/test_rules_by_row.py::test_retry_label_after_the_outage)"
+w="$(gv "$T/g.json" tests/test_rules_design.py::test_jwt_algorithms_listed tests/test_rules_design.py::test_regression_lockout_threshold)"
+why="$(gwhy "$T/g.json" tests/test_rules_by_row.py::test_algorithms_pinned)"
+[[ "$v" == "spared spared spared" && "$w" == "flagged flagged" && $rc -eq 1 \
+   && "$why" == "§10 origin security control (SPEC-0001): a security control stays" ]] \
+  && ok "X900 WORTH_SPARES_BY_SECTION_10_ORIGIN: the JWT_ALGORITHMS and LOCKOUT_THRESHOLD pins a §10 row of origin security control maps are spared, as is a bug-origin test; a design row's origin decides, so neither the word list nor a regression name spares its test" \
+  || bad "X900 WORTH_SPARES_BY_SECTION_10_ORIGIN" "rc $rc; security and bug rows: $v (want spared x3); design rows: $w (want flagged x2); why: $why; $(head -c 300 "$T/g.err")"
+v="$(gv "$T/g.json" tests/test_auth_settings.py::test_algorithms_pinned tests/test_auth_settings.py::test_threshold_pinned \
+  tests/test_auth_config.py::test_threshold_in_config)"
+why="$(gwhy "$T/g.json" tests/test_auth_settings.py::test_algorithms_pinned)"
+trust="$("$PY" -c 'import json,sys; print(json.load(open(sys.argv[1])).get("trust", {}).get("message", "none"))' "$T/g.json" 2>&1 || true)"
+[[ "$v" == "spared spared spared" && "$why" == "reads or imports a file on a marked trust path (app/auth/settings.py)" ]] \
+  && grep -q '^worth-check: trust paths consulted: 2 file(s) on the marked trust paths, 2 test file(s) reach them' <<<"$trust" \
+  && ok "X901 WORTH_SPARES_A_TEST_ON_A_TRUST_PATH: the same two pins, importing a module on a marked trust path, and a test reading a trust-path file are spared through the plant's source index" \
+  || bad "X901 WORTH_SPARES_A_TEST_ON_A_TRUST_PATH" "trust-path tests: $v (want spared x3); why: $why; trust: $trust"
+v="$(gv "$T/g.json" tests/test_off_trust.py::test_jwt_leeway_seconds)"
+[[ "$v" == "flagged" ]] \
+  && ok "X902 WORTH_VOCABULARY_ONLY_WITHOUT_A_DECLARATION: in a plant that marks trust paths, a test off them with no §10 row is not spared by the word jwt in its name" \
+  || bad "X902 WORTH_VOCABULARY_ONLY_WITHOUT_A_DECLARATION" "off-trust jwt test: $v (want flagged)"
+[[ "$(digest "$G/tests")" == "$GBEFORE" ]] && ! find "$G/tests" -name '*.bak*' | grep -q . \
+  && ok "X591 WORTH_NEVER_EDITS_A_TEST: the run that consulted the source index changed no test file" \
+  || bad "X591 WORTH_NEVER_EDITS_A_TEST" "the trust-path plant's tests changed under the check"
+
+# X902: the same two pins with neither a §10 row nor a marked trust path. With
+# their names free of the word list they are flagged; under the names the word
+# list holds (jwt, lockout, role, origin, allowed) they are spared, as is a
+# regression name with no §10 row.
+NE="$T/neither"; mkdir -p "$NE/docs/graph" "$NE/tests"
+printf 'TEST_GLOBS = ["tests/**/*.*"]\n' > "$NE/docs/graph/spec-lint.py"
+cat > "$NE/tests/test_neither.py" <<'EOF'
+from app.rules import (ALGORITHMS, ALLOWED_ORIGINS, JWT_ALGORITHMS, LOCKOUT_THRESHOLD,
+                       ROLE_REQUIRED, THRESHOLD)
+
+
+def test_algorithms_pinned():
+    assert ALGORITHMS == ["RS256"]
+
+
+def test_threshold_pinned():
+    assert THRESHOLD == 5
+
+
+def test_jwt_algorithms_pinned():
+    assert JWT_ALGORITHMS == ["RS256"]
+
+
+def test_lockout_threshold_pinned():
+    assert LOCKOUT_THRESHOLD == 5
+
+
+def test_owner_needed_for_billing():
+    assert ROLE_REQUIRED["/billing"] == "owner"
+
+
+def test_app_may_call():
+    assert ALLOWED_ORIGINS == ["https://app.example.com"]
+
+
+def test_regression_threshold_text():
+    assert THRESHOLD == 5
+EOF
+rc=0; out="$(WC "$NE" 2>&1)" || rc=$?
+WC "$NE" --json >"$T/ne.json" 2>&1 || true
+v="$(gv "$T/ne.json" tests/test_neither.py::test_algorithms_pinned tests/test_neither.py::test_threshold_pinned)"
+w="$(gv "$T/ne.json" tests/test_neither.py::test_jwt_algorithms_pinned tests/test_neither.py::test_lockout_threshold_pinned \
+  tests/test_neither.py::test_owner_needed_for_billing tests/test_neither.py::test_app_may_call \
+  tests/test_neither.py::test_regression_threshold_text)"
+[[ $rc -eq 1 && "$v" == "flagged flagged" && "$w" == "spared spared spared spared spared" ]] \
+  && grep -qx 'worth-check: trust paths: the plant marks none, so the security word list applies to a test no §10 row maps' <<<"$out" \
+  && ok "X902 WORTH_VOCABULARY_ONLY_WITHOUT_A_DECLARATION: with neither a §10 row nor a trust path, the two pins under plain names are flagged; under jwt, lockout, role and allowed origins, and a regression name, they are spared" \
+  || bad "X902 WORTH_VOCABULARY_ONLY_WITHOUT_A_DECLARATION" "rc $rc; plain names: $v (want flagged x2); word-list names: $w (want spared x5); $(grep 'trust paths' <<<"$out" || echo 'no trust line')"
+
+# X903 WORTH_TRUST_PATHS_NOT_CONSULTED_ARE_NAMED: a plant that marks trust
+# paths whose source index is missing, older (no affected-tests) or whose
+# graph-lint.py answers no --trust-claims is named, never called clean, and
+# reads as a plant that marks none: the word list applies, nothing is spared
+# for a trust path, and its flags still fail the run.
+consulted_not() {   # label plant want-reason
+  local rc=0 out; out="$(WC "$2" 2>&1)" || rc=$?
+  WC "$2" --json >"$T/nc.json" 2>&1 || true
+  local v; v="$(gv "$T/nc.json" tests/test_off_trust.py::test_jwt_leeway_seconds tests/test_rules_design.py::test_jwt_algorithms_listed)"
+  if [[ $rc -eq 1 && "$v" == "spared flagged" ]] && grep -q "^worth-check: trust paths not consulted: $3" <<<"$out" \
+     && ! grep -qi 'clean' <<<"$out"; then
+    ok "X903 WORTH_TRUST_PATHS_NOT_CONSULTED_ARE_NAMED: $1 is named, the word list applies, and the run still fails on its flags"
+  else
+    bad "X903 WORTH_TRUST_PATHS_NOT_CONSULTED_ARE_NAMED" "$1: rc $rc; off-trust and design: $v (want spared flagged); $(grep 'trust paths' <<<"$out" || echo 'no trust line')"
+  fi
+}
+G2="$T/g2"; cp -R "$G" "$G2"; rm -f "$G2/docs/graph/source-index.py"
+consulted_not "a missing source index" "$G2" 'docs/graph/source-index.py is missing'
+G3="$T/g3"; cp -R "$G" "$G3"
+grep -v '("affected-tests", "the tests the inputs reach' "$G/docs/graph/source-index.py" > "$G3/docs/graph/source-index.py"
+consulted_not "an older source index with no affected-tests" "$G3" 'docs/graph/source-index.py affected-tests did not answer (exit 2'
+G4="$T/g4"; cp -R "$G" "$G4"
+printf 'import sys\nsys.exit("graph-lint.py: error: unrecognized arguments: --trust-claims")\n' > "$G4/docs/graph/graph-lint.py"
+consulted_not "a graph-lint.py that answers no --trust-claims" "$G4" 'docs/graph/graph-lint.py --trust-claims did not answer (exit 1'
+
+# X906 TRUST_REACH_IS_PARTIAL: a source index that answers the trust paths
+# with an incomplete record is read for what it names, the record is named, and
+# the word list still applies.
+G5="$T/g5"; cp -R "$G" "$G5"; mv "$G5/docs/graph/source-index.py" "$G5/docs/graph/real-source-index.py"
+cat > "$G5/docs/graph/source-index.py" <<'EOF'
+import json, subprocess, sys
+from pathlib import Path
+real = Path(__file__).with_name("real-source-index.py")
+r = subprocess.run([sys.executable, str(real), *sys.argv[1:]], input=sys.stdin.read(),
+                   capture_output=True, text=True)
+doc = json.loads(r.stdout)
+if sys.argv[1] == "affected-tests":
+    doc["incomplete"].append({"reason": "depth-cap", "subject": "app/auth/settings.py",
+                              "candidates": [], "detail": None})
+print(json.dumps(doc))
+sys.exit(r.returncode)
+EOF
+rc=0; out="$(WC "$G5" 2>&1)" || rc=$?
+WC "$G5" --json >"$T/g5.json" 2>&1 || true
+v="$(gv "$T/g5.json" tests/test_auth_settings.py::test_algorithms_pinned tests/test_off_trust.py::test_jwt_leeway_seconds \
+  tests/test_rules_design.py::test_jwt_algorithms_listed)"
+[[ $rc -eq 1 && "$v" == "spared spared flagged" ]] \
+  && grep -qF 'worth-check: trust paths consulted in part: 2 file(s) on the marked trust paths, 2 test file(s) reach them; the source index answered incomplete (depth-cap: app/auth/settings.py), so the security word list still applies to a test no §10 row maps' <<<"$out" \
+  && ok "X906 TRUST_REACH_IS_PARTIAL: an incomplete answer spares what it names, names its records, and keeps the word list on" \
+  || bad "X906 TRUST_REACH_IS_PARTIAL" "rc $rc; trust-path, off-trust, design: $v (want spared spared flagged); $(grep 'trust paths' <<<"$out" || echo 'no trust line')"
+
+# X905 WORTH_UNSEEN_ASSERTION_IS_NOT_JUDGED: an assertion in a helper, a
+# comparison with a golden file and one with a snapshot are each named not
+# judged, counted with the not checked, never flagged or called spared; a test
+# that feeds the snapshot from logic is still spared, and a baseline entry the
+# check does not judge stays in the baseline, never shrinkable.
+NJ="$T/nj"; mkdir -p "$NJ/docs/graph" "$NJ/tests/golden"
+printf 'TEST_GLOBS = ["tests/**/*.py", "tests/**/*.ts"]\n' > "$NJ/docs/graph/spec-lint.py"
+cat > "$NJ/tests/test_unseen.py" <<'EOF'
+from pathlib import Path
+
+from app.forms import render_label
+from app.settings import SUBMIT_LABEL
+
+
+def check_label(value):
+    assert value == "Send"
+
+
+def test_label_through_a_helper():
+    check_label(SUBMIT_LABEL)
+
+
+def test_label_against_a_golden_file():
+    assert SUBMIT_LABEL == Path("tests/golden/label.txt").read_text(encoding="utf-8").strip()
+
+
+def test_label_against_a_snapshot(snapshot):
+    assert SUBMIT_LABEL == snapshot
+
+
+def test_rendered_label_against_a_snapshot(snapshot):
+    assert render_label(locale="en") == snapshot
+EOF
+cat > "$NJ/tests/unseen.test.ts" <<'EOF'
+import { readFileSync } from "node:fs";
+import { expect, test } from "vitest";
+import { renderLabel } from "../src/forms";
+import { SUBMIT_LABEL } from "../src/labels";
+
+function checkLabel(value: string) {
+  expect(value).toBe("Send");
+}
+
+test("label through a helper", () => {
+  checkLabel(SUBMIT_LABEL);
+});
+
+test("label snapshot", () => {
+  expect(SUBMIT_LABEL).toMatchSnapshot();
+});
+
+test("label against a golden file", () => {
+  expect(SUBMIT_LABEL).toBe(readFileSync("tests/golden/label.txt", "utf8").trim());
+});
+
+test("rendered label snapshot", () => {
+  expect(renderLabel("en")).toMatchSnapshot();
+});
+EOF
+printf '# baseline\ntests/test_unseen.py::test_label_through_a_helper\n' > "$NJ/docs/graph/worth-baseline.txt"
+rc=0; out="$(WC "$NJ" 2>&1)" || rc=$?
+WC "$NJ" --json >"$T/nj.json" 2>&1 || true
+v="$(gv "$T/nj.json" tests/test_unseen.py::test_rendered_label_against_a_snapshot 'tests/unseen.test.ts::rendered label snapshot')"
+[[ $rc -eq 0 && "$v" == "spared spared" ]] \
+  && grep -qx 'tests/test_unseen.py::test_label_through_a_helper  not judged (helper assertion)' <<<"$out" \
+  && grep -qx 'tests/test_unseen.py::test_label_against_a_golden_file  not judged (golden file)' <<<"$out" \
+  && grep -qx 'tests/test_unseen.py::test_label_against_a_snapshot  not judged (snapshot)' <<<"$out" \
+  && grep -qx 'tests/unseen.test.ts::label through a helper  not judged (helper assertion)' <<<"$out" \
+  && grep -qx 'tests/unseen.test.ts::label snapshot  not judged (snapshot)' <<<"$out" \
+  && grep -qx 'tests/unseen.test.ts::label against a golden file  not judged (golden file)' <<<"$out" \
+  && grep -qx 'worth-check: 0 flagged (0 in baseline), 2 files read, 6 not checked (not judged: 6 test(s))' <<<"$out" \
+  && ! grep -q 'shrinkable' <<<"$out" && ! grep -qi 'clean' <<<"$out" \
+  && ok "X905 WORTH_UNSEEN_ASSERTION_IS_NOT_JUDGED: a helper's assertion, a golden file and a snapshot in each language are named not judged and counted with the not checked; a logic-fed snapshot is spared; a baseline entry not judged is not shrinkable" \
+  || bad "X905 WORTH_UNSEEN_ASSERTION_IS_NOT_JUDGED" "rc $rc; logic-fed snapshots: $v; $out"
+mkdir -p "$P/tests/nj"; cp "$NJ/tests/test_unseen.py" "$P/tests/nj/"
+rc=0; out="$(WC "$P" 2>&1)" || rc=$?
+rm -rf "$P/tests/nj"
+grep -qx 'worth-check: 9 flagged (0 in baseline), 10 files read, 5 not checked (languages: go, shell; not judged: 3 test(s))' <<<"$out" \
+  && ok "X905 WORTH_UNSEEN_ASSERTION_IS_NOT_JUDGED: the summary counts not judged tests with the unread files and tests, after the languages" \
+  || bad "X905 WORTH_UNSEEN_ASSERTION_IS_NOT_JUDGED" "summary: $(grep '^worth-check: [0-9]' <<<"$out")"
 
 # X591 WORTH_NEVER_EDITS_A_TEST: every run above left the fixture suite's bytes as they were.
 [[ "$(digest "$P/tests")" == "$BEFORE" ]] \

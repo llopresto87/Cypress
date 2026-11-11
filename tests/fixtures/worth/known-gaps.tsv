@@ -6,17 +6,11 @@
 # row of adversarial.tsv is gated at the verdict the tester owes it.
 # Columns: test, owed, got, class (false-positive | false-negative | not-read),
 # why the tool leaves it.
-tests/adversarial/python/test_adversarial.py::test_label_through_a_helper	flagged	spared	false-negative	the assertion sits in a helper the check does not follow; a call it cannot see into is read as logic
-tests/adversarial/python/test_adversarial.py::test_label_against_a_golden_file	flagged	spared	false-negative	a constant held equal to a file reads as two homes with no literal between them, which WORTH_SPARES_LOGIC_TESTS spares
-tests/adversarial/python/test_adversarial.py::test_label_rendered_for_a_snapshot	flagged	spared	false-negative	a fixture parameter is opaque to a static reading, so a snapshot fixture reads as logic
-tests/adversarial/ts/adversarial.test.ts::label snapshot	flagged	spared	false-negative	toMatchSnapshot() holds no literal in the test; the literal lives in a snapshot file the runner writes
-tests/adversarial/python/test_adversarial.py::test_regression_label_text	flagged	spared	false-negative	a name that names a regression is the author's declaration, and WORTH_SPARES_BUG_REGRESSIONS spares it
-tests/adversarial/python/test_adversarial_security.py::test_billing_needs_the_owner_role	spared	flagged	false-positive	round 4, vocabulary edge (SECURITY_CONTROL_OUTSIDE_THE_SPARE_IS_FLAGGED): a security setting named for its effect, whose words (role) are outside the spare's vocabulary; the remedy is a keep line with its reason
-tests/adversarial/ts/adversarial-security.test.ts::billing needs the owner role	spared	flagged	false-positive	round 4, vocabulary edge (SECURITY_CONTROL_OUTSIDE_THE_SPARE_IS_FLAGGED): a security setting named for its effect, whose words (role) are outside the spare's vocabulary; the remedy is a keep line with its reason
-tests/adversarial/python/test_adversarial_security.py::test_lockout_threshold	spared	flagged	false-positive	round 4, vocabulary edge (SECURITY_CONTROL_OUTSIDE_THE_SPARE_IS_FLAGGED): a security setting named for its effect, whose words (lockout) are outside the spare's vocabulary; the remedy is a keep line with its reason
-tests/adversarial/ts/adversarial-security.test.ts::lockout threshold	spared	flagged	false-positive	round 4, vocabulary edge (SECURITY_CONTROL_OUTSIDE_THE_SPARE_IS_FLAGGED): a security setting named for its effect, whose words (lockout) are outside the spare's vocabulary; the remedy is a keep line with its reason
-tests/adversarial/python/test_adversarial_security.py::test_allowed_origins_list	spared	flagged	false-positive	round 4, vocabulary edge (SECURITY_CONTROL_OUTSIDE_THE_SPARE_IS_FLAGGED): a security setting named for its effect, whose words (origins, allowed) are outside the spare's vocabulary; the remedy is a keep line with its reason
-tests/adversarial/ts/adversarial-security.test.ts::allowed origins contain the app	spared	flagged	false-positive	round 4, vocabulary edge (SECURITY_CONTROL_OUTSIDE_THE_SPARE_IS_FLAGGED): a security setting named for its effect, whose words (origins, allowed) are outside the spare's vocabulary; the remedy is a keep line with its reason
-tests/adversarial/python/test_adversarial_security.py::test_allowed_host_membership	spared	flagged	false-positive	round 4, vocabulary edge (SECURITY_CONTROL_OUTSIDE_THE_SPARE_IS_FLAGGED): a security setting named for its effect, whose words (allowed, hosts) are outside the spare's vocabulary; the remedy is a keep line with its reason
-tests/adversarial/python/test_adversarial_security.py::test_jwt_algorithms_allowed	spared	flagged	false-positive	round 4, vocabulary edge (SECURITY_CONTROL_OUTSIDE_THE_SPARE_IS_FLAGGED): a security setting named for its effect, whose words (jwt, algorithms) are outside the spare's vocabulary; the remedy is a keep line with its reason
-tests/adversarial/ts/adversarial-security.test.ts::jwt algorithms allowed	spared	flagged	false-positive	round 4, vocabulary edge (SECURITY_CONTROL_OUTSIDE_THE_SPARE_IS_FLAGGED): a security setting named for its effect, whose words (jwt, algorithms) are outside the spare's vocabulary; the remedy is a keep line with its reason
+#
+# Empty since 2026-11-11 (point release 8.5.1). The five first-round limits
+# left: a helper's assertion, a golden file, a snapshot fixture and
+# toMatchSnapshot are reported `not judged` (WORTH_UNSEEN_ASSERTION_IS_NOT_JUDGED),
+# and the regression-named read-back is flagged once a §10 row of origin
+# design maps it (WORTH_SPARES_BY_SECTION_10_ORIGIN). The nine round-four
+# vocabulary edges left: the words role, lockout, origin, allowed and jwt joined
+# the word list (WORTH_VOCABULARY_ONLY_WITHOUT_A_DECLARATION).
