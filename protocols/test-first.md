@@ -167,7 +167,8 @@ as probe files, and that tester and implementer take them the same way.
    question (`delegation.question-file`); a case that only reads back a
    value or duplicates another may be dropped or merged, with one line of
    reason in its §10 row (`skill.test-first`, Designing the set). The
-   test name names the contract(s) it asserts.
+   test says what broke; its §10 Covers cell links it to its contracts
+   (a legacy spec's test carries each slug).
 3. Run the test. **Confirm it fails for the right reason.**
    - A test that fails because the import is missing has not yet
      achieved RED.

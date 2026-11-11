@@ -762,6 +762,34 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 - **And:** a plant that edits or recomposes an agent is held to the same
   table, because the check reads the plant's projected files
 
+### Contract: FORBIDDEN_SENTENCE_IS_IN_NO_COMPOSED_PROMPT
+- **Test file:** `tests/test-delivery-rules.sh`
+- **Given:** `FORBIDDEN` in `tools/delivery_rules.py`, a table of retired
+  sentences, why each was retired, and the roles whose prompt must not carry it
+  (`any` for every role); it holds the sentences the restraint rule replaced
+  (code written only when a failing test asks, the test name naming the
+  contract, the implementer writing only production files, the rule "loaded
+  above", every increment beginning with a failing test, code as a RED-gated
+  increment, test-first run per contract)
+- **When:** the projected agent files of an install (claude-code and
+  opencode) are read, by `tests/test-delivery-rules.sh` in the seed or by
+  `install.sh <host> --check` in a plant
+- **Then:** a fresh install's prompts carry none, and a prompt that carries
+  one, matched across case and line breaks, is named with its role and the
+  sentence, and the run exits non-zero
+- **And:** the check rides the same call as `MUST_REACH`, so a plant that
+  edits or recomposes an agent is held to both tables
+
+### Contract: FORBIDDEN_SENTENCE_IS_IN_NO_METHOD_SOURCE
+- **Test file:** `tests/test-delivery-rules.sh`
+- **Given:** the seed's method surface: `agents/`, `protocols/`, `skills/`,
+  `core/` and `templates/`
+- **When:** `tools/delivery_rules.py --tree ROOT` reads it
+- **Then:** no file holds a `FORBIDDEN` sentence, and a file that holds one is
+  named with the sentence and the run exits non-zero
+- **And:** a node no role composes today is held too, so the next composition
+  cannot carry a retired sentence back
+
 ### Contract: SPEC_TEMPLATE_TEACHES_CONTRACT_KINDS
 - **Test file:** `tests/seed-lint.py`
 - **Given:** `templates/spec.template.md`
@@ -3027,6 +3055,8 @@ gives.
 | REVIEWER_REOPENS_A_KIND_THAT_HIDES_LOGIC | (none) the `REVIEWER_REOPENS_A_KIND_THAT_HIDES_LOGIC` rows of seed-lint's `TEXT_RULES`; red id: `REVIEWER_REOPENS_A_KIND_THAT_HIDES_LOGIC: agents/03-reviewer.md does not hold "re-opens the contract's kind"`; seen red first | tests/seed-lint.py | real-tree | green |
 | NO_SURFACE_OWES_EVERY_CONTRACT_A_TEST | (none) the `NO_SURFACE_OWES_EVERY_CONTRACT_A_TEST` rows of seed-lint's `TEXT_RULES`; red id: `NO_SURFACE_OWES_EVERY_CONTRACT_A_TEST: protocols/specify.md:1: 'every functional contract maps to at least one test'`; seen red first | tests/seed-lint.py | real-tree | green |
 | MUST_REACH_RULE_IS_IN_EACH_NAMED_ROLE_PROMPT | X524 installed prompts carry the rule; removing it from each of four roles fails naming role and rule; `--check` in a plant reports it; seen red first by that removal | tests/test-delivery-rules.sh | integration | green |
+| FORBIDDEN_SENTENCE_IS_IN_NO_COMPOSED_PROMPT | X910 the table holds the retired sentences; fresh claude-code and opencode prompts carry none; one sentence restored across a line break in the reviewer is named by role and sentence by the tool and by `claude-code --check`, in the opencode tester by `opencode --check`; seen red first (no `FORBIDDEN` table, then 13 findings on the 8.5.0 install) | tests/test-delivery-rules.sh | integration | green |
+| FORBIDDEN_SENTENCE_IS_IN_NO_METHOD_SOURCE | X911 `--tree` on the seed passes; a planted sentence is named by file and sentence; seen red first (eight findings on the 8.5.0 tree) | tests/test-delivery-rules.sh | integration | green |
 | SPEC_LINT_READS_THE_CONTRACT_FORM | X560 case_contract_form_is_read: a missing Check line and an unknown kind fail, named; the spec without the form line or Check lines owes legacy rows; a legacy spec's labelled run owes its result while the unlabelled contract keeps its slug link; seen red first | tests/test-spec-lint.sh | fixture | green |
 | SPEC_LINT_HOLDS_EACH_KIND_TO_ITS_EVIDENCE | X561 case_each_kind_owes_its_evidence: run without result or command, review without spawn id, covered naming a missing or comment-only test, and the declared-values table's Check line; drafts pass with the plan form; seen red first | tests/test-spec-lint.sh | fixture | green |
 | SPEC_LINT_LINKS_A_TEST_CONTRACT_BY_ITS_COVERS_CELL | X562 case_test_contract_is_linked_by_covers: no covering row, an accepted or dropped row, a missing test, a Covers typo, bad Test, Origin and Status cells, an implemented pending row, and zero test files; seen red first | tests/test-spec-lint.sh | fixture | green |
@@ -3662,3 +3692,13 @@ kept outside the seed.
   GRILL_LEGACY_PLAN_LINTS_UNCHANGED, GRILL_READS_A_CHECK_LABEL_IN_A_LEGACY_SPEC
   and BRIEF_NAMES_THE_EVIDENCE_A_RUN_OR_REVIEW_OWES (seen red first, the legacy
   one a guard).
+- 2026-11-11 — the owner decided on 2026-11-11 that the sentences the
+  restraint rule replaced leave every composed prompt and every method node.
+  Rewrote `method.engineering-posture` §2 (logic waits on a failing test; a
+  declarative or presentational contract is proved by its declared run or
+  review; the §10 Covers cell, not the test's name, links a test in a
+  kinds-form spec), scoped `delegation.green-self-test`'s production-files
+  sentence to outside the merged path, and made the tester's and reviewer's
+  pointer to the always-loaded rule position-free. Added
+  FORBIDDEN_SENTENCE_IS_IN_NO_COMPOSED_PROMPT and
+  FORBIDDEN_SENTENCE_IS_IN_NO_METHOD_SOURCE (X910, X911, each seen red first).

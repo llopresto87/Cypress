@@ -88,15 +88,15 @@ using the owner's values below:
 ## GREEN runs its own tests (`delegation.green-self-test`)
 
 The implementer runs the RED tests itself, so GREEN needs no separate tester
-spawn. It writes only production files, because a test its implementer can
-edit no longer authorizes the code. A test that looks wrong is an entry in the
+spawn. Off the merged path it writes production files alone, because a test
+its implementer can edit no longer authorizes the code. A test that looks wrong is an entry in the
 question file (`delegation.question-file`), and the implementer moves on to
 work the question does not touch. A failing test judged wrong goes straight
 to a fresh `tester` with the failure and the reason, ahead of any implementer
 fix round: only a fix to the test makes a wrong test right. The rule covers
 REFACTOR too: test cleanup the implementer finds is an entry in the question
 file for the next tester spawn, which does it with the suite green. The merged path
-(`tiers.execution-paths`), where one implementer writes both the test and the code, is the one exception: a low-band increment off trust paths, or a mechanical single-contract T2 RED; the implementer sees the test fail for the right reason before the code, its hand-back records both runs, and the orchestrator records the RED from it.
+(`tiers.execution-paths`), where one implementer also writes the test it saw fail first, is the one exception: a low-band increment off trust paths, or a mechanical single-contract T2 RED; the implementer sees the test fail for the right reason before the code, its hand-back records both runs, and the orchestrator records the RED from it.
 
 When the orchestrator observes a RED, it records a `sha256sum` of every test and fixture file the RED spawn
 wrote, and its test ids, in the batch record (`python3 docs/graph/cycle.py record-red N --unit U --file PATH...

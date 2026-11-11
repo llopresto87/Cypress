@@ -229,9 +229,8 @@ the sign-offs (product ✓, architect ✓, tester ✓).
 
 ### Phase 8 — Test-first the first useful slice
 
-Run `docs/graph/protocols/test-first.md` for each contract in SPEC-0001.
-RED → GREEN → REFACTOR → COMMIT for each increment in grill.md
-§9.
+Run `docs/graph/protocols/test-first.md` for each increment in grill.md
+§9, each contract checked by the kind SPEC-0001 sets for it.
 
 ### Phase 9 — Close-out and deliver
 
