@@ -69,6 +69,10 @@ can_delegate: {{true exactly when Task is in tools above, so a spawn
 # max_spawn_depth: {{1..3}}
 # delegates_to:
 #   - {{agent-name — must have a strictly-lower max_spawn_depth; leaves = 0}}
+# A plant agent is launchable by the lead, whose list the installer extends.
+# A seed agent that no delegates_to names carries this key instead
+# (tools/roster-justification.py --gaps holds it):
+# launched_by: none  # {{one-line reason}}
 id: agent.{{same kebab-case id as `name` above}}
 tier: 2
 kind: agent

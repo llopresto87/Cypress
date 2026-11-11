@@ -1070,6 +1070,28 @@ its own record, and that slug stays as written in §12's history.
 - **And:** `tests/seed-lint.py` fails naming the charter and the tool, so a
   seed charter never reaches a plant with a tool the table lacks
 
+### Contract: EVERY_ROSTER_AGENT_IS_LAUNCHABLE
+- **Given:** the seed roster and the owner's decision of 2026-11-11 that the
+  architect launches `legal` (its legal checkpoint routes a rule question to
+  `legal` and spawns it within its depth cap, and grill's risk phase sends
+  rule exposure to `legal` under the same checkpoint)
+- **When:** `install.sh opencode` renders the agents
+- **Then:** `architect.md`'s rules allow the `subagent` action for `legal`
+- **And:** every projected agent other than the lead, which the session plays,
+  is allowed by the `subagent` rules of at least one projected agent, so each
+  installed agent can run
+
+### Contract: UNLAUNCHABLE_ROSTER_AGENT_FAILS_THE_ROSTER_GATE
+- **Given:** a seed roster agent (`agents/*.md`, as
+  `tools/roster-justification.py` enumerates it) other than the lead that no
+  agent's `delegates_to:` names
+- **When:** `tools/roster-justification.py --gaps` runs, the existing gate step
+- **Then:** it exits non-zero with one line naming the agent's file, the agents
+  that can delegate, and the two fixes: add the agent to the `delegates_to:` of
+  the role its method says launches it, or mark it `launched_by: none  # <one-line reason>`
+- **And:** that mark with its reason clears the finding, and the mark without a
+  reason leaves it
+
 ### Contract: OPENCODE_CONFIG_IS_OPENCODE_2
 - **Given:** the seed's `integrations/opencode/opencode.json`
 - **When:** `seed-lint` runs
@@ -2337,6 +2359,8 @@ $ head -1 /p/docs/graph/libraries/rxjs.md
 | OPENCODE_LEAD_LAUNCHES_THE_PLANTS_LINT_CLEAN_AGENTS | X701 case_opencode_lead_list_from_roster: a lint-clean plant agent is on the lead's list beside the seed roster and named in one install line; a plant agent with no `effort:` is projected, off the list and named with the agent lint; `architect.md` is byte-identical to the base install's; `--check` exits 0; seen red first (the lead's list named the seed roster only) | tests/test-full-install.sh | integration | green |
 | OPENCODE_CHECK_NAMES_A_STALE_LEAD_LIST | X702 case_opencode_lead_list_from_roster: a plant agent added after the install makes `--check` exit non-zero with one line naming the lead's list, the agent and `--recompose-agents`; after the recompose the agent is on the list and `--check` exits 0; seen red first (only the generic STALE line) | tests/test-full-install.sh | integration | green |
 | OPENCODE_PLANT_AGENT_UNKNOWN_TOOL_IS_DENIED_AND_NAMED | X703 case_opencode_plant_unknown_tool: a plant agent listing `FrobnicateTool` installs with exit 0, is projected with `read` allowed and no trace of the tool, the rest of the roster is projected, the warning names the file, the tool, the denial and the remedy; `--check` exits non-zero naming the tool; after the charter drops it, install and `--check` exit 0; seen red first (the install stopped) | tests/test-full-install.sh | integration | green |
+| EVERY_ROSTER_AGENT_IS_LAUNCHABLE | X920 case_opencode: `architect.md` allows `subagent` for `legal`, and every projected agent but the lead is named by some agent's `subagent` allow rule; seen red first (no agent's rules named `legal`) | tests/test-full-install.sh | integration | green |
+| UNLAUNCHABLE_ROSTER_AGENT_FAILS_THE_ROSTER_GATE | X921 case_roster_launchable_lint: on a copy of the roster, `legal` dropped from the architect's `delegates_to:` makes `--gaps` exit non-zero naming `agents/14-legal.md`, a launcher and both fixes; `launched_by: none` alone leaves the finding, with a reason it clears; seen red first (the seed tree's `--gaps` named `legal` before the architect's list changed) | tests/test-full-install.sh | integration | green |
 | SEED_CHARTER_TOOLS_ARE_IN_THE_PERMISSION_TABLE | X704 case_opencode_native_agent: an `origin: seed` charter listing `Teleport` makes `install.sh opencode` exit non-zero naming the tool, with `.opencode/agents/` unchanged | tests/test-full-install.sh | integration | green |
 | SEED_CHARTER_TOOLS_ARE_IN_THE_PERMISSION_TABLE | X704 row of the seed-lint contract table: `Teleport` added to `agents/02-implementer.md`'s `tools:` makes `check_opencode_tool_table` name the charter, the tool and the table; seen red first (the check did not exist) | tests/test-seed-lint.sh | unit (seed copy) | green |
 | OPENCODE_CONFIG_IS_OPENCODE_2 | E21 opencode-stale-schema, opencode-invalid-key, opencode-legacy-depth-key, opencode-double-load and opencode-depth-cap rows of test-seed-lint: each mutated config fails `check_opencode_config` with its message | tests/test-seed-lint.sh | integration | green |
@@ -3126,3 +3150,8 @@ only version surface it has, and it moves with each entry here.
   SEED_CHARTER_TOOLS_ARE_IN_THE_PERMISSION_TABLE (X704), each seen red first;
   OPENCODE_TOOL_BOUND_IS_HOST_PERMISSIONS now stops the render on a seed
   charter's unknown tool only.
+- 2026-11-11 — the owner decided on 2026-11-11 that every roster agent is
+  launchable by some agent, and that the architect launches `legal`, as its
+  legal checkpoint says. Added EVERY_ROSTER_AGENT_IS_LAUNCHABLE (X920) and
+  UNLAUNCHABLE_ROSTER_AGENT_FAILS_THE_ROSTER_GATE (X921), each seen red first:
+  no agent's `subagent` rules named `legal`, so opencode could not launch it.

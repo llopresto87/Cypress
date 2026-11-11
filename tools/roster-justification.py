@@ -162,6 +162,48 @@ def report_unreadable() -> bool:
     return True
 
 
+LEAD = "orchestrator"   # the role the session plays: launched by the session itself
+UNLAUNCHED = re.compile(r"^launched_by:\s*none\s+#\s*\S", re.M)
+
+
+def unlaunchable() -> list[str]:
+    """Roster agents no agent can launch (SPEC-0001 EVERY_ROSTER_AGENT_IS_LAUNCHABLE).
+
+    On opencode an agent runs only when some agent's `subagent` allow list
+    names it, and install.sh derives each list from that agent's
+    `delegates_to:`. An agent no list names installs and can never run. The
+    lead is launched by the session (it plays it); any other agent is named in
+    some `delegates_to:` or carries `launched_by: none  # <reason>`.
+    """
+    launchers: dict[str, list[str]] = {}
+    agents = []
+    for kind, path in nodes():
+        if kind != "agent":
+            continue
+        fm = frontmatter(path)
+        if not fm:
+            continue   # recorded in UNREADABLE by frontmatter()
+        name = str(fm.get("name") or path.stem)
+        agents.append((name, path, fm))
+        for target in fm.get("delegates_to") or []:
+            launchers.setdefault(str(target), []).append(name)
+    out = []
+    for name, path, fm in agents:
+        if name == LEAD or launchers.get(name):
+            continue
+        if str(fm.get("launched_by", "")).strip() == "none" and \
+                UNLAUNCHED.search(path.read_text(encoding="utf-8")):
+            continue
+        could = sorted(n for n, _p, m in agents
+                       if str(m.get("can_delegate", "")).strip().lower() == "true")
+        out.append(f"{path.relative_to(ROOT)}: unlaunchable — no agent's delegates_to "
+                   f"names {name!r}, so on opencode no agent may launch it. Fix: add "
+                   f"{name!r} to the delegates_to of the role its method says launches "
+                   f"it (one of: {', '.join(could)}), or mark it `launched_by: none  "
+                   f"# <one-line reason>`")
+    return out
+
+
 def main(argv: list[str]) -> int:
     data = rows()
     unreadable = report_unreadable()
@@ -170,8 +212,12 @@ def main(argv: list[str]) -> int:
         for r in gaps:
             missing = [k for k in ("prevents", "overlaps") if not r[k]]
             print(f"{r['path']}: missing {', '.join(missing)}")
-        print(f"\n{len(gaps)} node(s) with a gap, of {len(data)}")
-        return 1 if (gaps or unreadable) else 0
+        orphans = unlaunchable()
+        for line in orphans:
+            print(line)
+        print(f"\n{len(gaps)} node(s) with a gap, of {len(data)}; "
+              f"{len(orphans)} unlaunchable agent(s)")
+        return 1 if (gaps or orphans or unreadable) else 0
 
     md = "--markdown" in argv
     for kind in ("agent", "protocol", "skill", "method"):
