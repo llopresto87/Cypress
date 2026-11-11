@@ -134,6 +134,7 @@ your run; name it under Known limitations if it matters.
 - Tests written: <optional count: design N, bug N, security control N, from the plan's §10 rows>
 - Dropped at RED: <optional count: N, the §10 rows with a `dropped:` note>
 - Refused by worth check: <optional count: N, from the worth check's output>
+- Not checked by worth check: <optional count: N, the `U not checked` of the worth check's summary>
 - Tests removed: <optional count: N, the §10 rows with a `removed:` note>
 
 ## Recommended next step
