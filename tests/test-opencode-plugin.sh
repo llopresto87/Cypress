@@ -11,11 +11,14 @@
 #          stub host context in a temp plant holding the real cores, and every
 #          text it injects or refusal it makes is compared byte for byte with
 #          the same core run directly. Without bun this part prints SKIPPED with
-#          the reason; it is never reported as passed.
+#          the reason and a `SKIPPED-PART:` line, so the gate summary names the
+#          step as passed in part; with CYPRESS_REQUIRE_BUN=1 (the CI job that
+#          installs bun) a missing bun fails the file instead.
 #
 # Contracts held here: X520 OPENCODE_PLUGIN_IS_A_THIN_ENVELOPE (P1-P8),
 # X521 OPENCODE_PLUGIN_INJECTS_THE_CORES_TEXT_ONCE (F1, F2, F4) and
-# X522 OPENCODE_SHELL_GUARD_REFUSES_WITH_THE_CORES_REASON (F3, F5, F6, F7).
+# X522 OPENCODE_SHELL_GUARD_REFUSES_WITH_THE_CORES_REASON (F3, F5, F6, F7) and
+# X930 OPENCODE_PLUGIN_CASES_RUN_IN_CI (the require-bun mode).
 #
 # Synthetic data only. The stub `@opencode/plugin` is a two-line module in the
 # temp plant's node_modules; the host's own module is bundled in the host.
@@ -24,6 +27,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PLUGIN="$ROOT/integrations/opencode/cypress-plugin.ts"
 CORES="$ROOT/integrations/claude-code"
+BUN="${CYPRESS_BUN:-bun}"   # X930 points it at a name that cannot be found
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
@@ -128,9 +132,32 @@ for ok in oks:
     print(f"  {ok} — OK")
 PY
 
+# --- X930 OPENCODE_PLUGIN_CASES_RUN_IN_CI: the require-bun mode ----------------
+# This file run again with a bun that cannot be found: by default it passes in
+# part and names the skipped half on a SKIPPED-PART line the gate runner reads;
+# with CYPRESS_REQUIRE_BUN=1 (the CI job's setting) it exits non-zero instead.
+if [[ -z "${CYPRESS_PLUGIN_SELFCHECK:-}" ]]; then
+  set +e
+  soft="$(CYPRESS_PLUGIN_SELFCHECK=1 CYPRESS_BUN=cypress-no-such-bun CYPRESS_REQUIRE_BUN= \
+          bash "${BASH_SOURCE[0]}" 2>&1)"; soft_rc=$?
+  hard="$(CYPRESS_PLUGIN_SELFCHECK=1 CYPRESS_BUN=cypress-no-such-bun CYPRESS_REQUIRE_BUN=1 \
+          bash "${BASH_SOURCE[0]}" 2>&1)"; hard_rc=$?
+  set -e
+  [[ $soft_rc -eq 0 ]] || fail "X930 without bun and without CYPRESS_REQUIRE_BUN the file exits $soft_rc, expected 0: $soft"
+  grep -q '^SKIPPED-PART: fixture half skipped: bun not found$' <<<"$soft" \
+    || fail "X930 without bun the file prints no 'SKIPPED-PART: fixture half skipped: bun not found' line: $soft"
+  [[ $hard_rc -ne 0 ]] || fail "X930 CYPRESS_REQUIRE_BUN=1 without bun exits 0; the CI job would pass with the fixture half unrun"
+  grep -q 'CYPRESS_REQUIRE_BUN' <<<"$hard" || fail "X930 the require-bun failure does not name CYPRESS_REQUIRE_BUN: $hard"
+  echo "  X930 OPENCODE_PLUGIN_CASES_RUN_IN_CI: without bun the file passes in part with a SKIPPED-PART line, and CYPRESS_REQUIRE_BUN=1 makes it fail — OK"
+fi
+
 # --- fixture run under bun ----------------------------------------------------
-if ! command -v bun >/dev/null 2>&1; then
+if ! command -v "$BUN" >/dev/null 2>&1; then
+  if [[ "${CYPRESS_REQUIRE_BUN:-}" == 1 ]]; then
+    fail "F1-F7 fixture run: bun is not on PATH and CYPRESS_REQUIRE_BUN=1 requires it; the fixture half cannot run"
+  fi
   echo "  F1-F7 fixture run: SKIPPED — bun is not on PATH, so the plugin cannot be loaded here; only P1-P8 ran"
+  echo "SKIPPED-PART: fixture half skipped: bun not found"
   echo "test-opencode-plugin: PASS (structural only; the fixture run was SKIPPED)"
   exit 0
 fi
@@ -221,7 +248,7 @@ export FIX_REFUSED="npm install"
 export FIX_ALLOWED="ls -la"
 
 drive() {  # $1 = plant  $2 = scenario  -> JSON on stdout
-  (cd "$WORK" && bun run "$WORK/driver.ts" "$1/.opencode/plugins/cypress.ts" "$1" "$2")
+  (cd "$WORK" && "$BUN" run "$WORK/driver.ts" "$1/.opencode/plugins/cypress.ts" "$1" "$2")
 }
 
 make_plant "$WORK/main"
@@ -347,5 +374,5 @@ if problems:
     sys.exit(1)
 PY
 
-echo "  held: X520 OPENCODE_PLUGIN_IS_A_THIN_ENVELOPE, X521 OPENCODE_PLUGIN_INJECTS_THE_CORES_TEXT_ONCE, X522 OPENCODE_SHELL_GUARD_REFUSES_WITH_THE_CORES_REASON"
+echo "  held: X520 OPENCODE_PLUGIN_IS_A_THIN_ENVELOPE, X521 OPENCODE_PLUGIN_INJECTS_THE_CORES_TEXT_ONCE, X522 OPENCODE_SHELL_GUARD_REFUSES_WITH_THE_CORES_REASON, X930 OPENCODE_PLUGIN_CASES_RUN_IN_CI"
 echo "test-opencode-plugin: PASS"

@@ -1402,7 +1402,10 @@ def check_opencode_version() -> None:
 # (file, required text, forbidden text, message key) for the two workflows;
 # comments are stripped first, except for the platform names.
 WORKFLOWS = (
-    (".github/workflows/gate.yml", ("tests/run.sh",), ("pip install",), ("ubuntu", "macos")),
+    (".github/workflows/gate.yml",
+     ("tests/run.sh", "bash tests/test-opencode-plugin.sh", "CYPRESS_REQUIRE_BUN: \"1\"",
+      "BUN_SHA256", "sha256sum -c"),
+     ("pip install",), ("ubuntu", "macos")),
     (".github/workflows/release.yml",
      ("contents: write", ".github/RELEASE_NOTES.md", "manifest.json", "gh release create"),
      (), ()),
@@ -1411,7 +1414,10 @@ WORKFLOWS = (
 
 def check_workflows() -> None:
     """The CI gate workflow runs tests/run.sh on a bare python3 on both
-    platforms, and the release workflow keeps its tag trigger, write permission,
+    platforms, and one job runs the OpenCode plugin's fixture half under a bun
+    pinned by version and checksum with CYPRESS_REQUIRE_BUN=1 (SPEC-0003
+    OPENCODE_PLUGIN_CASES_RUN_IN_CI); no workflow pipes a download into a
+    shell. The release workflow keeps its tag trigger, write permission,
     staged notes, manifest version check and `gh release create`."""
     for rel, required, forbidden, platforms in WORKFLOWS:
         path = ROOT / rel
@@ -1429,6 +1435,9 @@ def check_workflows() -> None:
         for platform in platforms:
             if platform not in raw:
                 fail(f"{rel} no longer names {platform}")
+        if re.search(r"\b(?:curl|wget)\b[^\n]*\|\s*(?:sudo\s+)?(?:ba|z)?sh\b", text):
+            fail(f"{rel} pipes a download into a shell; install a pinned release "
+                 f"and check it against a recorded checksum instead")
         if rel.endswith("release.yml") and not re.search(
                 r"tags:\s*\[.*v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+.*\]", text):
             fail(f"{rel} no longer triggers on a vX.Y.Z tag push")

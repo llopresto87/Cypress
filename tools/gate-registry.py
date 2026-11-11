@@ -140,7 +140,10 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "the OpenCode 2 plugin runs the three hook cores with no shell and under a timeout, "
         "hands back their text and refusal byte for byte, and fails open", FIXTURES, "representation",
         "a stub host context in a temp plant, not a live OpenCode 2 session; without bun on PATH "
-        "only the structural half runs and the fixture half prints SKIPPED"),
+        "only the structural half runs, the fixture half prints SKIPPED-PART and the gate summary "
+        "names the step as passed in part. The gate workflow's opencode-plugin job installs a "
+        "pinned, checksummed bun and sets CYPRESS_REQUIRE_BUN=1, so there the fixture half runs "
+        "or the job fails"),
     "test-code-anchor.sh": (
         "SPEC-0003 code anchor: code-anchor.py records and compares branch, "
         "commit and uncommitted work", FIXTURES, "representation",
@@ -773,7 +776,10 @@ NON_STEP_GUARDS = {
         "why `check_workflows` in tests/seed-lint.py now holds its shape. "
         "What no check can hold is whether a run ever went GREEN — the file is "
         "untracked as of 7.16.0 and has never executed, so the macOS leg in "
-        "particular is configured rather than demonstrated."),
+        "particular is configured rather than demonstrated. Its opencode-plugin "
+        "job is the one place the OpenCode plugin's fixture half is required "
+        "to run; check_workflows holds that the job names the test, the "
+        "checksum and CYPRESS_REQUIRE_BUN=1, not that GitHub ran it."),
 }
 
 

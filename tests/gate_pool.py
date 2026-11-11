@@ -62,6 +62,30 @@ _SKIP_RE = __import__("re").compile(r"^[A-Za-z][\w .-]*: SKIP(PED)?\b", __import
 def skipped(r) -> bool:
     return r["rc"] == 0 and bool(_SKIP_RE.search(r.get("output") or ""))
 
+
+# A step that exits 0 but left a half unrun prints one `SKIPPED-PART: <what>`
+# line per such half. It passed in part: the header and the summary name it
+# and what was skipped, so the half that never ran stays visible (SPEC-0003
+# GATE_SUMMARY_NAMES_A_SKIPPED_PART).
+_PART_RE = __import__("re").compile(r"^SKIPPED-PART:[ \t]*(.+?)[ \t]*$", __import__("re").M)
+
+
+def skipped_parts(r) -> list:
+    if r["rc"] != 0 or skipped(r):
+        return []
+    return _PART_RE.findall(r.get("output") or "")
+
+
+def _mark(r) -> tuple:
+    """(progress mark, header) for one finished step."""
+    if r["rc"] != 0:
+        return "FAIL", "FAIL rc=%d" % r["rc"]
+    if skipped(r):
+        return "skip", "SKIP"
+    if skipped_parts(r):
+        return "part", "PASS in part"
+    return "ok  ", "PASS"
+
 def resolve_workers() -> int:
     """The total budget: GATE_JOBS clamped to [4, 64]; unset or garbage, one
     CPU token per core plus IO_OVERSUBSCRIBE I/O tokens per core, capped."""
@@ -272,7 +296,7 @@ def dispatch(scenarios: list[tuple[str, str]], pooled: bool,
             r = fut.result()
             results[r["idx"]] = r
             done += 1
-            mark = ("skip" if skipped(r) else "ok  ") if r["rc"] == 0 else "FAIL"
+            mark = _mark(r)[0]
             print("  [%2d/%d] %s %s (%.1fs)"
                   % (done, len(scenarios), mark, r["label"], r["secs"]),
                   flush=True)
@@ -281,8 +305,7 @@ def dispatch(scenarios: list[tuple[str, str]], pooled: bool,
                   for r in results})
     failed = [r for r in results if r["rc"] != 0]
     for r in results:
-        head = (("SKIP" if skipped(r) else "PASS") if r["rc"] == 0
-                else ("FAIL rc=%d" % r["rc"]))
+        head = _mark(r)[1]
         print("\n" + "=" * 72)
         print("[%s] %s  (%.1fs)" % (head, r["label"], r["secs"]))
         print("  $ %s" % r["cmd"])
@@ -293,11 +316,16 @@ def dispatch(scenarios: list[tuple[str, str]], pooled: bool,
 
     total = time.monotonic() - t0
     print("\n" + "=" * 72)
+    parts = [r for r in results if skipped_parts(r)]
+    part_line = parts and "%s: %d passed in part: %s" % (prefix, len(parts), "; ".join(
+        "%s (%s)" % (r["label"], "; ".join(skipped_parts(r))) for r in parts))
     if failed:
         print("%s: FAIL — %d of %d %s(s) failed in %.1fs:"
               % (prefix, len(failed), len(scenarios), noun, total))
         for r in failed:
             print("    x %s  (rc=%d)" % (r["label"], r["rc"]))
+        if part_line:
+            print(part_line)
         return 1
     skips = [r for r in results if skipped(r)]
     if skips:
@@ -305,9 +333,11 @@ def dispatch(scenarios: list[tuple[str, str]], pooled: bool,
               % (prefix, len(scenarios) - len(skips), len(scenarios), noun, len(skips), total))
         for r in skips:
             print("    - %s" % r["label"])
-        return 0
-    print("%s: OK — all %d %ss passed in %.1fs"
-          % (prefix, len(scenarios), noun, total))
+    else:
+        print("%s: OK — all %d %ss passed in %.1fs"
+              % (prefix, len(scenarios), noun, total))
+    if part_line:
+        print(part_line)
     return 0
 
 
