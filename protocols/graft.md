@@ -1086,8 +1086,8 @@ for the whole-or-nothing corpus rule. Start by re-planning the coverage record
 against the seed the plant now carries:
 
 ```sh
-python3 <seed>/tools/growth-audit.py <plant> <seed> --plan
-python3 <seed>/tools/growth-audit.py <plant> <seed>
+python3 <seed>/tools/growth-audit.py <plant> <seed> --plan --after-graft
+python3 <seed>/tools/growth-audit.py <plant> <seed> --after-graft
 ```
 
 `--plan` derives the required rows from the new seed, so every collection,
@@ -1105,13 +1105,13 @@ assumed complete because it was grown once.
 
 `--plan` also prints a `PLANT NEED <id>` line for each capability that is only
 text until the plant supplies its own facts (`grow.plant-needs`): gate output,
-cache lifetime and the model map, the token reader, trust paths, the test
-layout the worth check reads, a language's testing idiom. Grow each as that
-node says. `models.md` is the plant's and is never replaced, so copy the seed
-template's billing section into it and fill it. Each need left open is named
-under "Grafted but not yet grown" with its reason, and until it closes the
-capability reports that it is not configured, reports nothing as clean, and
-blocks no work.
+cache lifetime, the model map, the token reader, trust paths, the test layout
+the worth check reads; the lint adds a language's `<slug>.testing-idiom`. Grow
+each as that node says; `models.md` is the plant's and is never replaced, so
+copy the seed template's billing section into it and fill it. `--after-graft`
+makes each open one a `note:` line that leaves the exit code alone (the owner's
+decision of 2026-11-11); list it under "Grafted but not yet grown" with its
+reason. It blocks no work, and its capability says it is not configured.
 
 An expertise row is usually grown from facts the plant already holds. Where its
 `stack.*` node already carries the routing prose (when this stack is in play,
@@ -1304,7 +1304,7 @@ files against the ledger and the record, after every remedy has run.
 | `graft.gate.schema` | the plant's `_schema.md` still describes the machinery this graft installed | the same audit's node-schema line | report: it does **not** gate the exit code, so read the line; the remedy is a ratified MERGE (Phase 3) | detective |
 | `graft.gate.engine` | the plant runs the seed's current graph engines, each with its own config preserved | the same audit's engine-currency check, via the three `--engine=<plant>:<seed>` pairs `graft.gate.customization` passes, each reported on its own line naming its plant file. Each value is a **pair**; a single path is malformed and the audit refuses it rather than skipping the check | report: the audit prints `graph engine STALE` without gating the exit code, as `graft.gate.schema` does, so read the line: ratify only when every engine is current, or is a superset recorded as KEEP-PLANT. Reconcile a stale engine with `tools/graft-graph-engine.py`. The one thing here that gates is a malformed or unreadable `--engine` pair, and it gates because the check did not run | detective |
 | `graft.gate.scaffolds` | no `docs/graph/` leaf is still byte-identical to its `templates/docs/**` template; an unfilled model map, `docs/graph/models.md`, is a `DISCLOSED` line and passes (every agent inherits its caller's model) | `tools/graft-audit.py <plant> <seed> --unfilled` | BLOCK: see *When a gate blocks* | soft |
-| `graft.gate.coverage` | every capability this graft carried was grown, or is answered | `python3 <seed>/tools/growth-audit.py <plant> <seed>`; non-zero blocks | BLOCK: see *When a gate blocks* | soft |
+| `graft.gate.coverage` | every capability this graft carried was grown, or is answered | `python3 <seed>/tools/growth-audit.py <plant> <seed> --after-graft`; non-zero blocks | BLOCK: see *When a gate blocks* | soft |
 | `graft.gate.routes` | the upgraded graph routes, the agent router is clean, and every context hook the plant wires runs and prints its context | `python3 docs/graph/graph-lint.py`, a representative `--plan`, `python3 docs/graph/agent-lint.py --lint` and `--eval` where installed, the eval gated on the plant's own adversarial baseline: a graft that brings the routing corpus, or changes the plant's roster, records it first with `--eval --record-baseline`, because the seed's budget was measured over the seed's roster and a plant's extra specialists change the number (SPEC-0002); then `install.sh <host> --check --project-dir <plant>` once for each host in the stamp's `tools`. That check runs each wired `UserPromptSubmit` and `SessionStart` hook once, on an envelope with no session id, writes nothing in the plant, and fails naming any hook whose script is missing, exits non-zero or prints nothing (SPEC-0001 CHECK_EXECUTES_EACH_WIRED_HOOK). The hooks are fail-open in a session, so this is the step that finds a dead one before a session runs without its route. The same check names each agent or skill in a harness directory with no graph home: `RETIRED` for an `origin: seed` one the running seed does not ship, `ORPHAN` for one the plant authored there (SPEC-0001 CHECK_FLAGS_RETIRED_HARNESS_ENTRY, CHECK_FLAGS_ORPHAN_HARNESS_ENTRY), and each `origin: seed` protocol or method node the seed no longer ships `RETIRED` (CHECK_FLAGS_RETIRED_GRAPH_NODE). Those lines do not gate this row; they feed migration steps (c) and (d). `tools/graft-run.py`'s rehearsal runs this second half once per host on the stage copy and reports, in this row, the hooks that ran, the hooks that failed and the flagged entries, then `RETIRED_LINT_CLAUSE`: how many graph-lint errors name a RETIRED node's `id`, which ids, and that each clears with that node's deletion by name, migration (d); the row still takes graph-lint's verdict (SPEC-0001 GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES) | BLOCK: fix the node, not the linter. A failed hook is restored by re-running the installer for its host, which is an apply with its own backup date, as under `graft.gate.projection-drift` | soft |
 | `graft.gate.status-register` | a migrated plant's lifecycle status is queryable and agrees with its index rows | `python3 docs/graph/status-register.py --root docs/graph` | BLOCK, or N-A where no status migration was ratified | soft |
 | `graft.gate.plans` | the upgraded engines raise no new defect over the plans the plant already has, so the next work session starts on a green plan | `python3 docs/graph/grill-lint.py` and `python3 docs/graph/spec-lint.py` on the plant before the graft and again after it; `tools/graft-run.py` runs both on the stage copy and names each defect present only after the upgrade (a new rule over an existing §6 row, for example an unpressed `expensive` decision); defects the plans already had are counted, not gated | BLOCK: put each raised defect to the owner as a numbered decision (Phase 8) with its remedy, for a press verdict the pass or `waived by owner <date>`, and record the answer in the plan before the next work session; a work session that meets the defect at its gate is doing a graft's unfinished work | soft |

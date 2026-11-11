@@ -24,7 +24,7 @@ WHAT IT DOES, IN ORDER
      value), the three --engine pairs, and --base with the base graft-ledger
      printed (the stamped version's tag, or the commit inferred by content
      lineage); then --unfilled, which only reports
-  6. growth-audit.py --plan on the copy, then its lint, whose output
+  6. growth-audit.py --plan --after-graft on the copy, then its lint, whose output
      (coverage.txt) holds the source index build report after the verdicts,
      advice and never a gate row
   7. the copy's own grill-lint.py and spec-lint.py, before step 3 with the
@@ -531,8 +531,9 @@ def main() -> int:
     unf_rc, unfilled = run.tool("unfilled.txt", "graft-audit.py", copy, seed, "--unfilled")
 
     # 6. coverage: refresh the plan, then hold the plant to it
-    plan_rc, _ = run.tool("coverage.txt", "growth-audit.py", copy, seed, "--plan")
-    cov_rc, coverage = run.tool("coverage.txt", "growth-audit.py", copy, seed)
+    # --after-graft: an open plant need is a note on the report, not a block
+    plan_rc, _ = run.tool("coverage.txt", "growth-audit.py", copy, seed, "--plan", "--after-graft")
+    cov_rc, coverage = run.tool("coverage.txt", "growth-audit.py", copy, seed, "--after-graft")
 
     # 7. the copy's own linters, run from the copy's root
     routes = []

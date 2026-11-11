@@ -331,11 +331,13 @@ legitimate way a collection stays uncovered, and it is reported, never silent.
 Installing a capability carries it; it is grown when the plant supplies the
 fact it reads. `tools/growth-audit.py` holds the list (`NEEDS`) and probes each
 need from the plant's files on every run: `--plan` writes one `needs` row per
-need into `.cypress/coverage.json` and prints `PLANT NEED` for each open one;
-the lint prints `note: plant need <id> is not configured for this plant` and
-lists them on its summary line. A need is named and leaves the exit code to
-the verdicts, because each capability has a safe default; the summary names it
-until the plant supplies it. Growth supplies:
+need into `.cypress/coverage.json` and prints `PLANT NEED` for each open one.
+A fresh growth blocks on it (the owner's decision of 2026-11-11): the lint
+fails with `UNGROWN plant need <id>` until the plant supplies the fact or the
+owner declines it, `status: ABSENT` with the reason in the need's row, which
+the lint then prints as a note. After a graft (`--after-graft`) an open need
+is a note, and no work a plant runs day to day waits on one, because each
+capability keeps its safe default. Growth supplies:
 
 - `gate-output`: Phase 4 replaces the `<gate>` row of `runbooks/verification.md`
   with the plant's gates, each in the form the runbook's preamble states:
@@ -407,7 +409,7 @@ from the plant root.
 | `grow.gate.normative-practices` | every `best-practices/` leaf states the external standard AND where this project stands against it | none — an authoring-class reviewer reads each leaf against the source it cites. Judge: an authoring-class reviewer | author the stance, or move the description to `architecture/` where a description belongs | judgment |
 | `grow.gate.executed` | every command the graph records says where it was found, whether it was executed, and whether its target still exists, in the vocabulary of `verify.gate-states` | none — a Phase 6 validator reads the commands the graph now carries. Judge: a Phase 6 validator | label it in `verify.gate-states`' vocabulary (`target absent` and `declared, non-functional` included, each with the evidence that state asks for); growth executes no application command, so the discovered state with its `path:line` is the honest default | judgment |
 | `grow.gate.harness-homes` | every agent and skill a harness directory carries has a home in the graph: no `RETIRED` entry (an `origin: seed` node, or a projection of one, the running seed does not ship) and no `ORPHAN` entry (one the plant authored straight into a harness directory, which the router and every other harness cannot see) | `<seed>/install.sh <host> --check --project-dir <plant>` once for each host in the stamp's `tools`, which writes nothing and prints one `RETIRED` or `ORPHAN` line per entry (SPEC-0001 CHECK_FLAGS_RETIRED_HARNESS_ENTRY, CHECK_FLAGS_ORPHAN_HARNESS_ENTRY), or says every harness entry has a graph home. On opencode the same run compares each composed agent with its composition, reads the must-reach rules in it, and names a missing plugin envelope `.opencode/plugins/cypress.ts` or hook core under `.opencode/hooks/` | name each entry in the delivery and the plant's `changelog.md`. An `ORPHAN` is relocated into `docs/graph/{agents,skills}/` as a node the plant owns, inside growth's write scope, and its harness copy is left for the owner; a `RETIRED` entry is put to the owner as a numbered decision. Growth deletes neither: the deletion is the owner's act | detective |
-| `grow.gate.plant-needs` | each fact a landed capability reads from the plant is supplied, or the owner decided the plant goes without it (`grow.plant-needs`) | `python3 <seed>/tools/growth-audit.py <plant> <seed>`: its `note: plant need` lines and the needs listed on its summary line | supply the fact; or put it to the owner as a numbered decision and record the answer in the need's row; name each one still open in the delivery and the changelog | detective |
+| `grow.gate.plant-needs` | each fact a landed capability reads from the plant is supplied, or the owner decided the plant goes without it (`grow.plant-needs`) | `python3 <seed>/tools/growth-audit.py <plant> <seed>` — verdict `UNGROWN plant need <id>`; a declined need is a `note: plant need` line, listed on its summary line | supply the fact; or put it to the owner as a numbered decision and record the answer in the need's row; name each declined one in the delivery and the changelog | soft |
 | `grow.gate.view-drift` | generated tool views still match what generates them | the read-only regenerate-and-diff command the plant's own `docs/graph/tools/` page records for that view | regenerate, or record the drift as a finding. Where the plant generates no view the row reads `none available`, never blank | soft |
 
 ### What the coverage gate reports
@@ -577,9 +579,10 @@ the proposal leaves out and why. When the Phase 2 scouts report a test path the
 proposal missed, put the difference to the owner before Phase 6 writes the
 globs. Never widen the seed's default to cover a layout nobody confirmed: a
 default that counts non-tests is false coverage on every other plant. An
-unanswered layout stays a `status: open` item, owner named, in the coverage
-record and the delivery, and Phase 6 leaves the default in place and says so,
-so `grow.gate.spec-wired` reports it open, not wired.
+unanswered layout keeps the `test-layout` need open, owner named, in the
+coverage record and the delivery, so the coverage gate fails until the owner
+answers or declines it (`grow.plant-needs`); Phase 6 leaves the default in
+place and says so, and `grow.gate.spec-wired` reports it open, not wired.
 
 **The same ask carries the facts the seed's tools read (`grow.plant-needs`).**
 On Claude Code: the billing mode and the cache lifetime the owner wants for

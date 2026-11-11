@@ -92,10 +92,14 @@ the plant (its gate commands, its model map and billing, where a host reports
 token usage, its trust paths, its test layout, an engine the cycle driver can
 read). The NEEDS table below is their one home. Each is probed from the
 plant's files on every run; `--plan` writes a `needs` row per need with what
-it found and prints `PLANT NEED` for each open one, and the lint prints
-`note: plant need <id> is not configured for this plant` and lists them on its
-summary line. A need is never a verdict and never sets the exit code; the
-owner's decision to go without one is its row's `status: ABSENT` and `reason`.
+it found and prints `PLANT NEED` for each open one. Where it blocks is the
+owner's decision of 2026-11-11: in a fresh growth (the default) an open need
+is an UNGROWN verdict; after a graft (`--after-graft`, which graft passes) it
+is a `note: plant need <id> is not configured for this plant` line, listed on
+the summary line and left out of the exit code, and so is a language's missing
+`<slug>.testing-idiom`. The owner's decision to go without a need is its row's
+`status: ABSENT` and `reason`, a note in either mode. No tool a plant runs day
+to day reads a need.
 
 VERDICTS (a row fails the gate unless noted)
 
@@ -103,7 +107,7 @@ VERDICTS (a row fails the gate unless noted)
   BLANK        the row exists with no status — growth never reached it
   UNGROWN      a planned artifact does not exist in the plant — or, where
                the artifact an incidental item owes is a line in an index, no
-               row of that index names it
+               row of that index names it; in a fresh growth, an open plant need
   HOLLOW       a planned artifact exists but is not one: byte-identical to
                its seed template (for an expert, to the agent template or to a
                seed agent), still carrying {{placeholders}}, too small to carry
@@ -146,6 +150,8 @@ Usage:
   growth-audit.py <plant-root> <seed-root> --agents   agent + expert rows only
         (the inventory's staffing decisions are part of the full lint, not this)
   growth-audit.py <plant-root> <seed-root> --json     machine-readable findings
+  ... --after-graft   with or without --plan: the audit of a graft, where an open
+        plant need and a missing testing idiom are notes (graft Phase 5)
 
 The lint (with or without --json, not --agents) then runs the seed's
 tools/source-index.py build from the plant root and prints its report after
@@ -301,8 +307,9 @@ SPAWN_TRIGGERS = ("tools", "model", "stance", "isolation")
 
 
 class Finding:
-    def __init__(self, verdict, row, detail):
+    def __init__(self, verdict, row, detail, need=None):
         self.verdict, self.row, self.detail = verdict, row, detail
+        self.need = need        # the plant need this finding is, if it is one
 
     def fatal(self):
         return self.verdict != "UNKNOWN"
@@ -321,7 +328,7 @@ def parse_args():
     for x in a:
         if x.startswith("--"):
             key = x[2:]
-            if key not in ("plan", "agents", "json"):
+            if key not in ("plan", "agents", "json", "after-graft"):
                 die(f"unknown option --{key}")
             opt[key] = True
         else:
@@ -949,9 +956,11 @@ def blank_row(**kw):
 # writes one row per need with what the probe found, and keeps only the
 # owner's answer (`status: ABSENT` with a `reason`) when the owner decided the
 # plant goes without. An unconfigured need is named as not configured for this
-# plant, never as clean, and never fails the gate: each capability has a safe
-# default (inherit the caller's model, `not recorded`, read every increment as
-# a trust path, the worth check's own "not configured" line).
+# plant, never as clean. It fails the gate of a fresh growth and is a note after
+# a graft (the owner's decision of 2026-11-11); either way the capability keeps
+# its safe default (inherit the caller's model, `not recorded`, read every
+# increment as a trust path, the worth check's own "not configured" line), so
+# no work a plant runs day to day waits on it.
 
 RUNBOOK_REL = "runbooks/verification.md"
 GATE_PLACEHOLDER_ROW = re.compile(r"^\|\s*`<gate>`\s*\|", re.M)
@@ -1287,11 +1296,14 @@ def do_plan(plant, seed, opt):
           f"inventory items: {len(rec['inventory'])}")
     for a in added:
         print(f"  NEW ROW      {a}")
+    until = ('until then the graft lists it under "Grafted but not yet grown" '
+             'with its reason' if opt.get("after-graft")
+             else "the coverage gate fails until then")
     for name, what, detail, declined in needs:
         if detail and not declined:
             print(f"  PLANT NEED   {name} — not configured for this plant: {detail}. "
                   f"Supply {what} (grow.plant-needs), or record the owner's "
-                  f"decision to go without in this row")
+                  f"decision to go without in this row; {until}")
     if not rec["inventory"]:
         print("  !! the inventory is empty — growth has nothing to be held to. "
               "Fill it from the scouts' reconciled ledgers (one row per "
@@ -1999,7 +2011,8 @@ def lint_inventory(plant, rec, templates, findings):
         if (plant / GRAPH_HOME / node).is_file():
             gap = testing_idiom_gap(plant, item)
             if gap:
-                findings.append(Finding("HOLLOW", label, gap))
+                findings.append(Finding("HOLLOW", label, gap, need=TESTING_IDIOM_KEY.format(
+                    slug=item.get("slug") or slugify(name))))
         if needs_staffing(item, closed):
             # The decision ledger §9 was always supposed to force, recorded
             # where it survives the run. A dominant domain or a core part of
@@ -2255,9 +2268,22 @@ def do_lint(plant, seed, opt):
 
     # The full lint only: --agents is a partial audit and runs no build.
     report, why = source_index_report(plant, seed) if not opt.get("agents") else (None, None)
-    # SPEC-0011: named, never clean, never a failing verdict.
+    # SPEC-0011: named, never clean; an open need fails a fresh growth and is
+    # a note after a graft, as a language's missing testing idiom is.
     needs = [] if opt.get("agents") else \
-        [(n, d, dec) for n, _w, d, dec in plant_needs(plant, seed, rec) if d]
+        [(n, w, d, dec) for n, w, d, dec in plant_needs(plant, seed, rec) if d]
+    if opt.get("after-graft"):
+        needs += [(f.need, "", f.detail, None) for f in findings if f.need]
+        findings = [f for f in findings if not f.need]
+    else:
+        findings += [Finding("UNGROWN", f"plant need {n}",
+                             f"not configured for this plant — {d}. Supply {w} "
+                             f"(grow.plant-needs), or record the owner's decision "
+                             f"to go without in this need's row of {RECORD_REL}: "
+                             f"`status: ABSENT` with the owner's reason")
+                     for n, w, d, dec in needs if not dec]
+        needs = [x for x in needs if x[3]]
+    needs = [(n, d, dec) for n, _w, d, dec in needs]
     if opt.get("json"):
         doc = [{"verdict": f.verdict, "row": f.row, "detail": f.detail} for f in findings]
         if needs:
