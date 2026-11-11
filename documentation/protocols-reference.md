@@ -617,7 +617,9 @@ RED is mechanical over one contract (or, on the contained lane, one
 defect), is briefed whole to `implementer` (`brief.py --kind merged`). It
 sees the test fail for the right reason before it writes the code and
 records both runs in its hand-back; the REVIEW spawn stays independent.
-A bug reproduction owes a tester only where a spec's §10 row of origin
+`brief.py` refuses the merged brief, with the reason and the fix, when it
+cannot read the band line, the plant's trust-path claims or the spec's §10
+origins, and the increment goes to a tester. A bug reproduction owes a tester only where a spec's §10 row of origin
 `bug` names it; a contained-lane defect fix keeps one worker, and its
 reproduction test, seen failing before the fix, stays (the owner's
 decision of 2026-11-11). Only the session writes grill.md; workers report what they

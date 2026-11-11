@@ -95,7 +95,11 @@ reviewer, 44845 for the orchestrator and 58991 for the implementer.
   reproduction in a spec'd increment, goes to one implementer
   (`brief.py --kind merged`). It sees the test fail for the right reason, then
   writes the code, and its hand-back records both runs. Everything else keeps a
-  separate tester RED.
+  separate tester RED. The composer fails closed: when it cannot read the
+  band line of `delegation.effort-scale`, the plant's trust-path claims or the
+  spec's §10 origins, it refuses the merged brief, names what it could not read
+  and the fix, and the increment goes to a tester. An independent review found
+  three readings that let a merged brief through, and this release closes them.
 - **A bug reproduction owes a tester only in a spec'd increment**, one whose
   §10 row has origin `bug`. The owner decided on 2026-11-11 that a defect fix
   on the contained lane stays with one worker: the implementer writes the
@@ -112,6 +116,30 @@ reviewer, 44845 for the orchestrator and 58991 for the implementer.
   reads Python and TypeScript or JavaScript; every other test file is listed as
   not checked. Older flags live in the plant's `docs/graph/worth-baseline.txt`,
   which only shrinks. The check never edits a test.
+- **The worth check was reworked after an independent tester's review**, on
+  2026-11-11:
+  - A file that a setup hook's code writes counts as that code's output, so a
+    test that reads it is spared. An imported TypeScript or JavaScript name
+    counts as code under test.
+  - A parametrized test (pytest `parametrize`, `test.each`, `it.each`) is read
+    with each parameter's literal values. One whose table it cannot read is
+    listed as `not checked (parametrized)`, and a computed title as
+    `not checked (computed title)`. Both count in the not-checked figure, and
+    the summary ends `(languages: ...; parametrized: N test(s))`.
+  - The regression and security spares read the test's name, decorators,
+    markers, comments and identifiers. Words inside string literals, colour
+    codes and URLs count for neither.
+  - A bare boolean compared for equality (`is False`, `toBe(false)`) is a
+    read-back. A guard such as `!= ""`, `is not None` or a truthiness check
+    spares a test only when it is the test's only kind of assertion. A
+    `"".join` over literals and an inline snapshot are folded to their literal
+    and flagged.
+  - Five read-backs stay spared, as documented limits: an assertion inside a
+    helper, a constant held equal to a golden file, a snapshot fixture,
+    `toMatchSnapshot`, and a test whose name only claims to be a regression.
+    One limit can flag a good test: a setup file named only in the runner's
+    configuration is not read, and its author keeps the test with a keep line
+    naming that file.
 - **Removal follows the owner's rules.** A test that catches nothing (flagged by
   the worth check, or `survived-all` in the spec's mutation pass) is removed by
   the worker that wrote it, inside that unit of work. An older one stays until
