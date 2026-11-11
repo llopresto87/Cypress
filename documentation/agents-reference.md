@@ -227,7 +227,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 *Source file: `agents/04-tester.md`*
 
 - **id:** `agent.tester`
-- **Role:** Senior test engineer. Translates spec contracts into failing tests, runs the RED-GREEN-REFACTOR cycle, owns the verification gates and the evaluation suites for AI behavior, and maintains the regression corpus.
+- **Role:** Senior test engineer. Writes failing tests for logic contracts, runs the RED-GREEN-REFACTOR cycle, owns the verification gates and the evaluation suites for AI behavior, and maintains the regression corpus.
 - **model class:** `opus`
 - **effort (default):** `medium`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary

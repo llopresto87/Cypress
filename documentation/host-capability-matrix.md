@@ -256,7 +256,10 @@ parity here; the differences are budget mechanics, not enforcement.
 - opencode: the host's own subagent tool. Which agents an agent may launch
   is its own rules: a charter with `Task` gets a rule denying every
   `subagent` launch and one allow per agent in its `delegates_to:`, and a
-  charter without `Task` launches nothing. Observed on OpenCode 2.2.6: a
+  charter without `Task` launches nothing. The lead's list also allows each
+  agent the plant authored that passes the agent lint, generated from the
+  roster at install (the owner's decision of 2026-11-11), and
+  `install.sh opencode --check` reports a list that no longer matches. Observed on OpenCode 2.2.6: a
   coordinator whose rules allow only one agent was refused another by the host
   ("Permission denied: subagent"), and the allowed one ran. **mechanically
   enforced**, and the allowlist is held by the agent's own host rules rather
@@ -324,7 +327,11 @@ parity here; the differences are budget mechanics, not enforcement.
   per host action the tools map to in
   `integrations/opencode/tool-permissions.json`, with the host's `.env` guard
   restored after `read`; the host applies the last matching rule. A tool name
-  the table lacks stops the install. Observed on OpenCode 2.2.6: an agent with
+  the table lacks stops the install when a seed charter names it, and
+  `tests/seed-lint.py` holds the seed's charters to the table. In a plant's own
+  agent the tool is denied, a warning names the file and the tool, the rest
+  installs, and `install.sh opencode --check` fails until it is fixed (the
+  owner's decision of 2026-11-11). Observed on OpenCode 2.2.6: an agent with
   neither edit nor shell had its write tool removed by the host, and no file
   was created; all 20 agents' effective rules, read from the host's own
   listing, equal their charters' tools and `delegates_to:`. As on Claude Code,

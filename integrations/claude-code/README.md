@@ -154,7 +154,10 @@ Python at the floor the installer refuses before writing anything.
 If a target file already exists with different content, the installer
 backs it up to `<path>.bak-<timestamp>` and warns (byte-identical
 files are left untouched). `--force` drops the warning but still makes
-the backup; see INSTALL.md "What gets backed up".
+the backup; see INSTALL.md "What gets backed up". For an edited
+`.claude/settings.json` the warning names each key path your file had and
+the new one lacks; edited host settings upgrade by graft, which keeps the
+file.
 
 ## Hooks
 

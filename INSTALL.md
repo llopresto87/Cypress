@@ -84,8 +84,10 @@ other is a symlink to it.
   `delegates_to`, its `model:` line from the plant's model map,
   `docs/graph/models.md`; the hook core in `.opencode/hooks/` and the plugin
   that runs it, `.opencode/plugins/cypress.ts`
-  ([opencode integration](integrations/opencode/README.md)). A re-install over
-  an earlier opencode plant moves the old agent files and config to backups.
+  ([opencode integration](integrations/opencode/README.md)). The lead may
+  launch the seed's roster and each lint-clean agent your plant authored; the
+  installer prints the added ones. A re-install over an earlier opencode plant
+  moves the old agent files and config to backups.
 - `codex`: deprecated, a frozen host
   ([ADR-0009](docs/decisions/adr-0009-host-support-tiers.md)); drops
   `AGENTS.md` + `.codex/`; prints `~/.codex/config.toml` hints.
@@ -433,7 +435,10 @@ frontmatter it cannot read without a word, so run `install.sh opencode
 `opencode.json` with the earlier top-level `subagent_depth` (with the remedy
 for a graft, which keeps your file, beside the re-install), a missing plugin or
 hook core, and an agent whose loaded prompt lacks a rule that must reach its
-role; a re-install fixes each. `opencode2 debug agents`
+role; a re-install fixes each. It also names a lead whose launch list no longer
+matches your roster (run `install.sh opencode --recompose-agents`) and an agent
+of yours whose `tools:` names a tool the opencode permission table lacks, which
+the install denies to that agent; remove the name from the charter. `opencode2 debug agents`
 lists the agents the host registered. Then confirm the session started
 *after* the files were placed
 (`docs/graph/method/delegation-bounds.md`, `delegation.harness-registration`).

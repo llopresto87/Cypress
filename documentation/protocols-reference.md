@@ -612,11 +612,15 @@ reviewer in REVIEW. REVIEW and COMMIT stand.
 
 The merged path (`tiers.execution-paths`): an increment in the low-risk
 band (`low` or `medium-low`) off trust paths, not stateful or concurrent
-and not a bug reproduction, or a T2 increment whose RED is mechanical
-over one contract (or, on the contained lane, one reproduced defect), is
-briefed whole to `implementer` (`brief.py --kind merged`). It sees the
-test fail for the right reason before it writes the code and records
-both runs in its hand-back; the REVIEW spawn stays independent. Only the session writes grill.md; workers report what they
+and not a bug reproduction in a spec'd increment, or a T2 increment whose
+RED is mechanical over one contract (or, on the contained lane, one
+defect), is briefed whole to `implementer` (`brief.py --kind merged`). It
+sees the test fail for the right reason before it writes the code and
+records both runs in its hand-back; the REVIEW spawn stays independent.
+A bug reproduction owes a tester only where a spec's §10 row of origin
+`bug` names it; a contained-lane defect fix keeps one worker, and its
+reproduction test, seen failing before the fix, stays (the owner's
+decision of 2026-11-11). Only the session writes grill.md; workers report what they
 did in the handback (`rule.grill`).
 
 - **RED**: identify the contracts; write the tests §10 designed for
@@ -1284,9 +1288,9 @@ The **Session metrics** block is telemetry, not prose: Tier (with any
 reclassification), Spawns, Route bands + overrides, Retries by class (per
 `recover`), Gates run/failed-then-fixed, full-suite runs, serial waits,
 overflow notes, and a Quality line, plus optional lines for tokens and
-four test counts (tests written by origin, dropped at RED, refused by the
-worth check, removed), each read from the plan's §10 rows or the worth
-check's output; an entry without the optional lines passes unchanged. It is
+five test counts (tests written by origin, dropped at RED, refused by the
+worth check, removed, and not checked by the worth check), each read from
+the plan's §10 rows or the worth check's output; an entry without the optional lines passes unchanged. It is
 a required part of the full form: a line the trace cannot fill says
 `not recorded` and why.
 `docs/graph/session-metrics.py` lints the block of the entry deliver
@@ -1856,20 +1860,24 @@ both; growth leaves the application's tests alone.
 Installing a capability carries it; it is grown when the plant supplies the
 fact it reads. `tools/growth-audit.py` holds the list and probes each need from
 the plant's files on every run: `--plan` writes one `needs` row per need into
-`.cypress/coverage.json` and prints `PLANT NEED` for each open one, and the
-lint prints `note: plant need <id> is not configured for this plant` and lists
-them on its summary line. A need is never a verdict and never sets the exit
-code, because each capability has a safe default. Growth supplies the gate
+`.cypress/coverage.json` and prints `PLANT NEED` for each open one. The
+owner decided on 2026-11-11 that a fresh growth blocks on an open need: the
+lint fails with `UNGROWN plant need <id>` until the plant supplies the fact or
+the owner declines it, and a declined need is a `note: plant need` line on the
+summary. After a graft (`--after-graft`) an open need is a note that leaves
+the exit code alone, and no work a plant runs day to day waits on one,
+because each capability keeps its safe default. Growth supplies the gate
 output form of `runbooks/verification.md`, the model map with its billing and
 cache-lifetime lines, where a host other than Claude Code reports a spawn's
 token usage, `trust: true` on each security, data-integrity or money crosscut,
 and `TEST_GLOBS`. The cycle driver needs nothing at growth. A language's
 testing idiom is a lint verdict instead: each `language` row's
 `expertise.<slug>` node owns `<slug>.testing-idiom`, and `growth-audit.py`
-reports it `HOLLOW` until it does. When the owner decides the plant goes
+reports it `HOLLOW` in a fresh growth until it does, and as a note after a
+graft. When the owner decides the plant goes
 without a need, its row reads `status: ABSENT` with the owner's words as
-`reason`; each open or declined need is named in the delivery and the
-plant's `changelog.md` entry (gate `grow.gate.plant-needs`, detective).
+`reason`; each declined need is named in the delivery and the plant's
+`changelog.md` entry (gate `grow.gate.plant-needs`, soft).
 
 ### Delivery and maturity
 
@@ -2391,15 +2399,19 @@ skill, ADR, or runbook whose content can only come from real recurring
 use sprouts during use, owned by the close-out lifecycle (`canonize` →
 `docs-librarian`), not by the graft. **Surface what was grafted but not
 grown** so the steward sees the copy-but-not-actualized state.
-`growth-audit.py --plan` prints a `PLANT NEED <id>` line for each capability
-that stays text until the plant supplies its own facts (`grow.plant-needs`):
-gate output, cache lifetime and the model map, the token reader, trust paths,
-the test layout the worth check reads, and a language's testing idiom. Grow
-each as that node says. `models.md` is the plant's and is never replaced, so
-copy the seed template's billing section into it and fill it. Each need left
-open is named under "Grafted but not yet grown" with its reason; until it
-closes, the capability reports that it is not configured, reports nothing as
-clean, and blocks no work. The graft that brings the worth check to a plant
+`growth-audit.py --plan --after-graft` prints a `PLANT NEED <id>` line for
+each capability that stays text until the plant supplies its own facts
+(`grow.plant-needs`): gate output, cache lifetime, the model map, the token
+reader, trust paths, the test layout the worth check reads; the lint adds a
+language's `<slug>.testing-idiom`. Grow each as that node says. `models.md`
+is the plant's and is never replaced, so copy the seed template's billing
+section into it and fill it. `--after-graft` (Phase 5 and
+`tools/graft-run.py` pass it) makes each open need a `note:` line that
+leaves the exit code alone, by the owner's decision of 2026-11-11; list it
+under "Grafted but not yet grown" with its reason. It blocks no work, and its
+capability says it is not configured and reports nothing as clean. The
+coverage rows that predate the needs still block a graft as they block a
+growth (an open question in SPEC-0011 §11). The graft that brings the worth check to a plant
 with no baseline runs `worth-check.py --write-baseline` once, there and in
 the apply, records `baseline holds N tests`, and removes no test. **An
 own-kernel plant** (one that carries no seed machinery) still receives
