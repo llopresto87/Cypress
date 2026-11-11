@@ -8,7 +8,9 @@
 # owed is tests/fixtures/worth/expected.tsv, written by hand before the tool.
 # X800 to X806 add an independent tester's adversarial tree and its verdict
 # table (adversarial.tsv), with the documented limits of known-gaps.tsv held at
-# the verdict that file records. The check never runs over this repository's own suite, whose tests assert
+# the verdict that file records; X810 to X812 gate the tester's round-two rows
+# on keyed security settings, a setUp that only reads and a read in a describe
+# body, each with a plant of its own cases besides. The check never runs over this repository's own suite, whose tests assert
 # documentation text on purpose.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -438,6 +440,9 @@ check_adv X803 WORTH_SPARING_READS_DECLARATIONS_NOT_CONTENT 'https|hex colour|co
 check_adv X804 WORTH_GUARD_DOES_NOT_SPARE_A_READ_BACK 'False flag|false flag|non-empty guard'
 check_adv X805 WORTH_LITERAL_BUILT_FROM_LITERALS_IS_A_LITERAL 'joined|concatenated|inline snapshot|string methods only'
 check_adv X806 WORTH_FLAGS_A_READ_BACK_TEST '.'
+check_adv X810 WORTH_SECURITY_KEY_IS_A_DECLARATION 'key is a string'
+check_adv X811 WORTH_SETUP_THAT_ONLY_READS_IS_A_READ 'setUp only copies'
+check_adv X812 WORTH_DESCRIBE_BODY_READ_IS_A_READ 'read in the describe body'
 gaps="$(awk -F'\t' '$1 == "JSON" || $4 == "gap"' <<<"$adv")"
 [[ -n "$gaps" ]] && ! grep -q '^BAD\|^JSON' <<<"$gaps" \
   && ok "X806 HEURISTIC_SPARES_A_READ_BACK: the $(wc -l <<<"$gaps" | tr -d ' ') documented limit(s) of known-gaps.tsv keep the verdict that file records" \
@@ -516,6 +521,144 @@ v="$("$PY" -c 'import json,sys; r=json.load(open(sys.argv[1])); print(" ".join(t
 [[ "$v" == "test_nav_links=spared test_label_is_set=spared test_label_is_truthy_and_send=flagged" ]] \
   && ok "X804 WORTH_GUARD_DOES_NOT_SPARE_A_READ_BACK: a guard beside a read-back spares nothing; a guard alone and a named absence spare the test" \
   || bad "X804 WORTH_GUARD_DOES_NOT_SPARE_A_READ_BACK" "got: $v"
+
+# X810 to X812: a plant of cases beside the tester's round-two rows. A string
+# used as a key names a thing, so the security spare reads it; a string compared
+# against is content and spares nothing. A setUp that only reads, and a const a
+# describe body only reads, are reads; any code they run keeps them logic.
+K="$T/k"; mkdir -p "$K/docs/graph" "$K/tests"
+printf 'TEST_GLOBS = ["tests/**/*.*"]\n' > "$K/docs/graph/spec-lint.py"
+cat > "$K/tests/test_keys.py" <<'EOF'
+import unittest
+from pathlib import Path
+
+from app.base import BaseCase
+from app.build import build_site
+from app.settings import COPY, HEADERS, SESSION_COOKIE_SECURE, SETTINGS, SUBMIT_LABEL
+
+
+def test_cookie_flag_as_a_constant():
+    assert SESSION_COOKIE_SECURE is True
+
+
+def test_cookie_flag_under_a_key():
+    assert SETTINGS["SESSION_COOKIE_SECURE"] is True
+
+
+def test_cookie_flag_through_get():
+    assert SETTINGS.get("SESSION_COOKIE_SECURE") is True
+
+
+def test_policy_through_getattr():
+    assert getattr(SETTINGS, "csp_policy") == "default-src 'self'"
+
+
+def test_policy_in_a_dict_literal():
+    assert HEADERS == {"Content-Security-Policy": "default-src 'self'"}
+
+
+def test_banner_copy_under_a_plain_key():
+    assert COPY["banner_title"] == "Your session cookies keep you logged in"
+
+
+class TestCopiesASecuritySetting(unittest.TestCase):
+    def setUp(self):
+        self.flag = SESSION_COOKIE_SECURE
+
+    def test_flag_copied_in_set_up(self):
+        assert self.flag is True
+
+
+class TestReadsInSetUp(unittest.TestCase):
+    def setUp(self):
+        self.page = Path("web/submit.html").read_text(encoding="utf-8")
+
+    def test_page_read_in_set_up(self):
+        self.assertIn('value="Send"', self.page)
+
+
+class TestBuildsInSetUp(unittest.TestCase):
+    def setUp(self):
+        self.label = SUBMIT_LABEL
+        build_site(out="dist")
+
+    def test_label_beside_a_build(self):
+        self.assertEqual(self.label, "Send")
+
+
+class TestUnderAnUnseenBase(BaseCase):
+    def setUp(self):
+        self.label = SUBMIT_LABEL
+
+    def test_label_under_an_unseen_base(self):
+        self.assertEqual(self.label, "Send")
+EOF
+cat > "$K/tests/keys.test.ts" <<'EOF'
+import { readFileSync } from "node:fs";
+import { beforeAll, describe, expect, test } from "vitest";
+import { renderPage } from "../src/forms";
+import { COPY, HEADERS, SETTINGS } from "../src/settings";
+
+test("policy header as a property", () => {
+  expect(HEADERS).toHaveProperty("Content-Security-Policy", "default-src 'self'");
+});
+
+test("cookie flag in an object literal", () => {
+  expect(SETTINGS).toEqual({ "SESSION_COOKIE_SECURE": true });
+});
+
+test("banner copy under a plain key", () => {
+  expect(COPY["bannerTitle"]).toBe("Your session cookies keep you logged in");
+});
+
+describe("read in a describe body", () => {
+  const nav = readFileSync("web/nav.html", "utf8").trim();
+
+  test("nav read in the describe body carries help", () => {
+    expect(nav).toContain("/help");
+  });
+});
+
+describe("read beside a build hook", () => {
+  const page = readFileSync("web/submit.html", "utf8");
+  beforeAll(() => {
+    renderPage("submit");
+  });
+
+  test("page read beside a build hook carries the label", () => {
+    expect(page).toContain('value="Send"');
+  });
+});
+
+describe("a let in the describe body", () => {
+  let html = readFileSync("web/submit.html", "utf8");
+
+  test("html held in a let carries the label", () => {
+    expect(html).toContain('value="Send"');
+  });
+});
+EOF
+rc=0; WC "$K" --json >"$T/k.json" 2>&1 || rc=$?
+kv() {   # the verdicts of the named tests, in order
+  "$PY" -c 'import json,sys; r={t["name"]: t["verdict"] for t in json.load(open(sys.argv[1]))["tests"]}
+print(" ".join(r.get(n, "not-read") for n in sys.argv[2:]))' "$T/k.json" "$@" 2>&1 || true; }
+v="$(kv test_cookie_flag_as_a_constant test_cookie_flag_under_a_key test_cookie_flag_through_get \
+  test_policy_through_getattr test_policy_in_a_dict_literal 'policy header as a property' \
+  'cookie flag in an object literal' TestCopiesASecuritySetting::test_flag_copied_in_set_up)"
+w="$(kv test_banner_copy_under_a_plain_key 'banner copy under a plain key')"
+[[ "$v" == "spared spared spared spared spared spared spared spared" && "$w" == "flagged flagged" ]] \
+  && ok "X810 WORTH_SECURITY_KEY_IS_A_DECLARATION: a security setting gets one verdict as a constant, under a subscript, get, getattr, a dict or object key, toHaveProperty or a setUp copy; a security word in the compared value spares nothing" \
+  || bad "X810 WORTH_SECURITY_KEY_IS_A_DECLARATION" "spared expected: $v; flagged expected: $w"
+v="$(kv TestReadsInSetUp::test_page_read_in_set_up TestBuildsInSetUp::test_label_beside_a_build \
+  TestUnderAnUnseenBase::test_label_under_an_unseen_base)"
+[[ "$v" == "flagged spared spared" ]] \
+  && ok "X811 WORTH_SETUP_THAT_ONLY_READS_IS_A_READ: a setUp that only reads makes its attribute a read; a setUp that runs code, or under a base the check cannot see, stays logic" \
+  || bad "X811 WORTH_SETUP_THAT_ONLY_READS_IS_A_READ" "want flagged spared spared, got: $v"
+v="$(kv 'nav read in the describe body carries help' 'page read beside a build hook carries the label' \
+  'html held in a let carries the label')"
+[[ "$v" == "flagged spared spared" ]] \
+  && ok "X812 WORTH_DESCRIBE_BODY_READ_IS_A_READ: a const a describe body only reads is a read; beside a hook that runs code, or held in a let, it stays logic" \
+  || bad "X812 WORTH_DESCRIBE_BODY_READ_IS_A_READ" "want flagged spared spared, got: $v"
 
 # X591 WORTH_NEVER_EDITS_A_TEST: every run above left the fixture suite's bytes as they were.
 [[ "$(digest "$P/tests")" == "$BEFORE" ]] \

@@ -1,8 +1,8 @@
 ---
 status: implemented
-status_date: 2026-11-10
+status_date: 2026-11-11
 owner: architect
-status_evidence: tests/test-worth-check.sh (X580 to X592, X600 to X602, X800 to X806), wired into tests/run.sh, every §10 row green over the 22 contracts; each case was seen failing first on the missing tool or the unfixed heuristic, then passing against the fixture suite of tests/fixtures/worth/, its hand-written verdict table and the independent tester's adversarial table
+status_evidence: tests/test-worth-check.sh (X580 to X592, X600 to X602, X800 to X806, X810 to X812), wired into tests/run.sh, every §10 row green over the 25 contracts; each case was seen failing first on the missing tool or the unfixed heuristic, then passing against the fixture suite of tests/fixtures/worth/, its hand-written verdict table and the independent tester's adversarial table
 ---
 
 # SPEC-0009: the worth check
@@ -114,8 +114,9 @@ configured, and exit 0.
 ### Contract: WORTH_SPARES_SECURITY_CONTROLS
 - **Given:** a test that asserts a named value is refused or absent
   (`"/admin" not in nav`, `.not.toContain("/admin")`, an expected exception),
-  or whose name, title, decorator, marker, comment, docstring or an identifier
-  it reads names a security subject
+  or whose name, title, decorator, marker, comment, docstring, an identifier
+  it reads or a string it uses as a key (WORTH_SECURITY_KEY_IS_A_DECLARATION)
+  names a security subject
 - **When:** the worth check reads it
 - **Then:** the test is not flagged
 
@@ -162,7 +163,8 @@ configured, and exit 0.
 - **When:** the worth check reads it
 - **Then:** the test is flagged: the regression and security spares read the
   test's name or title, decorators or markers, comments, docstring and (for
-  security) the identifiers it reads, never the words inside a string literal;
+  security) the identifiers it reads and the strings it uses as keys, never the
+  words inside a value the test compares against;
   a bare `#<digits>` names an issue except on a comment line about a colour, and
   a URL in a comment is read without its scheme
 
@@ -187,6 +189,46 @@ configured, and exit 0.
 - **When:** the worth check reads it
 - **Then:** the test is flagged, and the line shows the folded literal
   (`"Send"`)
+
+### Contract: WORTH_SECURITY_KEY_IS_A_DECLARATION
+- **Given:** a read-back test whose security setting is held under a string
+  key: a subscript (`HEADERS["Content-Security-Policy"]`,
+  `SETTINGS["SESSION_COOKIE_SECURE"]`), a dict or object key, the name a lookup
+  reads (`.get("X")`, `getattr(obj, "x")`, `.toHaveProperty("X")`), or an
+  attribute a setUp copied from a security constant
+- **When:** the worth check reads it
+- **Then:** the key names a thing as an identifier does, so the test is spared
+  as a security control, with the same verdict it gets when the setting is a
+  constant (`SESSION_COOKIE_SECURE is True`)
+- **And:** a security word in the value the test compares against spares
+  nothing: `COPY["banner_title"] == "Your session cookies keep you logged in"`
+  is flagged
+
+### Contract: WORTH_SETUP_THAT_ONLY_READS_IS_A_READ
+- **Given:** a unittest class with only bases the check knows, whose setup
+  methods only bind `self.<attr>` to values they read (a constant, a config
+  entry, a file read with no hook in scope that runs code), and whose other
+  methods store no such attribute
+- **When:** the worth check reads a test of the class that asserts on the
+  attribute
+- **Then:** the attribute reads as the value it was bound to, so a test that
+  reads back a copied constant is flagged as a module-level constant is
+- **And:** a setup method that runs any other statement, and a class with a
+  base the check cannot see, leave the attribute logic and the test spared
+
+### Contract: WORTH_DESCRIBE_BODY_READ_IS_A_READ
+- **Given:** a TypeScript or JavaScript test inside a block (a `describe`
+  body) that declares `const NAME = <value>`, where the value only reads: a
+  call from a Node built-in module or a global, a string method on a value
+  read, names declared at the top of the file
+- **When:** the worth check reads the test
+- **Then:** `NAME` reads as that value, so a test that reads back a literal
+  from a file read in the describe body is flagged as the same read at the top
+  of the file is
+- **And:** a `let` or `var`, a destructured or typed `const`, a container
+  literal, a parameter of the enclosing function, a call into code under test,
+  and a hook in scope that runs code each leave the name logic and the test
+  spared; the innermost declaration of a name wins
 
 ### Contract: WORTH_NEVER_FLAGS_BY_NAME_OR_LENGTH
 - **Given:** a test whose name promises logic and whose body reads a value back,
@@ -323,15 +365,18 @@ these hold:
   JavaScript a read call comes from a global or a Node built-in module, and any
   other imported name is code under test;
 - every name it reads is declared in the file or imported, a parameter whose
-  parametrize or `.each` table gives it literals, or a local built only from
-  literals; never a fixture of the test and never a value set up elsewhere;
+  parametrize or `.each` table gives it literals, a local built only from
+  literals, an attribute a setup method only bound to a value it reads, or a
+  const an enclosing describe body only reads; never a fixture of the test and
+  never a value code set up elsewhere;
 - at least one assertion compares a literal with such a value with positive
   polarity (a `False`, `None`, `false` or `null` literal included); every other
   assertion is such a read-back or a guard (a value is set or not empty);
 - no assertion names a value that must be absent or refused;
 - no name, title, decorator, marker, comment or docstring marks it as a bug
-  regression, and none of them, nor an identifier it reads, names a security
-  subject; the words inside a string literal never count;
+  regression, and none of them, nor an identifier it reads, nor a string it
+  uses as a key, names a security subject; the words of a value it compares
+  against never count;
 - no keep line with a reason sits directly above it.
 
 A parametrized test whose table is not written as literals, and a test whose
@@ -373,8 +418,10 @@ shrinks after the first write.
   assertion inside a helper the test calls; a constant held equal to a golden
   file, which reads as two homes with no literal between them; a snapshot held
   in a file the runner writes (`toMatchSnapshot`, a snapshot fixture); a
-  fixture parameter's value; a test inside `describe.each`; a name or marker
-  that says regression or names a security subject for an unrelated reason.
+  fixture parameter's value; a test inside `describe.each`; a name, marker or
+  key that says regression or names a security subject for an unrelated reason
+  (`ROUTES["/login"]`); a setup method or describe body that runs any code
+  beside the read it holds; a `let` in a describe body.
   Each case the independent tester found is a row of
   `tests/fixtures/worth/known-gaps.tsv`
 - **Response:** the test is spared; the check errs toward sparing by design
@@ -441,6 +488,10 @@ worth-check: FAIL — 1 flagged test(s) are not in the baseline. ...
   WORTH_SPARING_READS_DECLARATIONS_NOT_CONTENT,
   WORTH_GUARD_DOES_NOT_SPARE_A_READ_BACK,
   WORTH_LITERAL_BUILT_FROM_LITERALS_IS_A_LITERAL
+- [x] AC-9: a security setting gets one verdict whether it is a constant or
+  held under a key, and a setUp or describe body that only reads is a read;
+  maps to WORTH_SECURITY_KEY_IS_A_DECLARATION,
+  WORTH_SETUP_THAT_ONLY_READS_IS_A_READ, WORTH_DESCRIBE_BODY_READ_IS_A_READ
 
 ## 10. Test mapping
 
@@ -450,8 +501,12 @@ fixture test is owed is `tests/fixtures/worth/expected.tsv`, written before the
 tool. Every row was `red` on the missing tool first. X800 to X806 run the same
 copy over the independent tester's tree `tests/fixtures/worth/adversarial/`,
 whose verdicts `adversarial.tsv` were written before the tool ran over it; they
-were `red` on the heuristic as it stood on 2026-11-10, then green. A row of
-`known-gaps.tsv` is a documented limit, held at the verdict that file records.
+were `red` on the heuristic as it stood on 2026-11-10, then green. X810 to
+X812 gate the tester's round-two rows on keyed settings, a setUp that only
+copies and a read in a describe body, with a plant of further cases in the
+test file; they were `red` on the heuristic as it stood on 2026-11-11, then
+green. A row of `known-gaps.tsv` is a documented limit, held at the verdict
+that file records.
 
 | Contract / Failure | Test case | Test file | Level | Status |
 |---|---|---|---|---|
@@ -478,6 +533,9 @@ were `red` on the heuristic as it stood on 2026-11-10, then green. A row of
 | WORTH_GUARD_DOES_NOT_SPARE_A_READ_BACK | X804 is False, toBe(false), a non-empty guard and a truthiness guard beside a read-back flag; a guard alone and a named absence spare | tests/test-worth-check.sh | integration (fixture) | green |
 | WORTH_LITERAL_BUILT_FROM_LITERALS_IS_A_LITERAL | X805 a concatenated and a joined literal in each language, string methods on a constant, an inline snapshot | tests/test-worth-check.sh | integration (fixture) | green |
 | WORTH_FLAGS_A_READ_BACK_TEST | X806 every row of adversarial.tsv outside known-gaps.tsv gets the verdict the independent tester owes it | tests/test-worth-check.sh | integration (fixture) | green |
+| WORTH_SECURITY_KEY_IS_A_DECLARATION | X810 the three keyed-setting rows of adversarial.tsv are spared; a setting under a subscript, getattr, a dict or object key, toHaveProperty and a setUp copy gets the constant's verdict; banner copy under a plain key flags in each language | tests/test-worth-check.sh | integration (fixture) | green |
+| WORTH_SETUP_THAT_ONLY_READS_IS_A_READ | X811 a setUp that copies a constant or reads a file flags; a setUp that also builds, and a class under an unseen base, spare | tests/test-worth-check.sh | integration (fixture) | green |
+| WORTH_DESCRIBE_BODY_READ_IS_A_READ | X812 a const a describe body read from a file flags; the same read beside a build hook, and one held in a let, spare | tests/test-worth-check.sh | integration (fixture) | green |
 | HEURISTIC_SPARES_A_READ_BACK | X806 each documented limit of known-gaps.tsv keeps the verdict that file records, so a fix moves its row | tests/test-worth-check.sh | integration (fixture) | green |
 | SETUP_FILE_OUTSIDE_THE_TEST_IS_NOT_READ | none: a runner's configuration is outside the test files the check reads; the keep line is the recovery | none | none | none |
 | ADOPTED_SUITE_FLAGS_ON_DAY_ONE | none: graft's baseline step reports the count, and the owner decides on a cleanup | none | none | none |
@@ -486,8 +544,8 @@ were `red` on the heuristic as it stood on 2026-11-10, then green. A row of
 
 | Question | Why it matters | Current assumption | Owner | Resolves by |
 |---|---|---|---|---|
-| Should an independent tester review the fixture suite? | the fixtures and their verdicts were written by the spawn that built the tool | reviewed on 2026-11-11: the 34 rows of `expected.tsv` hold, and 29 adversarial cases (`tests/fixtures/worth/adversarial.tsv`) found the gaps of the next four rows. Closed on 2026-11-11 for the tool: the adversarial table is gated (X800 to X806), 16 of the 21 rows of `known-gaps.tsv` are fixed, and 5 stay as documented limits in `tests/fixtures/worth/known-gaps.tsv`; the independent tester's sign waits on the tester's re-review. Re-reviewed on 2026-11-11: the 5 limits are honest and §7 names each; 25 round-two cases found 3 new false positives and 2 new false negatives (next row), and the sign stays withheld on the false positives | tester | the next row is ruled on |
-| Should a security setting held under a string key be spared? | `HEADERS["Content-Security-Policy"] == "default-src 'self'"` and `SETTINGS["SESSION_COOKIE_SECURE"] is True` (Python) and the TypeScript header form are flagged, because the security spare reads identifiers and never string content, while `SESSION_COOKIE_SECURE is True` is spared in `expected.tsv`: the same control gets two verdicts by how it is stored, and a plant's gate fails on a security test the owner decided is never removed automatically. Two false negatives beside it: a `setUp` that only copies a constant spares the test, and a `readFileSync` in a `describe` body reads as logic. All five are rows of `known-gaps.tsv`, held there so the gate shows a fix | flagged today | architect | the subscript key of a value read counts as an identifier for the security spare, or WORTH_SPARES_SECURITY_CONTROLS states the exception |
+| Should an independent tester review the fixture suite? | the fixtures and their verdicts were written by the spawn that built the tool | reviewed on 2026-11-11: the 34 rows of `expected.tsv` hold, and 29 adversarial cases (`tests/fixtures/worth/adversarial.tsv`) found the gaps of the next four rows. Closed on 2026-11-11 for the tool: the adversarial table is gated (X800 to X806), 16 of the 21 rows of `known-gaps.tsv` are fixed, and 5 stay as documented limits in `tests/fixtures/worth/known-gaps.tsv`; the independent tester's sign waits on the tester's re-review. Re-reviewed on 2026-11-11: the 5 limits are honest and §7 names each; 25 round-two cases found 3 new false positives and 2 new false negatives (next row), and the sign stays withheld on the false positives. Fixed on 2026-11-11: the 3 false positives and the 2 false negatives are gated (X810 to X812), and `known-gaps.tsv` holds the 5 first-round limits; the independent tester's sign waits on the tester's re-review of the fix | tester | the tester's re-review of X810 to X812 |
+| Should a security setting held under a string key be spared? | `HEADERS["Content-Security-Policy"] == "default-src 'self'"` and `SETTINGS["SESSION_COOKIE_SECURE"] is True` (Python) and the TypeScript header form were flagged, because the security spare read identifiers and never a key, while `SESSION_COOKIE_SECURE is True` is spared in `expected.tsv`: the same control got two verdicts by how it is stored. Two false negatives beside it: a `setUp` that only copies a constant spared the test, and a `readFileSync` in a `describe` body read as logic | closed on 2026-11-11: a string used as a key names a thing and the security spare reads it, while a string compared against is content and never counts (WORTH_SECURITY_KEY_IS_A_DECLARATION, X810); a setUp that only reads binds a read (WORTH_SETUP_THAT_ONLY_READS_IS_A_READ, X811); a const a describe body only reads is a read (WORTH_DESCRIBE_BODY_READ_IS_A_READ, X812). The five rows left `known-gaps.tsv` for the gated table | architect | closed |
 | Should a test that reads a file a setup hook had the code under test write be spared? | WORTH_SPARES_LOGIC_TESTS spares a test that reads a file the code under test wrote, yet a setup hook that calls the build was not read, so the test was flagged: a false positive | closed on 2026-11-11: setup hooks are read as logic (WORTH_SETUP_OUTPUT_IS_NOT_A_LITERAL, X800). A setup file named only in the runner's configuration stays a limit (SETUP_FILE_OUTSIDE_THE_TEST_IS_NOT_READ) | architect | closed |
 | Should a TypeScript call into the code under test whose name is a read helper be spared? | an imported `resolve(...)` read as `path.resolve`, and `match` on an imported object as `String.match`: two false positives | closed on 2026-11-11: an imported name is code under test unless its module is a Node built-in, and a string method reads only a value already read or an upper-case imported constant (WORTH_IMPORTED_CALL_IS_CODE_UNDER_TEST, X801) | architect | closed |
 | Should `test.each` and `it.each` be read, or named as not read? | a parametrized TypeScript test was skipped with nothing in the report | closed on 2026-11-11: a literal table is read, any other table and a computed title are listed and counted as not checked, in both languages (WORTH_UNREAD_TEST_IS_NOT_CHECKED, X802) | architect | closed |
@@ -544,3 +602,19 @@ were `red` on the heuristic as it stood on 2026-11-10, then green. A row of
   string key, and two are false negatives; the five are rows of
   `known-gaps.tsv` and the question of §11. The independent tester's sign is
   withheld until the false positives are ruled on.
+- 2026-11-11 — the round-two findings fixed. A string the test uses as a key
+  (a subscript, a dict or object key, the name `.get`, `getattr` or
+  `toHaveProperty` reads) names a thing, so the security spare reads it as it
+  reads an identifier; a string compared against stays content and spares
+  nothing. A setUp that only binds attributes to values it reads, and a const a
+  describe body only reads, are reads; any code they run keeps them logic.
+  Three contracts added (WORTH_SECURITY_KEY_IS_A_DECLARATION,
+  WORTH_SETUP_THAT_ONLY_READS_IS_A_READ, WORTH_DESCRIBE_BODY_READ_IS_A_READ),
+  WORTH_SPARES_SECURITY_CONTROLS and WORTH_SPARING_READS_DECLARATIONS_NOT_CONTENT
+  restated in place to name keys, HEURISTIC_SPARES_A_READ_BACK widened to a key
+  that names a security subject for an unrelated reason and a setup that runs
+  code beside its read. The 3 false positives and 2 false negatives moved from
+  `known-gaps.tsv` to the gated table: X810 to X812 were seen failing on the
+  heuristic as it stood, then green. All 54 rows of `adversarial.tsv` but the
+  5 first-round limits are gated, and the 34 rows of `expected.tsv` pass
+  unchanged. The independent tester's sign waits on the tester's re-review.

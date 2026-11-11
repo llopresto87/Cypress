@@ -27,12 +27,21 @@ model, and it errs toward sparing. It spares:
   - a test that reads a file a setup hook in its scope had code write: a
     unittest setUp, setUpClass or asyncSetUp, a pytest setup_* function, an
     autouse fixture in the file or in a conftest.py under the plant root, a
-    beforeAll, beforeEach or before in the test's block or at the file's top;
+    beforeAll, beforeEach or before in the test's block or at the file's top.
+    A setUp that only binds attributes to values it reads, and a const a
+    describe body only reads, are reads like a module-level constant; a call
+    into code in either, a let, or a base class the check cannot see keeps
+    them logic;
   - a regression test for a bug: a name or title, decorator or marker,
     comment above or inside, or docstring that names the bug, the issue, the
     regression or a ticket (`#412` counts, except on a line about a colour);
-  - a security control: one of the same declarations, or an identifier the
-    test reads, names a security subject. Words inside a string literal
+  - a security control: one of the same declarations, an identifier the test
+    reads, or a string it uses as a key, names a security subject. A key
+    names a thing as an identifier does: a subscript (SETTINGS["X"]), a dict
+    or object key, the name a lookup reads (.get("X"), getattr(obj, "x"),
+    toHaveProperty("X")), and the names a setUp attribute or a describe-body
+    const was read from, so a control gets one verdict whether it is stored
+    as a constant or under a key. Words in a value the test compares against
     never count, and a URL in a comment is read without its scheme;
   - a negative control: an assertion that a named value is absent or refused
     (`"/admin" not in nav`, `.not.toContain("/admin")`, an expected exception);
@@ -65,7 +74,9 @@ test calls; a constant held equal to a golden file, which reads as two homes
 with no literal between them; a snapshot held in a file the runner writes
 (toMatchSnapshot, a snapshot fixture); a fixture parameter's value; a test
 whose name says regression; a test inside describe.each, whose parameters read
-as logic. One limit can flag a good test: a setup file named only in the
+as logic; a key that names a security subject for an unrelated reason
+(ROUTES["/login"]); a setUp or describe body that runs any code beside a read.
+One limit can flag a good test: a setup file named only in the
 runner's configuration (jest globalSetup, vitest setupFiles) is not read, so a
 file it builds reads as a literal; keep such a test with a keep line naming
 the setup file.
@@ -166,6 +177,15 @@ SECURITY_RE = re.compile(
     r"permission\w*|forbid\w*|denied|deny|sanitiz\w*|escap\w*|privileg\w*|csp|cors|tls|ssl|"
     r"https|session\w*|admin\w*|login|logout|credential\w*|encrypt\w*|decrypt\w*|debug|"
     r"nonce|unsafe|untrusted|malicious|attack\w*|exploit\w*)\b", re.I)
+# A string used as a key names a thing, as an identifier does, so the security
+# spare reads it: a subscript (`SETTINGS["SESSION_COOKIE_SECURE"]`), a dict or
+# object key, and the first argument of a lookup by name. A string compared
+# against is content and never counts. In Python the name is the second
+# argument of getattr and hasattr.
+PY_KEY_METHODS = {"get", "getenv", "setdefault", "pop", "getlist", "get_all"}
+PY_KEY_FUNCS = {"getattr", "hasattr"}
+JS_KEY_METHODS = {"get", "getItem", "has", "getHeader", "getAttribute", "header",
+                  "hasOwnProperty", "toHaveProperty"}
 # Setup hooks: a hook that runs code makes a file the test then reads output of
 # that code, not a literal the change adds.
 PY_HOOKS = {"setUp", "setUpClass", "asyncSetUp", "setup_method", "setup_class", "setup",
@@ -374,6 +394,29 @@ def about_security(declared: str) -> bool:
     return bool(SECURITY_RE.search(words(URL_RE.sub(" ", declared))))
 
 
+def py_keys(nodes) -> list[str]:
+    """The strings the given statements use as keys: a subscript, a dict key,
+    the name a lookup reads (`.get("X")`, `getattr(obj, "x")`)."""
+    out = []
+
+    def text(n):
+        if isinstance(n, ast.Constant) and isinstance(n.value, str):
+            out.append(n.value)
+    for st in nodes:
+        for n in ast.walk(st):
+            if isinstance(n, ast.Subscript):
+                text(n.slice)
+            elif isinstance(n, ast.Dict):
+                for k in n.keys:
+                    text(k)
+            elif isinstance(n, ast.Call) and n.args:
+                if isinstance(n.func, ast.Attribute) and n.func.attr in PY_KEY_METHODS:
+                    text(n.args[0])
+                elif isinstance(n.func, ast.Name) and n.func.id in PY_KEY_FUNCS and len(n.args) > 1:
+                    text(n.args[1])
+    return out
+
+
 def keep_reason(lines: list[str], first: int, prefixes: tuple) -> tuple[bool, str | None]:
     """(a keep line is there, its reason) from the comment lines directly above
     1-based line `first`."""
@@ -441,8 +484,11 @@ class PyTest:
     says a setup hook in scope runs code, so a file the test reads is output of
     that code."""
 
-    def __init__(self, fn, module_env: dict, params: dict | None = None, hooked: bool = False):
+    def __init__(self, fn, module_env: dict, params: dict | None = None, hooked: bool = False,
+                 attrs: dict | None = None):
         self.module_env = module_env
+        self.attrs: dict = dict(attrs or {})      # self.<attr> a setUp that only reads bound
+        self.receiver = None
         self.env: dict = {}
         self.params: dict = dict(params or {})
         self.values: dict = {}                    # a local bound to a folded literal
@@ -454,6 +500,8 @@ class PyTest:
         a = fn.args
         for arg in a.posonlyargs + a.args + a.kwonlyargs + [x for x in (a.vararg, a.kwarg) if x]:
             self.env[arg.arg] = LIT if arg.arg in self.params else LOGIC
+        if self.attrs and (a.posonlyargs + a.args):
+            self.receiver = (a.posonlyargs + a.args)[0].arg
         self.block(fn.body, top=True)
 
     def name(self, n: str) -> str:
@@ -477,6 +525,9 @@ class PyTest:
         if isinstance(e, ast.Name):
             return self.name(e.id)
         if isinstance(e, ast.Attribute):
+            if isinstance(e.value, ast.Name) and e.value.id == self.receiver \
+                    and self.env.get(e.value.id) == LOGIC and e.attr in self.attrs:
+                return self.attrs[e.attr][0]
             k = self.ev(e.value)
             return READ if k == LIT else k
         if isinstance(e, ast.Subscript):
@@ -739,6 +790,47 @@ def py_module_env(tree) -> dict:
     return env
 
 
+def setup_reads(cls, env: dict, hooked: bool) -> dict:
+    """attr -> (kind, the identifiers and keys it was built from) for each
+    `self.<attr> = <value>` of a setup method in the class, when every setup
+    method only binds attributes to values it reads (a constant, a config
+    entry, a file read with no hook in scope that runs code), the class has
+    only bases the check knows, and no other method of the class stores the
+    attribute. Anything else binds nothing, so the attribute stays logic."""
+    if any((dotted(b) or "") not in PY_TESTCASE_BASES for b in cls.bases):
+        return {}
+    hooks = [m for m in cls.body if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef))
+             and m.name in PY_HOOKS]
+    out: dict = {}
+    for h in hooks:
+        a = h.args.posonlyargs + h.args.args
+        if not a:
+            return {}
+        recv = a[0].arg
+        probe = PyTest(None, env, hooked=hooked)
+        probe.env[recv] = LOGIC
+        for i, st in enumerate(h.body):
+            if isinstance(st, ast.Pass) or (i == 0 and isinstance(st, ast.Expr)
+                                            and isinstance(st.value, ast.Constant)):
+                continue
+            t = st.targets[0] if isinstance(st, ast.Assign) and len(st.targets) == 1 else None
+            if not (isinstance(t, ast.Attribute) and isinstance(t.value, ast.Name)
+                    and t.value.id == recv):
+                return {}
+            kind = probe.ev(st.value)
+            if kind == LOGIC:
+                return {}
+            ids = [n.id for n in ast.walk(st.value) if isinstance(n, ast.Name)] \
+                + [n.attr for n in ast.walk(st.value) if isinstance(n, ast.Attribute)]
+            out[t.attr] = (kind, " ".join(words(x) for x in ids + py_keys([st.value])))
+    for m in cls.body:
+        if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef)) and m not in hooks:
+            for n in ast.walk(m):
+                if isinstance(n, ast.Attribute) and isinstance(n.ctx, ast.Store):
+                    out.pop(n.attr, None)
+    return out
+
+
 def is_autouse(fn) -> bool:
     for d in fn.decorator_list:
         if isinstance(d, ast.Call) and (dotted(d.func) or "").split(".")[-1] == "fixture" and any(
@@ -871,14 +963,15 @@ def read_python(rel: str, src: str, root: Path | None = None):
     found = []
     for st in tree.body:
         if isinstance(st, (ast.FunctionDef, ast.AsyncFunctionDef)) and st.name.startswith("test"):
-            found.append((st.name, st, [], module_hooked))
+            found.append((st.name, st, [], module_hooked, {}))
         elif isinstance(st, ast.ClassDef):
             hooked = module_hooked or class_hooked(st)
+            attrs = setup_reads(st, env, hooked)
             for m in st.body:
                 if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef)) and m.name.startswith("test"):
-                    found.append((f"{st.name}::{m.name}", m, st.decorator_list, hooked))
+                    found.append((f"{st.name}::{m.name}", m, st.decorator_list, hooked, attrs))
     out, unread = [], []
-    for name, fn, outer, hooked in found:
+    for name, fn, outer, hooked, attrs in found:
         decorators = list(outer) + fn.decorator_list
         try:
             params = py_parametrize(decorators)
@@ -887,7 +980,7 @@ def read_python(rel: str, src: str, root: Path | None = None):
             continue
         first = min([fn.lineno] + [d.lineno for d in fn.decorator_list])
         last = fn.end_lineno or fn.lineno
-        t = PyTest(fn, env, params, hooked)
+        t = PyTest(fn, env, params, hooked, attrs)
         above = comments_above(lines, first, ("#",))
         inside = "\n".join(c for n, c in comments.items() if first <= n <= last)
         doc = ast.get_docstring(fn) or ""
@@ -895,10 +988,14 @@ def read_python(rel: str, src: str, root: Path | None = None):
         ids = {n.id for n in ast.walk(fn) if isinstance(n, ast.Name)} \
             | {n.attr for n in ast.walk(fn) if isinstance(n, ast.Attribute)} \
             | {a.arg for a in ast.walk(fn.args) if isinstance(a, ast.arg)}
+        # Keys name things as identifiers do, and an attribute a setUp bound
+        # carries the names of what it was bound to.
+        named = sorted(ids) + py_keys(fn.body) + [attrs[n.attr][1] for n in ast.walk(fn)
+                                                  if isinstance(n, ast.Attribute) and n.attr in attrs]
         declared = f"{above}\n{inside}\n{doc}\n{words(name)}\n{words(marks)}"
         kept, reason = keep_reason(lines, first, ("#",))
         out.append(verdict(rel, name, first, "python", t.logic, t.assertions,
-                           declared=declared, security_text=declared + "\n" + " ".join(sorted(ids)),
+                           declared=declared, security_text=declared + "\n" + " ".join(named),
                            literal_of=py_literal, kept=kept, reason=reason))
     return out, unread
 
@@ -1129,6 +1226,8 @@ class JsFile:
         self.origin: dict = {}       # an imported or required name -> its module
         self.bound: dict = {}        # a name -> the literal tokens it stands for, in one test
         self.hooked = False          # a setup hook in scope of the test being read runs code
+        self.scoped: dict = {}       # a const an enclosing block only reads -> the names it read
+        self.blocked: set = set()    # a name an enclosing block declares any other way
         self.parent: list[int] = []  # each token's innermost enclosing "{", or -1
         self.close: dict = {}        # an opening "{" -> its closing "}"
         stack: list[int] = []
@@ -1355,10 +1454,91 @@ class JsFile:
                     continue
             self.hooked = any(a < i < b for a, b in scopes)
             try:
+                self.scoped, self.blocked = self.enclosing_reads(i)
                 out.append(self.one(title, t.line, fn, bound))
             finally:
-                self.hooked, self.bound = False, {}
+                self.hooked, self.bound, self.scoped, self.blocked = False, {}, {}, set()
         return out, unread
+
+    def block_params(self, b: int) -> set:
+        """The parameter names of the function whose body opens at toks[b]."""
+        toks = self.toks
+        k = b - 1
+        if k >= 0 and toks[k].value == "=>":
+            k -= 1
+            if k >= 0 and toks[k].kind == "id":
+                return {toks[k].value}
+        if k >= 0 and toks[k].kind == "punc" and toks[k].value == ")":
+            depth, j = 0, k
+            while j >= 0:
+                if toks[j].kind == "punc" and toks[j].value == ")":
+                    depth += 1
+                elif toks[j].kind == "punc" and toks[j].value == "(":
+                    depth -= 1
+                    if depth == 0:
+                        return {x.value for x in toks[j + 1:k] if x.kind == "id"}
+                j -= 1
+        return set()
+
+    def reads_only(self, rhs: list[Tok]) -> bool:
+        """An initializer that only reads: calls that read (a Node built-in, a
+        global, a string method on a value read), names declared or read at
+        the top of the file. A container literal, a function, `new`, `await`,
+        `this` or a template with a hole is not."""
+        if not rhs or (rhs[0].kind == "punc" and rhs[0].value in ("{", "[")):
+            return False
+        for k, t in enumerate(rhs):
+            if (t.kind == "tmpl" and t.subst) or (t.kind == "punc" and t.value == "=>") or (
+                    t.kind == "id" and t.value in ("function", "class", "this", "new", "await",
+                                                   "yield")):
+                return False
+            if t.kind == "punc" and t.value == "(" and k:
+                p = rhs[k - 1]
+                if p.kind == "id" and p.value not in JS_KEYWORDS:
+                    if self.call_kind(rhs, k, set(), set()) != READ:
+                        return False
+                elif p.kind == "punc" and p.value in (")", "]"):
+                    return False
+            elif t.kind == "id" and t.value not in JS_KEYWORDS | JS_LITERAL_WORDS | JS_GLOBALS:
+                prop = k and rhs[k - 1].kind == "punc" and rhs[k - 1].value in (".", "?.")
+                if not prop and self.top.get(t.value) not in (READ, DECL):
+                    return False
+        return True
+
+    def enclosing_reads(self, i: int) -> tuple[dict, set]:
+        """For the test opening at toks[i]: each `const NAME = <value>` an
+        enclosing block (a describe body) declares and only reads -> the names
+        and keys it read; and every other name an enclosing block declares (a
+        let, a var, a destructured or typed const, a parameter), which stays
+        logic. The innermost declaration of a name wins."""
+        toks, scoped, blocked = self.toks, {}, set()
+        p = self.parent[i]
+        while p >= 0:
+            end = self.close.get(p, len(toks))
+            here: set = set(self.block_params(p))
+            for k in range(p + 1, end):
+                t = toks[k]
+                if self.parent[k] != p or t.kind != "id" or t.value not in ("const", "let", "var"):
+                    continue
+                if t.value == "const" and k + 2 < end and toks[k + 1].kind == "id" \
+                        and toks[k + 2].value == "=":
+                    name = toks[k + 1].value
+                    rhs = toks[k + 3:js_statement_end(toks, k + 3)]
+                    if name not in blocked and name not in scoped and name not in here \
+                            and self.reads_only(rhs):
+                        scoped[name] = " ".join(js_keys(rhs) + [words(x.value) for x in rhs
+                                                                 if x.kind == "id"])
+                    else:
+                        here.add(name)
+                    continue
+                j = k + 1
+                while j < end and toks[j].value not in ("=", ";"):
+                    if toks[j].kind == "id":
+                        here.add(toks[j].value)
+                    j += 1
+            blocked |= {n for n in here if n not in scoped}
+            p = self.parent[p]
+        return scoped, blocked
 
     def one(self, title: str, line: int, fn: list[Tok], bound: dict) -> dict:
         _, params, body = self.fn_parts(fn)
@@ -1371,13 +1551,17 @@ class JsFile:
         last = max([x.line for x in fn] or [line])
         inside = "\n".join(c for n, c in self.comments.items() if line <= n <= last)
         ids = " ".join(x.value for x in body if x.kind == "id")
+        # Keys name things as identifiers do, and a const an enclosing block
+        # read carries the names of what it read.
+        named = " ".join(js_keys(body) + [self.scoped[x.value] for x in body
+                                          if x.kind == "id" and x.value in self.scoped])
         declared = f"{above}\n{inside}\n{title}"
         return verdict(self.rel, title, line, self.lang, logic, assertions,
-                       declared=declared, security_text=f"{declared}\n{words(ids)}",
+                       declared=declared, security_text=f"{declared}\n{words(ids)}\n{named}",
                        literal_of=js_literal, kept=kept, reason=reason)
 
     def read_body(self, body: list[Tok], params: set):
-        local = set(self.bound)
+        local = set(self.bound) | set(self.scoped)
         for i, t in enumerate(body):
             if t.kind == "id" and t.value in ("const", "let", "var"):
                 j = i + 1
@@ -1409,7 +1593,8 @@ class JsFile:
                 key = i + 1 < len(body) and body[i + 1].kind == "punc" and body[i + 1].value == ":"
                 if prop or key:
                     continue
-                if t.value in params or (t.value not in local and self.top.get(t.value) not in (READ, DECL)):
+                if t.value in params or (t.value not in local and (
+                        t.value in self.blocked or self.top.get(t.value) not in (READ, DECL))):
                     logic = True
         return logic, self.assertions(body)
 
@@ -1504,6 +1689,29 @@ class JsFile:
         if method == "ok" and args and self.bare(args[0]):
             return "guard", []
         return self.operand_status(args[:1] if method == "ok" else args[:2], False)
+
+
+def js_keys(toks: list[Tok]) -> list[str]:
+    """The strings the tokens use as keys: a subscript (`HEADERS["X"]`), an
+    object key (`{ "X": 1 }`), the name a lookup reads (`.get("X")`,
+    `.toHaveProperty("X")`)."""
+    out = []
+    for k, t in enumerate(toks):
+        if t.kind != "str" and not (t.kind == "tmpl" and not t.subst):
+            continue
+        prev = toks[k - 1] if k else None
+        nxt = toks[k + 1] if k + 1 < len(toks) else None
+        if prev is None or nxt is None or prev.kind != "punc":
+            continue
+        if prev.value == "[" and nxt.value == "]" and k >= 2 and (
+                toks[k - 2].kind == "id" or toks[k - 2].value in (")", "]", "?.")):
+            out.append(t.value)
+        elif prev.value in ("{", ",") and nxt.kind == "punc" and nxt.value == ":":
+            out.append(t.value)
+        elif prev.value == "(" and k >= 3 and toks[k - 2].kind == "id" \
+                and toks[k - 2].value in JS_KEY_METHODS and toks[k - 3].value in (".", "?."):
+            out.append(t.value)
+    return out
 
 
 def js_substantive(tok: Tok) -> bool:
