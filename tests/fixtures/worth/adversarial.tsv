@@ -58,3 +58,22 @@ tests/adversarial/ts/adversarial-controls.test.ts::nav has no drafts link	spared
 tests/adversarial/ts/adversarial-controls.test.ts::oversized upload throws	spared	round 2: a refusal through toThrow with no security word
 tests/adversarial/ts/adversarial-controls.test.ts::policy header held in a keyed setting	spared	round 2: a security setting whose key is a string (Content-Security-Policy)
 tests/adversarial/python/test_adversarial_setup.py::test_constant_beside_a_setup_module	flagged	round 2: read-back of a constant in a file with a setup hook, reading no file
+tests/adversarial/python/test_adversarial_keys.py::test_nested_security_setting	spared	round 3: a security setting under nested string keys
+tests/adversarial/python/test_adversarial_keys.py::test_setting_read_through_get	spared	round 3: a security setting read through .get with a string key
+tests/adversarial/python/test_adversarial_keys.py::test_header_keyed_by_a_constant	spared	round 3: a security header keyed by a constant named for it
+tests/adversarial/python/test_adversarial_keys.py::test_transport_header_keyed_by_a_string	spared	round 3: a security header keyed by a string (Strict-Transport-Security)
+tests/adversarial/python/test_adversarial_keys.py::test_frame_header_keyed_by_a_string	spared	round 3: a security header whose key holds no security word (X-Frame-Options)
+tests/adversarial/python/test_adversarial_keys.py::test_footer_message_value	flagged	round 3: read-back whose security word sits in the value only
+tests/adversarial/python/test_adversarial_keys.py::test_plain_label_under_a_plain_key	flagged	round 3: read-back of a plain label under a plain string key
+tests/adversarial/python/test_adversarial_keys.py::test_key_absent_from_production	spared	round 3: an absence of a key from a settings mapping
+tests/adversarial/python/test_adversarial_hooks.py::TestBuiltAsync::test_page_built_by_async_set_up	spared	round 3: reads a file asyncSetUp had the code under test write
+tests/adversarial/python/test_adversarial_hooks.py::TestBuiltPerMethod::test_page_built_by_setup_method	spared	round 3: reads a file setup_method had the code under test write
+tests/adversarial/python/test_adversarial_hooks.py::TestBuiltPerClass::test_page_built_by_setup_class	spared	round 3: reads a file setup_class had the code under test write
+tests/adversarial/python/conf/test_conf_built.py::test_page_built_by_a_conftest_fixture	spared	round 3: reads a file an autouse fixture of conftest.py had the code under test write
+tests/adversarial/ts/adversarial-keys.test.ts::lower-case headers keyed by a string	spared	round 3: a security header under a lower-case import keyed by a string
+tests/adversarial/ts/adversarial-keys.test.ts::nested security property	spared	round 3: a security setting reached through a nested property
+tests/adversarial/ts/adversarial-keys.test.ts::frame header keyed by a string	spared	round 3: a security header whose key holds no security word (X-Frame-Options)
+tests/adversarial/ts/adversarial-keys.test.ts::map setting read through get	spared	round 3: a security setting read through Map.get with a string key
+tests/adversarial/ts/adversarial-keys.test.ts::plain label under a plain key	flagged	round 3: read-back of a plain label under a plain string key
+tests/adversarial/ts/adversarial-keys.test.ts::page built in a nested beforeAll carries the label	spared	round 3: reads a file a beforeAll inside describe had the code under test write
+tests/adversarial/ts/adversarial-keys.test.ts::page built in a node before hook carries the label	spared	round 3: reads a file a node:test before hook had the code under test write
