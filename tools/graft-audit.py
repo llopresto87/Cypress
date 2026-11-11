@@ -305,6 +305,8 @@ DELIVERED_TOOLS = {
     # the source index (SPEC-0007) and the walk it loads beside it
     "source-index.py": "tools/source-index.py",
     "plant_walk.py": "tools/plant_walk.py",
+    # the stack readers the source index loads beside it
+    "source_readers.py": "tools/source_readers.py",
     # the worth check (SPEC-0009); its baseline worth-baseline.txt is plant state
     "worth-check.py": "tools/worth-check.py",
 }

@@ -159,6 +159,50 @@ authentication method, and a target database.
 - **Migrations applied automatically at application start have no review gate
   between merge and execution.** A destructive migration runs on the first boot
   after deploy.
+- **`psql` names the failing line only with `-f`.** SQL piped on plain stdin
+  gives a bare `ERROR:  ...`; with `-f -` (stdin read as a file) the same error
+  reads `psql:<stdin>:<line>: ERROR:  ...`, the line counted from the start of
+  the stream. The psql page says `-f` "enables some nice features such as error
+  messages with line numbers" compared with `psql < filename`, which in turn is
+  "(in theory) guaranteed to yield exactly the same output you would have
+  received had you entered everything by hand". Pass `-f -` when a script
+  parses the failure.
+- **A claim row can decide a race before the rows it names exist (deferred
+  foreign key).** Make a table's primary key the claim, and make its foreign
+  key to the row the transaction is about to create `DEFERRABLE INITIALLY
+  DEFERRED`. The transaction inserts the claim first, then the referenced row;
+  the reference is checked at commit. Two concurrent transactions collide on
+  the claim's primary key before either writes anything else: a unique check
+  that meets a conflicting row from a still-uncommitted transaction waits for
+  it, then fails if it commits (the index-uniqueness chapter). The loser leaves
+  nothing behind. Only `UNIQUE`, `PRIMARY KEY`, `EXCLUDE` and foreign-key
+  constraints accept `DEFERRABLE`; "`NOT NULL` and `CHECK` constraints are not
+  deferrable", so the claim's own columns stay checked at insert. A deferrable
+  constraint also cannot arbitrate `INSERT ... ON CONFLICT`.
+- **A transaction-level advisory lock serialises writers against one closing
+  transaction** (writers take `pg_advisory_xact_lock_shared(key)`, the closer
+  `pg_advisory_xact_lock(key)`): such requests "are automatically released at
+  the end of the transaction, and there is no explicit unlock operation".
+  - Take the lock as its own statement and put the read it guards in the next
+    one. Under READ COMMITTED each statement takes a new snapshot, so the
+    statement after the wait sees what committed during it; a lock taken inside
+    the guarded query reads with the snapshot from before the wait.
+  - Observed in practice, and not stated on the explicit-locking page: a new
+    shared request queued behind a waiting exclusive one, although compatible
+    with the shared locks held, so a guard that may run outside a transaction
+    must not take the lock there.
+  - Count waiters with `SELECT count(*) FROM pg_locks WHERE locktype =
+    'advisory' AND NOT granted`.
+  - Pick a key no other code path holds, and check that the lock order cannot
+    form a cycle with locks taken elsewhere (for example in deferred constraint
+    triggers at commit).
+- **`now()` is the transaction's start, `clock_timestamp()` the actual time.**
+  An event stamped with `now()` after a long lock wait carries an instant
+  earlier than the commits it waited for; stamp it with `clock_timestamp()`
+  ("changes during statement execution").
+- **`text = uuid` has no operator.** Joining a `text` column (one that can also
+  hold a non-UUID word) to a `uuid` column fails; cast the `uuid` side
+  (`t.id::text = s.ref`).
 
 ## Testing
 - Run test containers on the same major **and variant** as deployment.
@@ -235,6 +279,9 @@ authentication method, and a target database.
 - https://www.postgresql.org/docs/current/role-attributes.html
 - https://www.postgresql.org/docs/current/datatype-character.html
 - https://www.postgresql.org/docs/current/non-durability.html
+- https://www.postgresql.org/docs/18/app-psql.html (`-f`, error line numbers)
+- https://www.postgresql.org/docs/18/sql-createtable.html (`DEFERRABLE`); https://www.postgresql.org/docs/18/index-unique-checks.html
+- https://www.postgresql.org/docs/18/explicit-locking.html#ADVISORY-LOCKS; https://www.postgresql.org/docs/18/functions-datetime.html (`now()`, `clock_timestamp()`)
 - https://www.postgresql.org/docs/current/sql-alterdatabase.html (`REFRESH
   COLLATION VERSION`); https://wiki.postgresql.org/wiki/Locale_data_changes
 - https://hub.docker.com/_/postgres

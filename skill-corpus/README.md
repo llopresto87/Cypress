@@ -75,6 +75,7 @@ Currently populated:
 - Flat, by the kind of work:
   - Test-first and verification: `deploy-gated-red-green`,
     `mutation-verify`, `prove-red-after-green`.
+  - Sessions and continuity: `pre-compaction-session-save`.
   - Migration and legacy recovery: `framework-version-migration`,
     `vendor-dependency-from-dead-registry`.
   - Delivery and hosts: `deploy-fleet-on-remote-docker-host`,

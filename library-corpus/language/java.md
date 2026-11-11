@@ -135,6 +135,20 @@ Language and platform features by the release that made them final:
   (JEP 451).
 - Strong encapsulation (17) closes reflective access to JDK internals unless a
   flag opens it; every `--add-opens` widens that again.
+- **A secret file that is never wider than its mode and never a link.**
+  `Files.newByteChannel(path, Set.of(CREATE_NEW, WRITE, NOFOLLOW_LINKS),
+  PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("r--------")))`
+  after a `Files.deleteIfExists(path)`. The `Files` Javadoc: `attrs` are
+  "optional file-attributes to set atomically when a new file is created", so
+  the file has its mode from its first instant and is never chmod-ed after;
+  `CREATE_NEW` creates "a new file ... failing if the file already exists or is
+  a symbolic link", and "the check for the existence of the file and the
+  creation of the file if it does not exist is atomic with respect to other file
+  system operations". A planted link therefore never redirects the write.
+  `NOFOLLOW_LINKS` is documented for `copy` and `move`, not on this method's
+  option table; keep it as belt and braces. Observed in practice, with the
+  Javadoc silent on the point: the process umask only removes permission bits,
+  so it can narrow `0400` and never widen it.
 
 ## Operational behaviour
 - A project that does not take the quarterly update runs a JVM that upstream has
@@ -197,6 +211,7 @@ and PEM encodings are previews. The 32-bit x86 port is removed (JEP 503).
 ## Upstream docs
 - https://openjdk.org/projects/jdk/ (per-release pages: `/17/`, `/21/`, `/25/`)
 - https://openjdk.org/jeps/ (each JEP named above)
+- https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/file/Files.html (`newByteChannel`, `CREATE_NEW`, `attrs`)
 - https://docs.oracle.com/en/java/javase/21/docs/specs/man/javac.html and the 25 equivalent
 - https://www.oracle.com/java/technologies/javase/23-relnote-issues.html
 - https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html (class-file versions)

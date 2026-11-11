@@ -7,7 +7,11 @@ when it is a Git work tree, plus each nested work tree a node names in
 file path (read with `ast`, never imported or run), shell and Python
 invocations, quoted path and directory literals (whole, or joined from
 segments as in `ROOT / "tools" / "x.py"`), and TypeScript/JavaScript
-import and require specifiers resolved through `tsconfig`/`jsconfig` paths.
+import and require specifiers resolved through `tsconfig`/`jsconfig` paths,
+and, through the stack readers of `source_readers.py` beside it, Java imports
+and same-package references, Thymeleaf fragments, YAML and Compose paths,
+Dockerfile `COPY`/`ADD` sources and nginx includes (SPEC-0007 §6 "Stack
+readers").
 Each link is `certain` or `maybe`, with the reason; a file whose references
 cannot be pinned is an `opaque` record, and an import or invoke naming no
 file is an `unresolved` record (SPEC-0007 §6).
@@ -21,9 +25,9 @@ Placed in a plant as `docs/graph/source-index.py` and run from the plant root:
     python3 docs/graph/source-index.py symbols                  [--all] [--json] <name>... | -
 
 The same pass that reads the links reads each file's definitions for
-`symbols`: Python's by `ast` (certain), shell functions and top-level or
-exported TS/JS declarations by line-reading (maybe). `--history` adds the
-files that changed together with an input in past commits, as a `maybe`
+`symbols`: Python's by `ast` (certain), shell functions, top-level or
+exported TS/JS declarations, Java types and SQL `CREATE` names by
+line-reading (maybe). `--history` adds the files that changed together with an input in past commits, as a `maybe`
 list of their own (SPEC-0007 §6 "Definitions", "History links"). `anchors
 --moved` takes its inputs from the moved list of `code-anchor.py` beside this
 file, so canonize needs no copied paths (SPEC-0007 §6 "Moved list").
@@ -75,6 +79,8 @@ plant_walk = _loaded(_ilu.spec_from_file_location(
     "cypress_plant_walk", Path(__file__).resolve().parent / "plant_walk.py"))
 frontmatter = _loaded(_ilu.spec_from_file_location(
     "cypress_frontmatter", Path(__file__).resolve().parent / "frontmatter.py"))
+source_readers = _loaded(_ilu.spec_from_file_location(
+    "cypress_source_readers", Path(__file__).resolve().parent / "source_readers.py"))
 
 # --- constants and texts (SPEC-0007 §6): this file is their one home, except
 # the path rules, whose home is source_paths.py. ---
@@ -98,13 +104,13 @@ CACHE_NAME = "index.json"
 CACHE_IGNORE = "*\n"
 CONFIG_PATH = "docs/graph/source-index.json"
 TEST_DECLARATION = "docs/graph/spec-lint.py"     # TEST_GLOBS and SKIP_DIRS
-SIBLINGS = ["source_paths.py", "plant_walk.py", "frontmatter.py"]
+SIBLINGS = ["source_paths.py", "plant_walk.py", "frontmatter.py", "source_readers.py"]
 CODE_ANCHOR = "code-anchor.py"   # loaded beside the tool by `anchors --moved` alone; it shapes no index
 TEMP_PREFIX = ".tmp-source-index-"
 FLOOR_LINE = "Floor: {n} maybe row(s) every input reaches (opaque holders and their dependents):"
 HISTORY_LINE = "History: {n} maybe row(s), files that changed together with an input (--history):"
 MOVED_NONE_LINE = "Moved: no code moved since the code anchor."
-UNDEFINED_LINE = ("{name}: no definition (read: Python definitions, shell functions, TS/JS declarations; "
+UNDEFINED_LINE = ("{name}: no definition (read: Python definitions, shell functions, TS/JS declarations, Java types, SQL CREATE statements; "
                   "not read: {not_read}, which are not code)")   # {not_read}: the answer's not_read
 BUILD_TIME_LINE = "Built in {seconds:.2f} s."
 RECOMMEND_LINE = ("Recommendation only: the tests above and the always-run set, never only these; "
@@ -182,19 +188,23 @@ TEST_SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__",
 LANGUAGES = {".py": "python", ".sh": "shell", ".bash": "shell",
              ".ts": "typescript", ".tsx": "typescript", ".mts": "typescript", ".cts": "typescript",
              ".js": "javascript", ".jsx": "javascript", ".mjs": "javascript", ".cjs": "javascript",
-             ".json": "json"}
-LINK_BEARING = ("python", "shell", "typescript", "javascript")
+             ".json": "json", **source_readers.LANGUAGES}
+LINK_BEARING = ("python", "shell", "typescript", "javascript") + source_readers.LINK_BEARING
+# The languages a test file is run in: a link-bearing test of one of these with
+# no edge to code is always run. A YAML or SQL test fixture is data, never run.
+RUNNABLE = ("python", "shell", "typescript", "javascript") + source_readers.RUNNABLE
 # Programming languages the tool inventories (language `other`) and reads no
 # link of: an input in one of them makes impact and affected-tests incomplete
 # (`language-not-read`), because the files that import it in its own language
-# are not found. A reader for one is a stack-keyed module added on its own.
-UNREAD_LANGUAGES = {".go": "go", ".java": "java", ".kt": "kotlin", ".kts": "kotlin", ".scala": "scala",
+# are not found. A reader for one is a stack-keyed module (tools/source_readers.py)
+# added on its own; its language leaves this table when it is read.
+UNREAD_LANGUAGES = {".go": "go", ".kt": "kotlin", ".kts": "kotlin", ".scala": "scala",
                     ".groovy": "groovy", ".cs": "csharp", ".fs": "fsharp", ".vb": "visual-basic",
                     ".rb": "ruby", ".rs": "rust", ".php": "php", ".swift": "swift", ".m": "objective-c",
                     ".c": "c", ".h": "c", ".cc": "c++", ".cpp": "c++", ".cxx": "c++", ".hpp": "c++",
                     ".dart": "dart", ".lua": "lua", ".pl": "perl", ".pm": "perl", ".r": "r", ".R": "r",
                     ".ex": "elixir", ".exs": "elixir", ".erl": "erlang", ".clj": "clojure",
-                    ".vue": "vue", ".svelte": "svelte", ".ps1": "powershell", ".sql": "sql"}
+                    ".vue": "vue", ".svelte": "svelte", ".ps1": "powershell"}
 # A test that reaches the application over HTTP, by a loopback URL or a page
 # navigation, holds no link to the code that serves it (`reached-over-http`).
 OVER_HTTP_RE = re.compile(r"""https?://(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])\b[^\s'"`]*"""
@@ -209,11 +219,12 @@ PY_ARG_OPTIONS = {"-X", "-W"}          # interpreter options that take the next 
 PY_WALKS = {"os.walk", "os.scandir", "os.listdir", "glob.glob"}
 
 ENUMS = {
-    "language": {"python", "shell", "typescript", "javascript", "json", "other"},
+    "language": {"python", "shell", "typescript", "javascript", "json", "other"} | source_readers.ENUM_LANGUAGES,
     "test": {"test", "code"},
     "kind": {"import", "invoke", "path-literal"},
     "link": {"certain", "maybe"},
-    "found": {"exact", "resolved", "path-literal", "directory", "ambiguous", "workspace-package"},
+    "found": {"exact", "resolved", "path-literal", "directory", "ambiguous", "workspace-package"}
+             | source_readers.ENUM_FOUND,
     "opaque": {"dynamic-nonliteral", "walks-tree", "unreadable", "alias-config-unavailable",
                "unmapped-specifier", "reached-over-http"},
     "unresolved": {"relative-no-file", "alias-no-file", "outside-repository", "generated", "asset"},
@@ -443,9 +454,14 @@ def test_class(path: str, test_globs, skip_dirs, exclude) -> str:
 
 # --- the inventory -----------------------------------------------------------
 def language_of(name: str, data) -> str:
-    """By extension; an extensionless file by its shebang (python*, bash, sh)."""
+    """By place or name where a stack reader keys on one (a template, a
+    Dockerfile, an nginx file: `source_readers.named_language`), else by
+    extension; an extensionless file by its shebang (python*, bash, sh)."""
     base = name.rsplit("/", 1)[-1]
     ext = posixpath.splitext(base)[1]
+    named = source_readers.named_language(name)
+    if named:
+        return named
     if ext:
         return LANGUAGES.get(ext, "other")
     if data is None or not data.startswith(b"#!"):
@@ -698,7 +714,11 @@ def call_joins(line: str) -> list:
     return out
 
 
-class Extract:
+source_readers.bind(joined=joined, inside=inside, glob_regex=glob_regex, scheme_led=SCHEME_LED,
+                    literal_max=LITERAL_MAX, dir_link_max=DIR_LINK_MAX)
+
+
+class Extract(source_readers.StackReaders):
     """Reads the links, opaque and unresolved records of every link-bearing
     inventory file. Paths from file content are text matched against the
     inventory; nothing here opens a path built from such text."""
@@ -715,6 +735,7 @@ class Extract:
                 self.under.setdefault("/".join(parts[:k]), []).append(path)
         self.links, self.opaque, self.unresolved, self.symbols = set(), [], [], []
         self._tsconfig, self._packages = {}, None
+        self.init_stack_readers()
 
     # -- recording
     def link(self, holder, target, kind, found, line):
@@ -747,7 +768,7 @@ class Extract:
         for path, rec in sorted(self.records.items()):
             data = None
             ext = posixpath.splitext(path.rsplit("/", 1)[-1])[1]
-            if not rec["symlink"] and (not ext or LANGUAGES.get(ext) in LINK_BEARING):
+            if not rec["symlink"] and (not ext or language_of(path, None) in LINK_BEARING):
                 try:
                     data = read_bytes(self.plant.root / rec["repo"],
                                       posixpath.relpath(path, rec["repo"]) if rec["repo"] != "." else path)
@@ -760,7 +781,7 @@ class Extract:
                 if data is None:
                     raise Unreadable("unreadable")
                 text = data.decode("utf-8")
-                {"python": self.python, "shell": self.shell}.get(rec["language"], self.script)(rec, text)
+                {"python": self.python, "shell": self.shell, **self.stack_readers()}.get(rec["language"], self.script)(rec, text)
                 if rec["test"] == "test":
                     self.over_http(path, text)
             except (Unreadable, UnicodeDecodeError, SyntaxError, ValueError, RecursionError, MemoryError):
@@ -768,7 +789,9 @@ class Extract:
                 self.unresolved = [u for u in self.unresolved if u["holder"] != path]
                 self.links = {l for l in self.links if l[0] != path}
                 self.symbols = [s for s in self.symbols if s["path"] != path]
+                self.forget_stack_reads(path)
                 self.opaque_at(path, None, "", "unreadable")
+        self.finish_stack_readers()
         self.mark_generated()
 
     def over_http(self, holder, text):
@@ -2052,7 +2075,7 @@ class Index:
                 continue
             if any(source_paths.path_matches(path, g) for g in self.plant.config["always_run"]):
                 out.append({"path": path, "reason": "declared"})
-            elif rec["language"] in LINK_BEARING and path not in to_code and path not in self.opaque:
+            elif rec["language"] in RUNNABLE and path not in to_code and path not in self.opaque:
                 out.append({"path": path, "reason": "no-code-edge"})
         return out
 

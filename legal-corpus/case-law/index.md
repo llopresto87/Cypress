@@ -334,6 +334,140 @@ per entry; the page no longer has one answer.
   `garante-9782874-google-analytics` as an adjacent Italian enforcement analogy
   on the transfer logic — **not** on the asset-loading mechanic.
 
+> **UNREVIEWED group.** The five entries from `cjeu-c-446-21-schrems` to
+> `acn-gpdp-linee-guida-conservazione-password-2023` were admitted on the
+> owner's decision of 2026-11-11 and have not been reviewed by a human. Each was
+> re-fetched from its publisher on that date and its quoted text compared
+> mechanically with the fetched file; each says so in its `consulted` field.
+
+### `cjeu-c-446-21-schrems`
+
+- **instrument:** Court of Justice of the European Union — *case-law*
+- **court:** CJEU (Fourth Chamber) · **docket:** C-446/21, *Maximilian Schrems
+  v Meta Platforms Ireland Ltd* · **decision_date:** 4 October 2024
+- **provision:** the judgment's **operative part** ("hereby rules"), points 1
+  and 2
+- **text_form:** **verbatim** (the Court's own operative ruling, EN)
+- **text (EN, verbatim):**
+
+  > On those grounds, the Court (Fourth Chamber) hereby rules:
+  >
+  > 1. Article 5(1)(c) of Regulation (EU) 2016/679 of the European Parliament and of the Council of 27 April 2016 on the protection of natural persons with regard to the processing of personal data and on the free movement of such data, and repealing Directive 95/46/EC (General Data Protection Regulation), must be interpreted as meaning that the principle of data minimisation provided for therein precludes any personal data obtained by a controller, such as the operator of an online social network platform, from the data subject or third parties and collected either on or outside that platform, from being aggregated, analysed and processed for the purposes of targeted advertising without restriction as to time and without distinction as to type of data.
+  >
+  > 2. Article 9(2)(e) of Regulation 2016/679 must be interpreted as meaning that the fact that a person has made a statement about his or her sexual orientation on the occasion of a panel discussion open to the public does not authorise the operator of an online social network platform to process other data relating to that person’s sexual orientation, obtained, as the case may be, outside that platform using partner third-party websites and apps, with a view to aggregating and analysing those data, in order to offer that person personalised advertising.
+- **official_url:**
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:62021CJ0446
+- **consulted:** the Publications Office's CELLAR endpoint (`https://publications.europa.eu/resource/celex/62021CJ0446`, XHTML), fetched with `curl` to a file and read from the file on 2026-11-11; the operative part below was checked against that file (whitespace- and quote-normalised) — **verification_grade:** `primary-fetched`. **Stated in prose, as the schema requires for case law: the Court's own judgment text was fetched from the EU publisher, not a commentary.** **UNREVIEWED: not reviewed by a human.**
+- **language_version:** English (the language of the case was German)
+- **verified:** 2026-11-11
+- **legal_status:** `in force` (a CJEU preliminary ruling)
+- **notes:** Point 2 concerns **Art. 9(2)(e)**, special-category data a person has made public; it does not rule on other personal data. Point 1 concerns data minimisation in the targeted-advertising context. The provisions read are `gdpr-art-5-1-c` and `gdpr-art-9` (`../eu/gdpr.md`).
+
+### `cjeu-c-798-24-jautiva`
+
+- **instrument:** Court of Justice of the European Union — *case-law*
+- **court:** CJEU (First Chamber) · **docket:** C-798/24, *[Jautiva]* (the
+  judgment states the name "is a fictitious name. It does not correspond to the
+  real name of any party to the proceedings") · **decision_date:** 3 September
+  2026 · referring court: Satversmes tiesa (Constitutional Court, Latvia)
+- **provision:** the judgment's **operative part**, point 2 (point 1 concerns
+  Art. 14(d) of Directive (EU) 2017/1132 and is not transcribed)
+- **text_form:** **verbatim** (the Court's own operative ruling, EN)
+- **text (EN, verbatim):**
+
+  > 2. Articles 5 and 6 of Regulation (EU) 2016/679 of the European Parliament and of the Council of 27 April 2016 on the protection of natural persons with regard to the processing of personal data and on the free movement of such data, and repealing Directive 95/46/EC (General Data Protection Regulation), read in the light of Articles 7 and 8 of the Charter of Fundamental Rights of the European Union, must be interpreted as precluding national legislation which requires personal data relating to all the shareholders, including minority shareholders, of public limited liability companies relating to the identity and contact details of each shareholder, the class, number and nominal value of the shares held by that shareholder, and the number of votes attaching to those shares, to be made available to the public in order to ensure a transparent business environment so as to protect the interests of third parties, prevent money laundering and the financing of terrorism and the proliferation of weapons of mass destruction, and provide the information necessary for the implementation of national, international and EU sanctions, where access to such data is not subject to any conditions, such as demonstrating a legitimate interest.
+- **official_url:**
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:62024CJ0798
+- **consulted:** the Publications Office's CELLAR endpoint (`https://publications.europa.eu/resource/celex/62024CJ0798`, XHTML), fetched with `curl` to a file and read from the file on 2026-11-11; the operative part below was checked against that file (whitespace- and quote-normalised) — **verification_grade:** `primary-fetched`. **Stated in prose, as the schema requires for case law: the Court's own judgment text was fetched from the EU publisher, not a commentary.** **UNREVIEWED: not reviewed by a human.**
+- **language_version:** English (the language of the case was Latvian)
+- **verified:** 2026-11-11
+- **legal_status:** `in force` (a CJEU preliminary ruling)
+- **notes:** The ruling is about a national company-register disclosure rule, and a reader must not extend it beyond the facts its operative part states. The provisions read are the Art. 5 entries and the Art. 6 entries of `../eu/gdpr.md`. The CELLAR endpoint answered HTTP 400 without a language header and the judgment on a request with `Accept-Language: en`.
+
+### `cjeu-c-180-21`
+
+- **instrument:** Court of Justice of the European Union — *case-law*
+- **court:** CJEU (Fifth Chamber) · **docket:** C-180/21 · **decision_date:**
+  8 December 2022. Party names are `not recorded` here; cite by case number
+  and date.
+- **provision:** the judgment's **operative part**, point 2 (Art. 2(1)–(2)
+  GDPR). Point 1 concerns Directive (EU) 2016/680 and point 3 Art. 6(1)(e)
+  GDPR; neither is transcribed.
+- **text_form:** **verbatim** (the Court's own operative ruling, EN)
+- **text (EN, verbatim):**
+
+  > 2. Article 3(8) and Article 9(1) and (2) of Directive 2016/680 and Article 2(1) and (2) of Regulation (EU) 2016/679 of the European Parliament and of the Council of 27 April 2016 on the protection of natural persons with regard to the processing of personal data and on the free movement of such data, and repealing Directive 95/46/EC (General Data Protection Regulation) must be interpreted as meaning that that regulation is applicable to the processing of personal data by the public prosecutor’s office of a Member State for the purpose of exercising its rights of defence in an action for damages against the State, where, first, it informs the court having jurisdiction of the opening of files relating to a natural person who is a party to that action for the purposes set out in Article 1(1) of Directive 2016/680 and, second, it transmits those files to that court.
+- **official_url:**
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:62021CJ0180
+- **consulted:** the Publications Office's CELLAR endpoint (`https://publications.europa.eu/resource/celex/62021CJ0180`, XHTML), fetched with `curl` to a file and read from the file on 2026-11-11; the operative part below was checked against that file (whitespace- and quote-normalised) — **verification_grade:** `primary-fetched`. **Stated in prose, as the schema requires for case law: the Court's own judgment text was fetched from the EU publisher, not a commentary.** **UNREVIEWED: not reviewed by a human.**
+- **language_version:** English (the language of the case was Bulgarian)
+- **verified:** 2026-11-11
+- **legal_status:** `in force` (a CJEU preliminary ruling)
+- **notes — kept to stop a specific misattribution.** A web-search summary stated that this judgment rules on **Art. 6(4) GDPR**. **The operative part does not mention Art. 6(4)**: it addresses Directive 2016/680 (point 1), Art. 2(1)–(2) GDPR (point 2) and Art. 6(1)(e) GDPR (point 3). Do not cite it for Art. 6(4) (`gdpr-art-6-4`). Its value here is the Court's reading of `gdpr-art-2` in one public-authority setting.
+
+### `garante-linee-guida-password-2023-594`
+
+- **instrument:** Garante per la protezione dei dati personali — Provvedimento
+  del 7 dicembre 2023, adopting the "Linee Guida Funzioni Crittografiche –
+  Conservazione delle Password" (prepared with the ACN) as guidelines under
+  art. 154-bis, comma 1, lett. a), of the Codice and Art. 57(1)(d) GDPR —
+  *regulator decision*
+- **authority:** Garante (IT) · **docket:** Registro dei provvedimenti
+  **n. 594** del 7 dicembre 2023, doc. web **9962283** · **decision_date:**
+  7 December 2023 · **published:** notice in Gazzetta Ufficiale, serie
+  generale, S.O. n. 15 of 19 January 2024 (as the page states)
+- **provision:** the decision's premises on the password as personal data, and
+  operative point 1(a)
+- **text_form:** **verbatim** (quoted fragments of the decision text, IT)
+- **text (IT, verbatim):**
+
+  > CONSIDERATO che la password costituisce un dato personale riferibile all’utente che l’ha impostata e la utilizza per l’accesso a un sistema informatico o un servizio online;
+
+  > CONSIDERATO che, allo stesso tempo, la password rappresenta una misura di sicurezza, essendo un elemento, appartenente alla categoria della conoscenza (qualcosa che solo l’utente conosce), su cui si basano le procedure di autenticazione informatica per l’accesso alla maggior parte dei sistemi informatici e dei servizi online […]
+
+  > 1) ai sensi dell’art. 154-bis, comma 1, lett. a), del Codice e dell’art. 57, par. 1, lett. d), del Regolamento, adotta le seguenti linee guida di indirizzo: a) le “Linee Guida Funzioni Crittografiche – Conservazione delle Password” , allegate al presente provvedimento, riguardanti misure di attuazione del principio di integrità e riservatezza e degli obblighi in materia di sicurezza del trattamento, di cui agli artt. 5, par. 1, lett. f), e 32 del Regolamento;
+- **official_url:**
+  https://www.garanteprivacy.it/home/docweb/-/docweb-display/docweb/9962283
+- **consulted:** the Garante's own docweb page (`https://www.garanteprivacy.it/home/docweb/-/docweb-display/docweb/9962283`), fetched with plain `curl` and a browser user agent (HTTP 200) to a file and read from the file on 2026-11-11 — **verification_grade:** `primary-fetched` for the decision text. **Stated in prose: the authority's own published decision was read.** The annexed ACN-Garante guideline PDF has its own entry, `acn-gpdp-linee-guida-conservazione-password-2023`; this entry's grade covers the decision text only. **UNREVIEWED: not reviewed by a human.**
+- **language_version:** Italian, the decision as published on docweb (a
+  decision is not amended; no later version is recorded)
+- **verified:** 2026-11-11
+- **legal_status:** `in force`
+- **notes:** The decision also records, among its premises, breach notifications involving "l’esfiltrazione di credenziali di autenticazione informatica" and users' habit of using "la stessa password (o una simile)" across systems. It concerns a controller's own stored credentials; cite it for what its text says and no further. Transcription note: the first premise reads "o un servizio online" in the page as fetched.
+
+### `acn-gpdp-linee-guida-conservazione-password-2023`
+
+- **instrument:** Agenzia per la Cybersicurezza Nazionale (ACN), "Linee Guida
+  Funzioni Crittografiche — Conservazione delle Password", dicembre 2023,
+  prepared "d'intesa con il Garante per la Protezione dei Dati Personali";
+  annexed to and adopted by `garante-linee-guida-password-2023-594` —
+  *guidance* (national, technical; not binding law). Kept on this page beside
+  the decision that adopts it.
+- **authority:** ACN (IT), with the Garante · **docket:** annex of Garante
+  provv. n. 594 del 7 dicembre 2023 (doc. web 9962283); attachment doc. web
+  9962384 · **decision_date:** the PDF's own version table: "1.0 07/12/2023
+  Prima pubblicazione"
+- **provision:** §2 "Password hashing", the paragraph on the data-breach
+  scenario (PDF p. 6)
+- **text_form:** **verbatim** (this one excerpt only, IT; PDF line breaks
+  joined)
+- **text (IT, verbatim):**
+
+  > Il principale scenario da tenere in considerazione è il data breach, ovvero l’incidente in cui trapela tutta o parte della lista contenente i digest di password salvati su un server. Una volta ottenuta la lista delle coppie utente-digest, l’attaccante può procedere per forza bruta, cioè calcolando l’hash di password casuali fino a trovare una corrispondenza, oppure può effettuare un attacco al dizionario [2]. Questo tipo di attacco sfrutta il fatto che, solitamente, gli utenti scelgono password banali o comunque parole di senso compiuto, per cui un malintenzionato potrebbe calcolare l’hash delle password più comuni fino a trovare una corrispondenza all’interno della lista trapelata.
+- **official_url:**
+  https://www.garanteprivacy.it/documents/10160/0/ACN-GPDP+Linee+Guida+Conservazione+Password.pdf/79535ac6-3e6d-4bcf-600f-220d9eddb6e6?version=1.1
+  (reached from the attachment link `/garante/document?ID=9962384` on the
+  decision page). The ACN-site copy: `not recorded` (not probed).
+- **consulted:** the PDF, fetched with `curl` from the Garante's own site on 2026-11-11 (HTTP 200, `application/pdf`), text extracted with macOS PDFKit (not OCR); the excerpt was checked against that extraction (whitespace- and quote-normalised) — **verification_grade:** `primary-fetched`. **UNREVIEWED: not reviewed by a human.**
+- **language_version:** Italian, **original** text, Versione 1.0 of 7 December
+  2023 as the PDF's version table states. The URL's `version=1.1` is the
+  Garante site's download version, not a document revision. No later version
+  is recorded.
+- **verified:** 2026-11-11
+- **legal_status:** `in force` as guidance adopted by provv. 594/2023 (the
+  decision calls it "linee guida di indirizzo"); not binding law.
+- **notes:** The guideline covers hashing functions, salt, pepper and algorithm parameters for a controller's own stored passwords. In the extracted text, the data-breach passage quoted above is the only treatment of a leaked list. Cite it for hashing guidance.
+
 ---
 
 ## Ingest requests (open)
@@ -368,7 +502,10 @@ which under `../_schema.md` reads as `not recorded — ingest pending`, never as
 - `../eu/eu-us-dpf-adequacy.md` — the adequacy decision the Latombe entries
   contest.
 - `../eu/gdpr.md` — `gdpr-art-6-1-f` (the basis LG München rejected) and
-  `gdpr-art-35-4` (the basis for the Garante DPIA list).
+  `gdpr-art-35-4` (the basis for the Garante DPIA list); `gdpr-art-2` and
+  `gdpr-art-6-4` beside `cjeu-c-180-21`.
+- `../eu/edpb-guidelines-03-2026.md` — a consultation draft of EDPB guidance
+  on web scraping for generative AI.
 - `../national/it-codice-privacy.md` — `it-codice-privacy-art-122`, the Italian
   provision the font/cookie question runs through.
 - `../eu/eprivacy-directive.md` — Art. 5(3) and the **separate** terminal-storage

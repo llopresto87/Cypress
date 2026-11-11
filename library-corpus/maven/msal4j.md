@@ -232,6 +232,13 @@ Two application classes split the surface:
 - For on-behalf-of with a persisted cache, upstream advises one cache per
   incoming access token (keyed by its hash) and an eviction policy, since each
   new incoming token creates a new cache entry.
+- **Internal retry.** The library retries an HTTP call once, after 1000 ms,
+  when the response is a server error (5xx) with no `Retry-After` header (read
+  from `DefaultRetryPolicy` in the source of one 1.x release, not run); with `Retry-After` present it does
+  not. The builder's `disableInternalRetries()` turns off "all internal retry
+  behavior, allowing customized retry behavior via your own implementation of"
+  `IHttpClient`. A stub or custom client that counts requests sees two on a
+  5xx by default, and a caller that adds its own retry multiplies them.
 - Timeouts on the built-in HTTP client are opt-in settings; set them so a
   stalled token service cannot hang the caller.
 
@@ -266,7 +273,7 @@ releases, recorded in the repository's `changelog.txt`.
 - Client credentials in MSAL Java: https://learn.microsoft.com/en-us/entra/msal/java/getting-started/client-credentials
 - Token cache serialization: https://learn.microsoft.com/en-us/entra/msal/java/advanced/msal-java-token-cache-serialization
 - API reference: https://learn.microsoft.com/en-us/java/api/com.microsoft.aad.msal4j
-- Source, wiki and changelog: https://github.com/AzureAD/microsoft-authentication-library-for-java
+- Source, wiki and changelog: https://github.com/AzureAD/microsoft-authentication-library-for-java (`DefaultRetryPolicy`, `AbstractApplicationBase`)
 - Client credentials flow (protocol): https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-client-creds-grant-flow
 - Certificate credentials: https://learn.microsoft.com/en-us/entra/identity-platform/certificate-credentials
 - ID token claims: https://learn.microsoft.com/en-us/entra/identity-platform/id-token-claims-reference

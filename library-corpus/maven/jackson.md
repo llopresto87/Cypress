@@ -107,6 +107,51 @@ current LTS lines.
 - **Unchecked on 3.** All Jackson 3 exceptions are `RuntimeException`s, so code
   that relied on the compiler to force handling of `IOException` loses that
   prompt.
+- **`JsonNode.stringValue()` throws on a node that is not a string** on the 3
+  line (the source's Javadoc: a `JsonNodeException` is thrown, JSON null
+  excepted, which returns null); the 2 line's `textValue()` returned null.
+  Guard with `isString()`, or use `stringValue(defaultValue)` or
+  `stringValueOpt()`; `asString()` coerces scalars and throws only on
+  structured nodes.
+- **The default mapper reads numbers as `Integer` (when the value fits) and
+  `Double`.** `DeserializationFeature.USE_LONG_FOR_INTS` and
+  `USE_BIG_DECIMAL_FOR_FLOATS` are both off by default. Where a stored value
+  must round-trip exactly (integers as `Long`, decimals as `BigDecimal` with the
+  scale of their text), use a second, private mapper with both enabled rather
+  than changing the shared one.
+- **Strict YAML on the 3 line** (observed in practice by probing a throwaway
+  program; the migration guide confirms only that `new ObjectMapper(new
+  YAMLFactory())` is no longer allowed and that format mappers are mandatory,
+  and says nothing on the points below). Build it as
+  `YAMLMapper.builder().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+  .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION).build()`:
+  `FAIL_ON_UNKNOWN_PROPERTIES` is off by default on 3, and duplicate keys
+  otherwise pass with the last one winning, while SnakeYAML-engine's own
+  duplicate-key setting did not reject them through the default mapper. A
+  second document (`---`) is rejected as a trailing token by default.
+  - Rejections carry a line and column (`getLocation()`: `getLineNr()`,
+    `getColumnNr()`), but for an unknown property bound to a record the
+    position is the end of the enclosing mapping, and for a duplicate key just
+    after the second key, not the start of either.
+  - The default YAML factory does not expand aliases: `b: *x` yields the anchor
+    name as a string and `<<` is read as a literal key, a silent wrong value
+    rather than a bomb. Reject documents with anchors if the format has no use
+    for them, or opt into `YAMLAnchorReplayingFactory`, which expands them and
+    stops a multiplicative chain with a `StreamConstraintsException`.
+  - Safe polymorphism without default typing: `@JsonTypeInfo(use = Id.NAME,
+    property = "type", visible = true)` on a sealed base plus a closed
+    `@JsonSubTypes` set; an unlisted id fails with `InvalidTypeIdException`
+    and loads no class. `!!java...` tags are not honoured (read as plain
+    strings). A version field is an ordinary property, dispatched in code.
+  - Size limits come from `snakeyaml-engine`'s `LoadSettings` (a code-point
+    limit of 3 MiB and 50 aliases for collections by default) via
+    `YAMLFactory.builder().loadSettings(...)`, and from
+    `StreamReadConstraints` (nesting depth 500). The 3 line's YAML module sits on
+    `snakeyaml-engine`, not on the SnakeYAML 2.x that a Boot BOM manages, so
+    2.x `LoaderOptions` snippets do not apply.
+  - `YAMLReadFeature.EMPTY_STRING_AS_NULL` is on for `YAMLMapper.builder()`
+    and off for a bare factory builder; with it on only an empty plain scalar
+    (`a:`) is null, while `''`, `""` and `~` stay strings.
 
 ## Testing
 - Freeze serialization: a test per wire type that serializes a fixed object and
@@ -198,6 +243,7 @@ parameter-name support are separate modules to register. Mutable
 - https://github.com/FasterXML/jackson
 - https://github.com/FasterXML/jackson-databind
 - https://github.com/FasterXML/jackson-databind/wiki/Deserialization-Features
+- https://github.com/FasterXML/jackson-databind (3.x branch: `JsonNode`, `DeserializationFeature` Javadoc in source)
 - https://github.com/FasterXML/jackson/blob/main/jackson3/MIGRATING_TO_JACKSON_3.md
 - https://github.com/FasterXML/jackson/wiki/Jackson-Polymorphic-Deserialization-CVE-Criteria
 - The Spring blog post "Introducing Jackson 3 support in Spring" (https://spring.io/blog)

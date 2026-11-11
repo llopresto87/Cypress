@@ -37,6 +37,7 @@ A stdlib Python seed tool, `tools/source-index.py`, placed in every plant as `do
   - Test class from the plant's `TEST_GLOBS` in `docs/graph/spec-lint.py`; an optional plant config `docs/graph/source-index.json` holding `exclude` (out of the test class), `always_run` and `global_inputs`, with seed defaults; a file may be both a test and a tool.
   - One walk and queries `impact`, `affected-tests` (default depth 3, cap 5), `anchors`, plus `build`; the floor listed apart; text and `--json`; the `incomplete` list with per-query actions.
   - A derived cache at `.cypress/source-index/` with an inner `.gitignore` of `*`, keyed as ADR-0029 decides (schema; the Python major.minor; digests of the tool and every sibling it loads; digest of the config and `TEST_GLOBS`; each governed repository's HEAD and uncommitted-code digest), written atomically.
+  - Stack readers (the owner decided on 2026-11-11 to port a plant's language readers into the seed's index, and amended this spec's earlier "never other languages"): a reader is a stack-keyed module added on its own, `tools/source_readers.py`, which `source-index.py` loads by file path from beside itself and the installer places there. The readers that ship are Java, Thymeleaf templates, YAML (with Compose), SQL, Dockerfile and nginx (§6 "Stack readers"). A language with no reader stays in `UNREAD_LANGUAGES` and answers `language-not-read`; the next reader is a new module or a new section of that one, on the owner's decision.
   - Slice 2 (owner, 2026-10-07: "slice 2 ok"):
     - Definitions, built with the links into the cache, and the query `symbols`: Python functions, classes, module and class assignments and `type` aliases read by `ast` (`certain`); shell functions and top-level or exported TS/JS declarations read a line at a time after comments are blanked (`maybe`, reason `line-reading`); every definition of a name listed; a file the index could not read makes the answer incomplete.
     - Git change history as an opt-in link source for `impact` and `affected-tests` (`--history`): read per query from `git log` and never cached; its rows are `maybe`, labelled `history`, with how often each file changed together with an input, and listed apart; history only adds files no other list holds; shallow or missing history makes the answer incomplete.
@@ -54,11 +55,11 @@ A stdlib Python seed tool, `tools/source-index.py`, placed in every plant as `do
     - A build hint for each pattern the plant config sets that matches no inventory file, with its fix (owner, 2026-10-07, plan §12 question 14; `BUILD_HINTS_CONFIG_PATTERNS_THAT_MATCH_NOTHING`).
     - `CACHE_MAX_BYTES` raised from 64 MiB to 196 MiB (owner, 2026-10-07).
 - **Out of scope:**
-  - Later work, not slice 2: who references a name (a call graph stays out, below); TS/JS class members and indented declarations that are not exported (function locals), definitions inside shell here-documents and strings, and definitions in other languages; history across renames (`git log --follow`), history as a walk step, and a cached history; a text inventory view (`build --json` carries the inventory).
+  - Later work, not slice 2: who references a name (a call graph stays out, below); TS/JS class members and indented declarations that are not exported (function locals), definitions inside shell here-documents and strings, and definitions in a language with no reader (§6 "Stack readers" lists those with one); history across renames (`git log --follow`), history as a walk step, and a cached history; a text inventory view (`build --json` carries the inventory).
   - A separate later spec: read deduplication, symbol excerpts and context pointers (overlaps adr-0010).
   - This slice: commands written in host settings files, such as a hook entry in `.claude/settings.json` (`"command": "python3 \".../.claude/route-hook.py\""`). A `json` file is a link target only (§6 "Inventory record"), so such a hook script has no dependent in any answer. Reading them needs one parser per host settings shape, and links come from code by one rule; a later slice may add host settings readers (measurement D3, grill §10).
   - 8.1.2: a seed-placed card or catalog row in a plant's `docs/graph/tools/`, which stays the catalog the plant's toolcraft keeps (ADR-0030); a growth-audit verdict on a report line; an install or graft that fails, stops or asks because of the build; a flag to skip the build; seed skills for the other placed tools; any write of the plant config or of `TEST_GLOBS` by a tool; any edit of a plant's `repo:` values by a tool, which graft authors make with understanding. A config key that narrows the inventory itself (for example `inventory_exclude`) is slice-3 work (owner, 2026-10-07, plan §12 question 13), recorded and not specified here.
-  - Never: tree-sitter, SQLite, a daemon, MCP, a CodeGraph integration, Svelte, Vue or other languages, a call graph, per-prompt hook use (ADR-0018), any automatic tier decision, test omission or knowledge rewrite.
+  - Never: tree-sitter, SQLite, a daemon, MCP, a CodeGraph integration, Svelte, Vue, a language reader that is not its own stack-keyed module, a call graph, per-prompt hook use (ADR-0018), any automatic tier decision, test omission or knowledge rewrite.
 
 ## 3. User-facing behavior
 
@@ -655,6 +656,118 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
   test's text, so no list of the answer may read as the tests that reach the
   input
 
+### Stack readers
+
+Fixtures are synthetic Git plants whose files are invented; the tool reads
+each as a stack reader (§6 "Stack readers") and a reference that names no
+inventory file records nothing.
+
+### Contract: JAVA_IMPORTS_AND_SAME_PACKAGE_REFERENCES_ARE_LINKS
+- **Given:** a plant of `.java` files under `src/main/java` and
+  `src/test/java`: a type imported from a package in the inventory, a static
+  import of a member, a wildcard import of a package with a subpackage, a type
+  that two files of different modules both end in, a JDK and a library import,
+  a type a body names that is a file of its own package, and a name that
+  appears only in a `//` comment, a `/* */` comment (one never closed), a
+  string literal, a char literal and a text block holding an escaped `"""`
+- **When:** `build --json` runs, then `affected-tests` over the imported type
+  at the default depth and at `--depth 1`
+- **Then:** each in-inventory type import is a `certain` `resolved` link on the
+  import's line, from any source root; the static import links the class file;
+  the ambiguous import is a `maybe` `ambiguous` link to each candidate; the
+  wildcard import is a `maybe` `directory` link to each file directly in the
+  package, none in its subpackage; a same-package name is a `maybe`
+  `same-package` link; the JDK and library imports make no link and no
+  `unresolved` record; a name in a comment, a string, a char literal or a text
+  block makes no link and the code after it is still read, an unclosed comment
+  blanks to the end of the file without an `opaque` record; and the answer
+  lists the Java test that imports the type, the one in its package, and the
+  one reached through a dependent only within the depth
+
+### Contract: SYMBOLS_READ_JAVA_TYPES_AND_SQL_CREATE_STATEMENTS_AS_MAYBE
+- **Given:** a Java file with a class holding a nested class and a nested enum,
+  an interface, a record and an annotation type, and SQL migrations holding
+  `CREATE SCHEMA`, `FUNCTION` (also `OR REPLACE`), `CONSTRAINT TRIGGER`,
+  `TABLE`, `UNIQUE INDEX` and `TRIGGER` statements
+- **When:** `symbols` runs over their names, and `build --json` runs
+- **Then:** each Java type is one `maybe` definition found `line-reading`
+  (a nested one qualified by its enclosing types), each SQL name one `maybe`
+  definition on its statement's line (schema-qualified names whole, a bare
+  name also by its last segment), and the SQL file is language `sql` with no
+  outbound link
+
+### Contract: THYMELEAF_FRAGMENTS_AND_VIEW_NAMES_ARE_LINKS
+- **Given:** `.html` files under `src/main/resources/templates/` whose
+  `th:replace`, `th:insert` and `th:include` expressions name fragments of
+  other templates (and one of the template itself), a Java file whose strings
+  name templates (one with `:: fragment`) and one that names none, and an
+  `.html` file under a `templates/` directory outside `resources`
+- **When:** `build --json` runs
+- **Then:** each named template is a `certain` `exact` `import` link from the
+  page, a fragment of the page itself makes no link or record, a Java string
+  that names a template is a `maybe` `view-name` link, and the `.html` file
+  outside `*/resources/templates/` is language `other` and neither holds nor
+  receives such links
+
+### Contract: YAML_AND_COMPOSE_PATHS_ARE_LINKS
+- **Given:** a Compose file with `build:` and `build: context:` keys, a
+  bind-mounted file and directory, a named volume, an `image:` tag, a
+  `configtree:` scalar, a quoted `file:` secret whose name holds ` #`, a
+  secret whose host file is not committed and a path inside a comment, and a
+  Spring-style file whose `classpath:` scalar names a resources directory
+- **When:** `build --json` runs
+- **Then:** the context's `Dockerfile` is a `certain` `exact` link, the mounted
+  file is `certain` and each file of the mounted directory a `maybe`
+  `directory` link, the quoted secret with its ` #` is linked whole, each file
+  of the classpath directory is a `maybe` link; the named volume, the image
+  tag, the scheme-led scalar, the uncommitted secret, the comment and a
+  scalar naming no inventory path make no link and no `unresolved` record
+
+### Contract: CLASSPATH_RESOURCES_NAMED_IN_JAVA_ARE_LINKS
+- **Given:** a test-side Java file whose strings name resources (`/a/x.yaml`,
+  `db/x.sql`) and a directory by its repository path, resources under
+  `src/main/resources` and `src/test/resources`, a test that uses the file, an
+  unrelated test, a web class holding the route string `"/orders"` beside an
+  `orders` package directory, a YAML fixture, a test template and a Python test
+  with no edge to code
+- **When:** `build --json` runs, then `affected-tests` over the YAML fixture and
+  over a main-side class
+- **Then:** each resource name is a `maybe` link to the file under a resources
+  root, the directory string a `maybe` `directory` link to its files, the route
+  string links nothing beside it; the answer for the fixture lists the test
+  that loads it and not the unrelated one; and `always_run` holds the Python
+  test as `no-code-edge`, neither the YAML fixture nor the template
+
+### Contract: DOCKERFILE_COPY_SOURCES_ARE_LINKS
+- **Given:** a `Dockerfile` with `COPY` sources that are files and
+  directories (one directory of more than `DIR_LINK_MAX` files), a
+  `COPY --from=<stage>`, a glob, a variable, a URL `ADD` and a destination
+- **When:** `build --json` runs
+- **Then:** the file source is `certain` `exact`, each file below a directory
+  source a `maybe` `directory` link with no `walks-tree` record however many
+  there are, and the stage, glob, variable, URL and destination name no file
+  and make no record
+
+### Contract: NGINX_INCLUDES_MAP_THROUGH_COMPOSE_MOUNTS
+- **Given:** a Compose file mounting `./deploy/nginx/snippets` at
+  `/etc/nginx/snippets`, nginx files (`.conf`, `.conf.template`) under
+  `deploy/nginx/` one of which includes a file by its container path, and
+  includes of an image file, a `conf.d/*.conf` glob and a secrets path
+- **When:** `build --json` runs
+- **Then:** those files are language `nginx`, the mounted include is a `maybe`
+  link to the host file, and the unmapped includes make no link and no record
+
+### Contract: STACK_READERS_LEAVE_THE_EARLIER_LANGUAGES_UNCHANGED
+- **Given:** Python, shell and TypeScript files that link one another, a Java
+  file, a Kotlin file, an `.html` file outside a templates root and a YAML file
+  naming no path
+- **When:** `build --json` and `impact` over the Java and over the Kotlin file
+  run
+- **Then:** the Python, shell and TypeScript links are as without the readers,
+  the Java answer holds no `language-not-read` record, the Kotlin answer holds
+  one naming `kotlin`, and the `.html` file is `other` and the YAML file `yaml`,
+  each with no link
+
 ### Anchors
 
 ### Contract: ANCHORS_NAME_CITING_PAGES_OR_UNCITED
@@ -702,9 +815,9 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
 ### Contract: SOURCE_INDEX_IS_PLACED
 - **Given:** a fresh target directory
 - **When:** `install.sh all --project-dir <target>` runs
-- **Then:** `docs/graph/source-index.py`, `docs/graph/source_paths.py` and
-  `docs/graph/plant_walk.py` exist, each byte-identical to its seed source in
-  `tools/`
+- **Then:** `docs/graph/source-index.py`, `docs/graph/source_paths.py`,
+  `docs/graph/plant_walk.py` and `docs/graph/source_readers.py` exist, each
+  byte-identical to its seed source in `tools/`
 - **And:** `docs/graph/source-index.json` does not exist, because only the
   plant writes its config; the cache is the one the installer's own run of
   the placed tool writes (INSTALL_RUNS_THE_BUILD), never a file the installer
@@ -1326,7 +1439,7 @@ constants:
   CACHE_IGNORE: "*\n"            # the inner .gitignore, byte for byte
   CONFIG_PATH: "docs/graph/source-index.json"
   TEST_DECLARATION: "docs/graph/spec-lint.py: TEST_GLOBS"
-  SIBLINGS: ["source_paths.py", "plant_walk.py", "frontmatter.py"]   # loaded by file path; digested in the key
+  SIBLINGS: ["source_paths.py", "plant_walk.py", "frontmatter.py", "source_readers.py"]   # loaded by file path; digested in the key
   TEST_SKIP_DIRS: fallback       # spec-lint's SKIP_DIRS, read from the placed spec-lint.py; this copy only when absent (§6 "Plant test declaration")
   NOT_CODE, NOISE_DIR, NOISE_NAME, GIT_LOCATORS, GIT_TIMEOUT: helper   # moved from code-anchor.py, unchanged
   DIR_FD_CALLS: helper           # moved from code-anchor.py, with `mkdir` added: {open, stat, unlink, rename, mkdir}
@@ -1341,7 +1454,7 @@ constants:
   RECOMMEND_LINE: "Recommendation only: the tests above and the always-run set, never only these; verify decides what runs."
   HISTORY_LINE: "History: {n} maybe row(s), files that changed together with an input (--history):"
   MOVED_NONE_LINE: "Moved: no code moved since the code anchor."
-  UNDEFINED_LINE: "{name}: no definition (read: Python definitions, shell functions, TS/JS declarations; not read: {not_read}, which are not code)"   # {not_read}: NOT_CODE joined by ", "
+  UNDEFINED_LINE: "{name}: no definition (read: Python definitions, shell functions, TS/JS declarations, Java types, SQL CREATE statements; not read: {not_read}, which are not code)"   # {not_read}: NOT_CODE joined by ", "
   ACTION_LINE:                   # the closing text line of an incomplete answer; {reasons}: `<reason>: <subject>` of each record in `incomplete` order, joined by ", ", at most TEXT_MAX_ROWS of them in the text view (then ACTION_MORE; --all lifts the cap)
     build: "Incomplete: {n} setup item(s) above, each with its fix ({reasons})."   # {n}: the count of every `incomplete` record, cut list or not
     impact: "Incomplete: check by hand ({reasons})."
@@ -1494,8 +1607,9 @@ inventory_record:
   repo:     { type: string, governed repository path, "." for the root }
   hash:     { type: string, git blob sha1 of the content; a symlink hashes its link text;
               "" for a path `content_state` cannot hash (a FIFO, a socket, a failed open) }
-  language: { enum: [python, shell, typescript, javascript, json, other] }
-            # by extension: .py; .sh .bash; .ts .tsx .mts .cts; .js .jsx .mjs .cjs; .json;
+  language: { enum: [python, shell, typescript, javascript, json, java, thymeleaf, yaml, sql, dockerfile, nginx, other] }
+            # by extension: .py; .sh .bash; .ts .tsx .mts .cts; .js .jsx .mjs .cjs; .json; .java; .yml .yaml; .sql;
+            # by place or name (§6 "Stack readers"): thymeleaf, dockerfile, nginx;
             # an extensionless file by its shebang (python*, bash, sh); else other
   test:     { enum: [test, code] }
 ```
@@ -1510,8 +1624,9 @@ stays `templates/knowledge-graph/spec-lint.py`: patterns are `pathlib` globs
 from the plant root, and files under a `SKIP_DIRS` directory (today `.git`,
 `node_modules`, `.venv`, `venv`, `__pycache__`, `dist`, `build`, `target`,
 `.next`) or under the specs directory are never tests. Links are read from
-`python`, `shell`, `typescript` and `javascript` files; `json` and `other`
-files are targets only. A repository whose Git listing fails or times out is
+`python`, `shell`, `typescript`, `javascript` and each stack reader's language
+(`java`, `thymeleaf`, `yaml`, `dockerfile`, `nginx`; a `sql` file defines names
+and links nothing); `json` and `other` files are targets only. A repository whose Git listing fails or times out is
 left out of the inventory with a `repository-unreadable` record naming it;
 every other repository is inventoried and answers (§7
 `REPOSITORY_UNREADABLE`).
@@ -1525,7 +1640,8 @@ link:                          # the holder depends on the target
   kind:   { enum: [import, invoke, path-literal] }   # a `directory` link's kind is `path-literal`
   link:   { enum: [certain, maybe] }
   found:  { enum: [exact, resolved,                                   # certain
-                   path-literal, directory, ambiguous, workspace-package] }  # maybe: the reason
+                   path-literal, directory, ambiguous, workspace-package,
+                   same-package, view-name] }  # maybe: the reason (the last two are the Java reader's)
                    # `named` is never stored: it is the walk's step through an unresolved record
   line:   { type: int, 1-based line of the reference in the holder }
 opaque:                        # a holder whose reference may name any file
@@ -1764,6 +1880,52 @@ plant-relative inventory paths of any governed repository):
 - The config reader is JSONC: `//` and `/* */` comments and trailing commas
   are removed outside string literals, so `"@/*"` survives.
 
+### Stack readers
+
+`tools/source_readers.py` holds one reader per stack. `source-index.py`
+loads it by file path beside itself (`SIBLINGS`, so its bytes are in the
+cache key), hands it the helpers it shares (`joined`, `inside`, `glob_regex`,
+`SCHEME_LED`, `LITERAL_MAX`, `DIR_LINK_MAX`) through `bind`, and mixes its
+`StackReaders` into the extractor, which calls each reader through the one
+dispatch of `run`. A reader records only what names an inventory file, with the
+extractor's `link`, `define`, `opaque_at` and `missing`; an unreadable file
+makes no link from its content, as in every other language.
+
+- **Java** (`.java`): comments, string, text-block and char literals are
+  blanked with every newline kept. `import a.b.C` links the one inventory file
+  ending `a/b/C.java` (`resolved`), several (`ambiguous`), a nested type its
+  outer file, a static import's member dropped first; `import a.b.*` each
+  `.java` file directly in a directory ending in the package path
+  (`directory`, over `DIR_LINK_MAX` one `walks-tree` record); an import naming no
+  file records nothing. A capitalised name in the body that is not a single-type
+  import and names a file of the same package, across source roots, is a
+  `same-package` link (the default package is one per directory). A string
+  naming a template (`orders/list`, with or without `:: fragment`) under a
+  templates root is a `view-name` link, a string read as a path literal unless
+  it starts with `/`, and as a classpath resource name.
+- **Classpath resources**: a name (`/x/y.yaml`, `db/z.sql`, `classpath:db/m`)
+  links the file, or each file of the directory, under each `src/<set>/resources`
+  root, `maybe`.
+- **Thymeleaf**: an `.html` file under `*/resources/templates/`; each
+  `~{name :: frag}` or `~{name}` in a `th:replace`, `th:insert` or `th:include`
+  names `<root>/name.html`, `exact` when held, else `unresolved`; `this` names
+  none.
+- **YAML**: keys tracked by indentation, `#` comments cut outside quotes. In a
+  Compose file (`compose*.yml|yaml`, `docker-compose*`): `build:` and
+  `build: context:` name `<context>/Dockerfile`, a service `volumes:` item
+  `./src:/dst` is a bind mount linked and kept for nginx, a top-level
+  `secrets: <name>: file:` names its file. A `classpath:` scalar (comma
+  separated) is read as a classpath name; another scheme-led scalar names no
+  file; every other scalar is read as a quoted path literal.
+- **SQL** (`.sql`): definitions only (above); no outbound link.
+- **Dockerfile** (a file named `Dockerfile`): each `COPY` and `ADD` source,
+  continuation lines joined, relative to the file's directory: a file
+  (`exact`) or each file below a directory (`directory`, never capped); a
+  `--from` copy, glob, variable or URL names no file.
+- **nginx** (`.conf` and `.conf.template` under an `nginx/` directory): an
+  absolute `include` path under a Compose bind mount's container path links the
+  mapped host file (a glob, each matching file in its directory), `maybe`.
+
 ### Definitions
 
 ```yaml
@@ -1824,6 +1986,7 @@ symbol:                        # one definition, read at build with the links (s
   states that scope in `not_read` and in `UNDEFINED_LINE`, read from
   `NOT_CODE`, never a copy; it reads no file there and adds no `incomplete`
   record, because the answer is complete for the code it names.
+- Java type names (class, interface, enum, record and `@interface`, a nested one qualified by the enclosing types) and SQL `CREATE SCHEMA|TABLE|FUNCTION|INDEX|TRIGGER` names are read a line at a time (`maybe`, found `line-reading`; kinds `class`, `type`, `function`, `variable`), after comments and literals are blanked in Java. A `json` or `other` file holds no definitions.
 - `json` and `other` files hold no definitions. A link-bearing file with an
   `opaque` `unreadable` record has none either; `symbols` names it in an
   `unreadable-file` record (§6 "Incomplete").
@@ -1997,7 +2160,9 @@ opaque holder (depth 1).
   `declared`, the rule the plant wrote; then `floor`, the floor rows of test
   class `test`. Each test is listed once, in the first of the three lists that
   takes it, so a test in `json` or `other` (a fixture) is never always-run by
-  `no-code-edge`, only by `declared`.
+  `no-code-edge`, only by `declared`. The languages a test is run in are
+`RUNNABLE` (Python, shell, TS/JS and Java): a YAML or SQL test fixture or a
+test template is data, link-bearing but never always-run by `no-code-edge`.
 - `anchors`: the citation join below; it does not walk links.
 - With `--history`, `impact` and `affected-tests` add the `history` list of
   §6 "History links" after the input rows; no other list changes.
@@ -2026,7 +2191,7 @@ incomplete_record:
 | `outside-plant` | an input outside the plant root | the input | all |
 | `ambiguous-input` | a repository-relative input several repositories hold | the input | all |
 | `input-not-found` | an input no rule of "Inputs" takes | the input | impact, affected-tests |
-| `language-not-read` | a walked input of a language in `UNREAD_LANGUAGES` (inventoried as `other`; Go, Java, C#, Ruby, Rust and the like), whose own imports the tool does not read | the input (the language is the detail) | impact, affected-tests |
+| `language-not-read` | a walked input of a language in `UNREAD_LANGUAGES` (inventoried as `other`; Go, Kotlin, C#, Ruby, Rust and the like; Java and SQL are read, §6 "Stack readers"), whose own imports the tool does not read | the input (the language is the detail) | impact, affected-tests |
 | `reached-over-http` | a test holding an `opaque` `reached-over-http` record, in a repository that holds a walked `code` input | that test (its reference is the detail) | affected-tests |
 | `depth-cap` | a file the input part reaches at `--depth` has a dependent neither part lists | that file at the cut depth (`f4.py` for `f1.py`, `--depth 3` over `f1` to `f5`), one record each | impact, affected-tests |
 | `no-test-declaration` | `TEST_GLOBS` absent, unparsable or not a list of strings | `docs/graph/spec-lint.py` | affected-tests, build |
@@ -2127,6 +2292,7 @@ row:
   from:  string|null                          # the nearer file; null at depth 0 and for an opaque holder
   kind:  { enum: [import, invoke, path-literal, opaque, history], or null at depth 0 }
   found: { enum: [exact, resolved, path-literal, directory, ambiguous, workspace-package,   # a link's found
+                   same-package, view-name,                                               # the Java reader's maybe reasons
                    named, history,                                                        # a walk step; a history row
                    dynamic-nonliteral, walks-tree, unreadable, alias-config-unavailable,  # an opaque reason
                    unmapped-specifier, reached-over-http],
@@ -3407,6 +3573,14 @@ and §6 now state each:
 | INPUT_FORMS_RESOLVED | X441 case_input_forms | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | WALK_INCOMPLETE_NAMES_REASON_AND_ACTION | X442 case_walk_incomplete: arms (a) to (h), one per reason the contract lists | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | INPUT_IN_AN_UNREAD_LANGUAGE_IS_INCOMPLETE | X481 case_unread_language: a Go input, `impact` and `affected-tests`; a Python input not | tests/test-source-index.sh | integration (synthetic Git plant) | green |
+| JAVA_IMPORTS_AND_SAME_PACKAGE_REFERENCES_ARE_LINKS | X960 case_java_links: type, static, wildcard, ambiguous, JDK and library imports; same-package names; comment, literal and text-block blanking; Java tests through `affected-tests` at two depths | tests/test-source-index.sh | integration (synthetic Git plant); red on arrival (every `.java`, `.yaml`, `Dockerfile` and nginx file was language `other`) | green |
+| SYMBOLS_READ_JAVA_TYPES_AND_SQL_CREATE_STATEMENTS_AS_MAYBE | X961 case_java_sql_symbols: nested and annotation Java types, each SQL `CREATE` form, a migration with no outbound link | tests/test-source-index.sh | integration (synthetic Git plant); red on arrival (every `.java`, `.yaml`, `Dockerfile` and nginx file was language `other`) | green |
+| THYMELEAF_FRAGMENTS_AND_VIEW_NAMES_ARE_LINKS | X962 case_thymeleaf: `th:` fragments, Java view names, an `.html` file outside `resources/templates` | tests/test-source-index.sh | integration (synthetic Git plant); red on arrival (every `.java`, `.yaml`, `Dockerfile` and nginx file was language `other`) | green |
+| YAML_AND_COMPOSE_PATHS_ARE_LINKS | X963 case_yaml_compose: build context, bind mounts, secrets with a quoted `#`, `classpath:` locations, the scalars that name nothing | tests/test-source-index.sh | integration (synthetic Git plant); red on arrival (every `.java`, `.yaml`, `Dockerfile` and nginx file was language `other`) | green |
+| CLASSPATH_RESOURCES_NAMED_IN_JAVA_ARE_LINKS | X964 case_classpath_resources: resource names, a directory string, a route string, `affected-tests` of a fixture, `always_run` and `RUNNABLE` | tests/test-source-index.sh | integration (synthetic Git plant); red on arrival (every `.java`, `.yaml`, `Dockerfile` and nginx file was language `other`) | green |
+| DOCKERFILE_COPY_SOURCES_ARE_LINKS | X965 case_dockerfile: files, a directory over `DIR_LINK_MAX`, stage, glob, variable and URL sources | tests/test-source-index.sh | integration (synthetic Git plant); red on arrival (every `.java`, `.yaml`, `Dockerfile` and nginx file was language `other`) | green |
+| NGINX_INCLUDES_MAP_THROUGH_COMPOSE_MOUNTS | X966 case_nginx: a mounted include, an image file, a glob and a secrets path | tests/test-source-index.sh | integration (synthetic Git plant); red on arrival (every `.java`, `.yaml`, `Dockerfile` and nginx file was language `other`) | green |
+| STACK_READERS_LEAVE_THE_EARLIER_LANGUAGES_UNCHANGED | X967 case_stack_guard: the earlier links as before, Java read, Kotlin `language-not-read` | tests/test-source-index.sh | integration (synthetic Git plant); red on arrival (every `.java`, `.yaml`, `Dockerfile` and nginx file was language `other`) | green |
 | AFFECTED_TESTS_ARE_THE_WALK_FILTERED | X443 case_affected_tests_filtered: certain rows first, then a maybe row | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | AFFECTED_ALWAYS_RUN_LISTED_APART | X444 case_affected_always_run: the opaque test in `floor`, the JSON and Markdown fixtures in no list | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | TEST_REACHING_CODE_OVER_HTTP_IS_INCOMPLETE | X482 case_over_http: a loopback-URL end-to-end test, `affected-tests` and `build` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
@@ -3615,3 +3789,17 @@ flagged assumption in grill.md §12. Sign-off keeps the status `draft`;
   with them. Added SEED_PLACED_FILES_ARE_NOT_THE_PLANTS_CODE (X519, seen red
   first). The design is a list of exact placed paths, because the stamp does not
   enumerate placed paths and a directory prefix would hide plant-authored files.
+- 2026-11-11 — stack readers. The owner decided on 2026-11-11 to port into the
+  seed's source index the language readers a plant had grown for its own stack,
+  and amended this spec's "never other languages": a reader is a stack-keyed
+  module, and the readers that ship are Java, Thymeleaf templates, YAML (with
+  Compose), SQL, Dockerfile and nginx, in `tools/source_readers.py`, placed
+  beside the tool and digested in the cache key. `.java` and `.sql` leave
+  `UNREAD_LANGUAGES` because they are read now; `language-not-read` stays for
+  every other unread language. Added the contracts under §4 "Stack readers"
+  (eight, each case X960 to X967 seen red first on a synthetic plant and green
+  in the one increment that added the module), §6 "Stack readers", the new
+  `language` values `java`, `thymeleaf`, `yaml`, `sql`, `dockerfile`, `nginx`,
+  the `found` values `same-package` and `view-name`, `RUNNABLE`, and the
+  `UNDEFINED_LINE` text, which names the Java and SQL definitions it now reads.
+  §2 and §10 follow.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPEC-0007 source index: tools/source-index.py (X425-X467, X470, X481, X482, X483).
+# SPEC-0007 source index: tools/source-index.py (X425-X467, X470, X481, X482, X483, X960-X967).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -31,6 +31,7 @@ TOOL = SEED / "tools" / "source-index.py"
 # The files install.sh places beside the tool, each loaded by file path.
 SIBLINGS = {"source_paths.py": SEED / "tools" / "source_paths.py",
             "plant_walk.py": SEED / "tools" / "plant_walk.py",
+            "source_readers.py": SEED / "tools" / "source_readers.py",
             "frontmatter.py": SEED / "templates" / "knowledge-graph" / "frontmatter.py"}
 ONLY = {s.strip() for s in os.environ.get("SOURCE_INDEX_ONLY", "").split(",") if s.strip()}
 os.umask(0o022)
@@ -1791,7 +1792,7 @@ def x456(base):
 CODE_ANCHOR = SEED / "tools" / "code-anchor.py"
 MOVED_NONE_LINE = "Moved: no code moved since the code anchor."
 NOT_READ = ["docs/graph/", ".cypress/"]          # source_paths.NOT_CODE, in its order
-UNDEFINED_LINE = ("{name}: no definition (read: Python definitions, shell functions, TS/JS declarations; "
+UNDEFINED_LINE = ("{name}: no definition (read: Python definitions, shell functions, TS/JS declarations, Java types, SQL CREATE statements; "
                   "not read: {not_read}, which are not code)")
 
 
@@ -2894,6 +2895,465 @@ def x484(base):
     where = [p_ for p_ in json.dumps(sym).split('"') if p_.startswith((".claude/", ".prime/")) and p_ not in mine]
     check(not where, f"symbols found definitions in placed files {where[:5]}")
     return "five hosts installed: the inventory is the plant's files and its own files under host directories, impact and symbols agree"
+
+
+# --- stack readers: Java, Thymeleaf, YAML/Compose, SQL, Dockerfile, nginx -----------
+# tools/source_readers.py holds them; each case drives the placed tool over a
+# synthetic plant. The fixture code is invented and names no real project.
+JMAIN, JTEST = "src/main/java/", "src/test/java/"
+JRES, JTRES = "src/main/resources/", "src/test/resources/"
+JTPL = JRES + "templates/"
+SRC_TESTS = ("src/test/**/*.*", "tests/**/*.*")
+
+
+def jv(package, body, imports=()):
+    """Synthetic Java: `package`, one line per import, a blank line, `body`
+    (the first import is on line 3, the body begins on line 4 + the imports)."""
+    return f"package {package};\n\n" + "".join(f"import {i};\n" for i in imports) + "\n" + body
+
+
+def targets_of(doc, holder):
+    return sorted(l.get("target") for l in links_of(doc, holder))
+
+
+def link_to(doc, holder, target):
+    return [l for l in links_of(doc, holder) if l.get("target") == target]
+
+
+def want_link(problems, arm, doc, holder, target, link, found=None, kind=None, line=None):
+    got = link_to(doc, holder, target)
+    if not got:
+        problems.append(f"{arm}: no link {holder} -> {target}; the holder's links: {link_set(doc, holder)!r}")
+        return
+    bad = [l for l in got if l.get("link") != link or (found and l.get("found") != found)
+           or (kind and l.get("kind") != kind) or (line and l.get("line") != line)]
+    if bad:
+        problems.append(f"{arm}: {holder} -> {target} is not ({link}, {found}, {kind}, {line}): {bad!r}")
+
+
+def want_none(problems, arm, doc, holder, target, why):
+    if link_to(doc, holder, target):
+        problems.append(f"{arm}: {holder} -> {target} must not link ({why}): {link_to(doc, holder, target)!r}")
+
+
+def language_in(doc, path):
+    return {r["path"]: r for r in doc.get("inventory", [])}.get(path, {}).get("language")
+
+
+@case("X960", "JAVA_IMPORTS_AND_SAME_PACKAGE_REFERENCES_ARE_LINKS; failure JAVA_TEXT_BLANKED_BEFORE_READING")
+def x960(base):
+    """Java is a read language: an import of a type in the inventory is a
+    link (certain when one file matches, maybe `ambiguous` when several do, a
+    wildcard one link to each file of the package directory), a capitalised
+    name a body uses that names a file of its own package is a `maybe`
+    `same-package` link, a comment or a literal makes none, and a JDK or
+    library import makes no link and no unresolved record."""
+    problems = []
+    files = {
+        JMAIN + "app/core/Core.java": jv("app.core", "public class Core {}\n"),
+        JMAIN + "app/core/Util.java": jv("app.core", "public class Util { public static int m() { return 1; } }\n"),
+        JMAIN + "app/core/sub/Deep.java": jv("app.core.sub", "public class Deep {}\n"),
+        JMAIN + "app/use/Uses.java": jv("app.use", "class Uses { Core c; List<String> l; }\n",
+                                         imports=["app.core.Core", "java.util.List", "org.lib.Service",
+                                                  "static org.lib.Assertions.check"]),
+        JMAIN + "app/use/UsesStatic.java": jv("app.use", "class UsesStatic { int v = m(); }\n",
+                                              imports=["static app.core.Util.m"]),
+        JMAIN + "app/use/UsesAll.java": jv("app.use", "class UsesAll { Core c; Util u; }\n", imports=["app.core.*"]),
+        JTEST + "app/use/UsesTest.java": jv("app.use", "class UsesTest { Core c; }\n", imports=["app.core.Core"]),
+        "lib/src/app/ext/Ext.java": jv("app.ext", "public class Ext {}\n"),
+        JMAIN + "app/use/UsesExt.java": jv("app.use", "class UsesExt { Ext e; }\n", imports=["app.ext.Ext"]),
+        "one/" + JMAIN + "app/dup/Dup.java": jv("app.dup", "public class Dup {}\n"),
+        "two/" + JMAIN + "app/dup/Dup.java": jv("app.dup", "public class Dup {}\n"),
+        JMAIN + "app/use/UsesDup.java": jv("app.use", "class UsesDup { Dup d; }\n", imports=["app.dup.Dup"]),
+        JMAIN + "app/pkg/Helper.java": jv("app.pkg", "class Helper {}\n"),
+        JMAIN + "app/pkg/Other.java": jv("app.pkg", "class Other {}\n"),
+        JMAIN + "app/pkg/Peer.java": jv("app.pkg", "class Peer {\n    Helper h = new Helper();\n}\n"),
+        JMAIN + "app/elsewhere/Helperish.java": jv("app.elsewhere", "class Helperish {}\n"),
+        JMAIN + "app/pkg/Quiet.java": jv("app.pkg", ('class Quiet {\n    // see Other\n    /* see\n       Other */\n'
+                                                      '    String s = "Other";\n    char q = \'"\'; Helper h;\n'
+                                                      '    String t = """\n        a \\""" still in the block Other\n'
+                                                      '        """;\n}\n')),
+        JMAIN + "app/pkg/Open.java": jv("app.pkg", "class Open { Helper h; }\n/* never closed\n   Other\n"),
+        JMAIN + "app/pkg/Gone.java": "package app.pkg;\n\n// import app.core.Core;\n/* import app.core.Core; */\nclass Gone { Helper h; }\n",
+    }
+    p = Plant(base, "java", files=files, globs=SRC_TESTS)
+    d = query(p, "build")
+    check(language_in(d, JMAIN + "app/core/Core.java") == "java", f"setup: .java is not language java: {d.get('inventory')!r}")
+    h = JMAIN + "app/use/Uses.java"
+    want_link(problems, "(a) type import", d, h, JMAIN + "app/core/Core.java", "certain", "resolved", "import", 3)
+    if targets_of(d, h) != [JMAIN + "app/core/Core.java"]:
+        problems.append(f"(a) JDK and library imports made links: {targets_of(d, h)!r}")
+    if records(d, "unresolved", h):
+        problems.append(f"(a) a JDK or library import made an unresolved record: {records(d, 'unresolved', h)!r}")
+    want_link(problems, "(b) test root", d, JTEST + "app/use/UsesTest.java", JMAIN + "app/core/Core.java", "certain")
+    want_link(problems, "(b) any source root", d, JMAIN + "app/use/UsesExt.java", "lib/src/app/ext/Ext.java", "certain")
+    want_link(problems, "(c) static import", d, JMAIN + "app/use/UsesStatic.java", JMAIN + "app/core/Util.java", "certain")
+    for t in ("one/" + JMAIN + "app/dup/Dup.java", "two/" + JMAIN + "app/dup/Dup.java"):
+        want_link(problems, "(d) ambiguous import", d, JMAIN + "app/use/UsesDup.java", t, "maybe", "ambiguous")
+    ha = JMAIN + "app/use/UsesAll.java"
+    want_link(problems, "(e) wildcard", d, ha, JMAIN + "app/core/Core.java", "maybe", "directory")
+    want_link(problems, "(e) wildcard", d, ha, JMAIN + "app/core/Util.java", "maybe", "directory")
+    want_none(problems, "(e)", d, ha, JMAIN + "app/core/sub/Deep.java", "a wildcard reaches the package, not its subpackages")
+    peer = JMAIN + "app/pkg/Peer.java"
+    want_link(problems, "(f) same package", d, peer, JMAIN + "app/pkg/Helper.java", "maybe", "same-package")
+    want_none(problems, "(f)", d, peer, JMAIN + "app/pkg/Other.java", "the body does not name it")
+    want_none(problems, "(f)", d, peer, JMAIN + "app/elsewhere/Helperish.java", "another package is reached by import")
+    for name, nope in (("Quiet", "Other"), ("Open", "Other")):
+        hh = JMAIN + f"app/pkg/{name}.java"
+        want_none(problems, f"(g) {name}", d, hh, JMAIN + f"app/pkg/{nope}.java", "in a comment, a literal or an unclosed comment")
+        want_link(problems, f"(g) {name}", d, hh, JMAIN + "app/pkg/Helper.java", "maybe", "same-package")
+        if records(d, "opaque", hh):
+            problems.append(f"(g) {name}: the blanking made an opaque record: {records(d, 'opaque', hh)!r}")
+    want_none(problems, "(g) Gone", d, JMAIN + "app/pkg/Gone.java", JMAIN + "app/core/Core.java", "a commented-out import")
+    # affected-tests: a Java test reached by an import, by its own package, and through a dependent
+    files2 = {
+        JMAIN + "app/b/Core.java": jv("app.b", "public class Core {}\n"),
+        JMAIN + "app/c/Service.java": jv("app.c", "public class Service { Core c; }\n", imports=["app.b.Core"]),
+        JTEST + "app/c/ServiceTest.java": jv("app.c", "class ServiceTest { Service s = new Service(); }\n"),
+        JTEST + "x/CoreImportTest.java": jv("x", "class CoreImportTest { Core c; }\n", imports=["app.b.Core"]),
+        JTEST + "app/b/CoreSamePackageTest.java": jv("app.b", "class CoreSamePackageTest { Core c; }\n"),
+        JTEST + "y/UnrelatedTest.java": jv("y", "class UnrelatedTest {}\n"),
+    }
+    q = Plant(base, "java-tests", files=files2, globs=SRC_TESTS)
+    deep = row_paths(query(q, "affected-tests", JMAIN + "app/b/Core.java"), "tests")
+    for t in ("x/CoreImportTest.java", "app/b/CoreSamePackageTest.java", "app/c/ServiceTest.java"):
+        if JTEST + t not in deep:
+            problems.append(f"(h) affected-tests omits {JTEST + t}: {deep!r}")
+    if JTEST + "y/UnrelatedTest.java" in deep:
+        problems.append(f"(h) affected-tests lists the unrelated test: {deep!r}")
+    shallow = row_paths(query(q, "affected-tests", "--depth", "1", JMAIN + "app/b/Core.java"), "tests")
+    if JTEST + "app/c/ServiceTest.java" in shallow:
+        problems.append(f"(h) depth 1 still reaches the test two links away: {shallow!r}")
+    check(not problems, " || ".join(problems))
+    return "imports certain, ambiguous and wildcard maybe, same-package maybe, blanked text makes none, tests reached"
+
+
+@case("X961", "SYMBOLS_READ_JAVA_TYPES_AND_SQL_CREATE_STATEMENTS_AS_MAYBE")
+def x961(base):
+    """`symbols` reads a Java class, interface, enum, record and annotation
+    type (nested ones qualified) and a SQL `CREATE SCHEMA|TABLE|FUNCTION|INDEX|
+    TRIGGER` name, each `maybe` by line-reading; a SQL file holds no outbound
+    link."""
+    problems = []
+    src = jv("app.core", "public class Outer {\n    static final class Inner {}\n    enum Mode { ON, OFF }\n}\n"
+                         "interface Port {}\nrecord Pair(int a, int b) {}\n@interface Marker {}\n")
+    v1 = ("-- core\nCREATE SCHEMA shop;\n\nCREATE FUNCTION shop.guard() RETURNS trigger\n"
+          "    LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'no'; END $$;\n\n"
+          "CREATE OR REPLACE FUNCTION shop.chain() RETURNS trigger\n    LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END $$;\n\n"
+          "CREATE CONSTRAINT TRIGGER chain_check AFTER INSERT ON shop.item\n    DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION shop.chain();\n")
+    v3 = ("-- orders\nCREATE TABLE shop.orders (\n    id uuid PRIMARY KEY,\n    item text NOT NULL REFERENCES shop.item (code)\n);\n\n"
+          "CREATE UNIQUE INDEX orders_item_key ON shop.orders (item);\n\n"
+          "CREATE TRIGGER guard BEFORE UPDATE OR DELETE ON shop.orders\n    FOR EACH ROW EXECUTE FUNCTION shop.guard();\n")
+    m1, m3 = JRES + "db/migration/V1__core.sql", JRES + "db/migration/V3__orders.sql"
+    p = Plant(base, "defs", files={JMAIN + "app/core/Outer.java": src, m1: v1, m3: v3})
+    jp = JMAIN + "app/core/Outer.java"
+    d = query(p, "symbols", "Outer", "Outer.Inner", "Outer.Mode", "Port", "Pair", "Marker")
+    names = {n.get("name"): n.get("definitions", []) for n in d.get("names", [])}
+    for name in ("Outer", "Outer.Inner", "Outer.Mode", "Port", "Pair", "Marker"):
+        defs = names.get(name) or []
+        if {(x.get("path"), x.get("link"), x.get("found")) for x in defs} != {(jp, "maybe", "line-reading")}:
+            problems.append(f"(a) {name}: not one maybe line-read definition in {jp}: {defs!r}")
+    want = {"orders": None, "shop.orders": (m3, 2), "shop": (m1, 2), "shop.chain": (m1, 7),
+            "chain_check": (m1, 10), "orders_item_key": (m3, 7)}
+    d = query(p, "symbols", *want, "guard", "shop.guard")
+    names = {n.get("name"): n.get("definitions", []) for n in d.get("names", [])}
+    for name, at in want.items():
+        defs = names.get(name) or []
+        if at and (at not in [(x.get("path"), x.get("line")) for x in defs] or {x.get("link") for x in defs} != {"maybe"}):
+            problems.append(f"(b) {name}: want a maybe definition at {at}: {defs!r}")
+    got = sorted((x.get("path"), x.get("line")) for x in names.get("guard", []))
+    if got != [(m1, 4), (m3, 9)]:       # the function shop.guard (a name matches by its last segment) and the trigger
+        problems.append(f"(b) `guard` is not defined by the function at {m1}:4 and the trigger at {m3}:9: {got!r}")
+    b = query(p, "build")
+    if language_in(b, m3) != "sql" or links_of(b, m3):
+        problems.append(f"(c) a migration is not read as sql with no outbound link: {language_in(b, m3)!r}, {links_of(b, m3)!r}")
+    check(not problems, " || ".join(problems))
+    return "Java types (nested qualified) and SQL CREATE names are maybe line-read definitions; SQL holds no links"
+
+
+@case("X962", "THYMELEAF_FRAGMENTS_AND_VIEW_NAMES_ARE_LINKS")
+def x962(base):
+    """An `.html` file under `*/resources/templates/` is a Thymeleaf template
+    whose `th:replace|insert|include` fragment expressions link the template
+    they name (certain), and a Java string naming a template is a `maybe`
+    `view-name` link; an `.html` file under another `templates/` directory is
+    neither."""
+    problems = []
+    frag = '<html><div th:fragment="x"></div></html>\n'
+    page = ('<html xmlns:th="http://www.thymeleaf.org">\n<head th:replace="~{fragments/head :: head}"></head>\n<body>\n'
+            '<div th:insert="~{fragments/nav}"></div>\n<div th:include="~{fragments/foot :: foot}"></div>\n'
+            '<div th:replace="~{this :: x}"></div>\n</body>\n</html>\n')
+    files = {
+        JTPL + "page.html": page, JTPL + "fragments/head.html": frag, JTPL + "fragments/nav.html": frag,
+        JTPL + "fragments/foot.html": frag, JTPL + "fragments/unused.html": frag,
+        JMAIN + "app/web/Pages.java": jv("app.web", 'class Pages {\n    String a() { return "orders/list :: rows"; }\n'
+                                                     '    String b() { return "detail/show"; }\n    String c() { return "no/such/view"; }\n'
+                                                     '    String d() { return "report.template"; }\n    String e() { return "page"; }\n}\n'),
+        JTPL + "orders/list.html": "<html></html>\n", JTPL + "detail/show.html": "<html></html>\n",
+        "site/templates/report.template.html": '<div th:replace="~{nav}"></div>\n', "site/templates/nav.html": "<nav></nav>\n",
+    }
+    p = Plant(base, "thyme", files=files)
+    d = query(p, "build")
+    for n in ("head", "nav", "foot"):
+        want_link(problems, "(a)", d, JTPL + "page.html", JTPL + f"fragments/{n}.html", "certain", "exact", "import")
+    want_none(problems, "(a)", d, JTPL + "page.html", JTPL + "fragments/unused.html", "no expression names it")
+    if language_in(d, JTPL + "page.html") != "thymeleaf":
+        problems.append(f"(a) the template's language is {language_in(d, JTPL + 'page.html')!r}, not thymeleaf")
+    if [u for u in d.get("unresolved", []) if u.get("holder") == JTPL + "page.html"]:
+        problems.append(f"(a) `~{{this :: x}}` made an unresolved record: {d.get('unresolved')!r}")
+    pg = JMAIN + "app/web/Pages.java"
+    for v in ("orders/list", "detail/show", "page"):
+        want_link(problems, "(b) view name", d, pg, JTPL + f"{v}.html", "maybe", "view-name")
+    if sorted(l["target"] for l in links_of(d, pg)) != sorted([JTPL + "orders/list.html", JTPL + "detail/show.html", JTPL + "page.html"]):
+        problems.append(f"(c) only */resources/templates/ is a view root: {targets_of(d, pg)!r}")
+    if language_in(d, "site/templates/report.template.html") != "other" or links_of(d, "site/templates/report.template.html"):
+        problems.append("(c) an .html under another templates/ directory is read as a template")
+    check(not problems, " || ".join(problems))
+    return "th: fragments certain, Java view names maybe, only */resources/templates/ is a template root"
+
+
+COMPOSE = """\
+# Secrets: host files under ./secrets/, made by scripts/secrets.sh.
+services:
+  db:
+    image: postgres:17
+    secrets:
+      - db_password
+    volumes:
+      - data:/var/lib/db
+      - ./deploy/db/init:/docker-entrypoint-initdb.d:ro
+  migrate:
+    build: &app-build
+      context: .
+  app:
+    build: *app-build
+    environment:
+      CONFIG_IMPORT: "configtree:/run/secrets/"
+  edge:
+    image: nginx:1
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/snippets:/etc/nginx/snippets:ro
+      - ./deploy/nginx/templates:/etc/nginx/templates:ro
+volumes:
+  data: {}
+secrets:
+  db_password:
+    file: ./secrets/db_password
+  tls_cert:
+    file: ./secrets/tls.crt
+  odd:
+    file: "./secrets/cert #2.pem"
+"""
+DOCKERFILE = """\
+# syntax=docker/dockerfile:1
+FROM example/jdk:1 AS build
+WORKDIR /src
+COPY mvnw pom.xml ./
+COPY .mvn/ .mvn/
+COPY src/ src/
+RUN ./mvnw -B package
+
+FROM example/jre:1 AS runtime
+COPY --from=build --chown=root:root /src/app.jar /app/app.jar
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+"""
+NGINX_CONF = ("events {\n    worker_connections 1024;\n}\nhttp {\n    include /etc/nginx/mime.types;\n"
+              "    include /etc/nginx/conf.d/*.conf;\n}\n")
+NGINX_TEMPLATE = ("server {\n    listen 443 ssl;\n    ssl_certificate /run/secrets/tls_cert;\n    location / {\n"
+                  "        include /etc/nginx/snippets/headers.conf;\n    }\n}\n")
+
+
+def deploy_files():
+    return {
+        "compose.yaml": COMPOSE, "Dockerfile": DOCKERFILE, "mvnw": "#!/bin/sh\necho mvnw\n",
+        "pom.xml": "<project/>\n", ".mvn/wrapper/wrapper.properties": "wrapperVersion=3\n", "README.md": "# x\n",
+        "secrets/db_password.example": "x\n", "secrets/cert #2.pem": "x\n", "run/secrets/token.example": "x\n",
+        "postgres/17/readme.txt": "x\n", "scripts/secrets.sh": "#!/bin/sh\necho s\n",
+        "deploy/db/init/10-roles.sh": "#!/bin/sh\necho roles\n",
+        "deploy/nginx/nginx.conf": NGINX_CONF, "deploy/nginx/snippets/headers.conf": "add_header X-Frame DENY;\n",
+        "deploy/nginx/templates/site.conf.template": NGINX_TEMPLATE,
+        JMAIN + "app/App.java": jv("app", "public class App {}\n"),
+    }
+
+
+@case("X963", "YAML_AND_COMPOSE_PATHS_ARE_LINKS")
+def x963(base):
+    """A YAML file is read by its keys: in a Compose file `build:` or
+    `build: context:` names `<context>/Dockerfile` (certain), a service
+    `volumes:` bind-mount source (`./...`) links the file or each file of the
+    directory (maybe), a top-level `secrets: <name>: file:` names its file; a
+    `classpath:` scalar is read by the classpath rule; a named volume, an
+    `image:` tag, a scheme-led scalar, a comment, an uncommitted secret and
+    a scalar naming no inventory path make no link and no unresolved record."""
+    problems = []
+    p = Plant(base, "compose", files=deploy_files())
+    d = query(p, "build")
+    if language_in(d, "compose.yaml") != "yaml":
+        problems.append(f"(a) compose.yaml is language {language_in(d, 'compose.yaml')!r}, not yaml")
+    want_link(problems, "(a) build context", d, "compose.yaml", "Dockerfile", "certain", "exact")
+    want_link(problems, "(b) file mount", d, "compose.yaml", "deploy/nginx/nginx.conf", "certain")
+    for t in ("deploy/nginx/snippets/headers.conf", "deploy/db/init/10-roles.sh", "deploy/nginx/templates/site.conf.template"):
+        want_link(problems, "(b) directory mount", d, "compose.yaml", t, "maybe", "directory")
+    want_link(problems, "(c) quoted `#` in a scalar", d, "compose.yaml", "secrets/cert #2.pem", "certain")
+    want_none(problems, "(c)", d, "compose.yaml", "secrets/db_password.example", "an uncommitted secret is not its .example sibling")
+    for t, why in (("run/secrets/token.example", "configtree: names no file"), ("postgres/17/readme.txt", "an image tag names no file"),
+                   ("scripts/secrets.sh", "a path in a comment is no link")):
+        want_none(problems, "(d)", d, "compose.yaml", t, why)
+    if records(d, "unresolved", "compose.yaml"):
+        problems.append(f"(d) compose.yaml made unresolved records: {records(d, 'unresolved', 'compose.yaml')!r}")
+    # a classpath location in a Spring-style file, a comment, and a scalar naming nothing
+    app_yml = ("# the other profile (application-other.yml) runs migrations.\nspring:\n  db:\n"
+               "    # roles come from (deploy/db/init/10-roles.sh)\n    locations: classpath:db/migration\n"
+               "zone: Europe/Paris\n")
+    q = Plant(base, "spring", files={
+        JRES + "application.yml": app_yml, JRES + "application-other.yml": "spring:\n  db:\n    enabled: true\n",
+        JRES + "db/migration/V1__a.sql": "CREATE SCHEMA shop;\n", JRES + "db/migration/V2__b.sql": "CREATE TABLE shop.t (id int);\n",
+        JRES + "db/other.txt": "x\n", "deploy/db/init/10-roles.sh": "#!/bin/sh\necho r\n",
+        JTRES + "fixtures/sample-cases.yaml": "zone: Europe/Paris\ncases: []\n"})
+    s = query(q, "build")
+    holder = JRES + "application.yml"
+    for t in (JRES + "db/migration/V1__a.sql", JRES + "db/migration/V2__b.sql"):
+        want_link(problems, "(e) classpath", s, holder, t, "maybe")
+    want_none(problems, "(e)", s, holder, JRES + "db/other.txt", "only the named directory")
+    want_none(problems, "(e)", s, holder, "deploy/db/init/10-roles.sh", "a path in a YAML comment")
+    if links_of(s, JTRES + "fixtures/sample-cases.yaml"):
+        problems.append(f"(e) a scalar naming no inventory path made a link: {links_of(s, JTRES + 'fixtures/sample-cases.yaml')!r}")
+    check(not problems, " || ".join(problems))
+    return "compose build, bind-mount and secrets keys, classpath: locations; scheme-led, comment and unknown scalars link nothing"
+
+
+@case("X964", "CLASSPATH_RESOURCES_NAMED_IN_JAVA_ARE_LINKS")
+def x964(base):
+    """A Java string that names a classpath resource (`/fixtures/x.yaml`,
+    `db/roles.sql`) links the file under each `src/<set>/resources` root, and a
+    path-literal string the directory's files (maybe); a leading-`/` string is
+    a route, never read relative to the holder. A test that loads a YAML
+    fixture is listed by `affected-tests` of the fixture; a YAML fixture or a
+    test template is never an `always_run` row, a Python test with no code edge
+    is."""
+    problems = []
+    files = {
+        JTEST + "app/support/Fixtures.java": jv("app.support", (
+            'public final class Fixtures {\n    static final String WRITE = "/fixtures/db/write.yaml";\n'
+            '    static final String ROLES = "db/roles.sql";\n    static final String REGISTRY = "/config/registry.yaml";\n'
+            '    static final String DIR = "src/main/resources/db/migration";\n}\n')),
+        JTEST + "app/WriteTest.java": jv("app", "class WriteTest { Fixtures f; }\n", imports=["app.support.Fixtures"]),
+        JTRES + "fixtures/db/write.yaml": "classes: []\n", JTRES + "db/roles.sql": "CREATE ROLE reader NOLOGIN;\n",
+        JRES + "config/registry.yaml": "items: []\n", JRES + "db/migration/V1__a.sql": "CREATE SCHEMA shop;\n",
+        JRES + "db/other.txt": "x\n", JTEST + "z/UnrelatedTest.java": jv("z", "class UnrelatedTest {}\n"),
+        JMAIN + "app/web/Page.java": jv("app.web", 'class Page {\n    static final String ROUTE = "/orders";\n}\n'),
+        JMAIN + "app/web/orders/OrdersController.java": jv("app.web.orders", "public class OrdersController {}\n"),
+        JTRES + "templates/probe.html": '<div th:fragment="probe"></div>\n',
+        "tests/test_standalone.py": "def test_x():\n    assert True\n",
+    }
+    p = Plant(base, "classpath", files=files, globs=SRC_TESTS)
+    d = query(p, "build")
+    h = JTEST + "app/support/Fixtures.java"
+    for t in (JTRES + "fixtures/db/write.yaml", JTRES + "db/roles.sql", JRES + "config/registry.yaml"):
+        want_link(problems, "(a) classpath literal", d, h, t, "maybe")
+    want_link(problems, "(b) path literal directory", d, h, JRES + "db/migration/V1__a.sql", "maybe", "directory")
+    want_none(problems, "(b)", d, h, JRES + "db/other.txt", "only the named directory")
+    if [l for l in links_of(d, JMAIN + "app/web/Page.java") if l["target"].startswith(JMAIN + "app/web/orders/")]:
+        problems.append(f"(c) \"/orders\" is a route, yet it linked the holder's orders/ directory: {links_of(d, JMAIN + 'app/web/Page.java')!r}")
+    a = query(p, "affected-tests", JTRES + "fixtures/db/write.yaml")
+    if JTEST + "app/WriteTest.java" not in row_paths(a, "tests") or JTEST + "z/UnrelatedTest.java" in row_paths(a, "tests"):
+        problems.append(f"(d) affected-tests of the fixture is not the test that loads it: {a.get('tests')!r}")
+    a = query(p, "affected-tests", JMAIN + "app/web/Page.java")
+    always = {r.get("path"): r.get("reason") for r in a.get("always_run", [])}
+    if always.get("tests/test_standalone.py") != "no-code-edge":
+        problems.append(f"(e) a Python test with no code edge is not always_run: {always!r}")
+    for fixture in (JTRES + "fixtures/db/write.yaml", JTRES + "templates/probe.html"):
+        if fixture in always:
+            problems.append(f"(e) {fixture} is an always_run row though it is data: {always!r}")
+    check(not problems, " || ".join(problems))
+    return "classpath literals maybe, route strings never holder-relative, fixtures reached, data never always_run"
+
+
+@case("X965", "DOCKERFILE_COPY_SOURCES_ARE_LINKS")
+def x965(base):
+    """A file named `Dockerfile` is read: each `COPY`/`ADD` source, relative to
+    its directory, links the file (certain) or each file below the directory
+    (maybe), never capped by DIR_LINK_MAX; `--from=<stage>`, a destination, a
+    glob, a variable and a container path name no file and make no record."""
+    problems = []
+    files = deploy_files()
+    many = {f"src/gen/f{i:03d}.txt": "x\n" for i in range(DIR_LINK_MAX + 5)}
+    files.update(many)
+    files["Dockerfile"] = DOCKERFILE + "COPY src/gen /gen\nCOPY src/*.x /glob/\nCOPY $BASE/y /v/\nADD https://example.invalid/z /z\n"
+    p = Plant(base, "dock", files=files)
+    d = query(p, "build")
+    if language_in(d, "Dockerfile") != "dockerfile":
+        problems.append(f"(a) Dockerfile is language {language_in(d, 'Dockerfile')!r}")
+    for t in ("mvnw", "pom.xml", ".mvn/wrapper/wrapper.properties", JMAIN + "app/App.java"):
+        if not link_to(d, "Dockerfile", t):
+            problems.append(f"(a) COPY source {t} is not linked: {links_of(d, 'Dockerfile')!r}")
+    want_link(problems, "(a)", d, "Dockerfile", "mvnw", "certain", "exact")
+    want_link(problems, "(a)", d, "Dockerfile", JMAIN + "app/App.java", "maybe", "directory")
+    want_none(problems, "(b)", d, "Dockerfile", "README.md", "a destination is not a source")
+    missing = [t for t in many if not link_to(d, "Dockerfile", t)]
+    if missing or [o for o in d.get("opaque", []) if o.get("holder") == "Dockerfile"]:
+        problems.append(f"(c) a COPY directory above DIR_LINK_MAX: {len(missing)} files unlinked, opaque: "
+                        f"{records(d, 'opaque', 'Dockerfile')!r}")
+    if records(d, "unresolved", "Dockerfile"):
+        problems.append(f"(d) stage, glob, variable and URL sources made records: {records(d, 'unresolved', 'Dockerfile')!r}")
+    check(not problems, " || ".join(problems))
+    return "COPY/ADD sources link files and directories, a big directory is not opaque, stage/glob/variable/URL name nothing"
+
+
+@case("X966", "NGINX_INCLUDES_MAP_THROUGH_COMPOSE_MOUNTS")
+def x966(base):
+    """An `include` of an absolute container path in an nginx file (a `.conf` or
+    `.conf.template` under an `nginx/` directory) links the host file the
+    Compose bind mount maps it to (maybe); a path no mount maps (an image file,
+    a rendered directory, a secrets path) names no file."""
+    problems = []
+    p = Plant(base, "edge", files=deploy_files())
+    d = query(p, "build")
+    for f in ("deploy/nginx/nginx.conf", "deploy/nginx/snippets/headers.conf", "deploy/nginx/templates/site.conf.template"):
+        if language_in(d, f) != "nginx":
+            problems.append(f"(a) {f} is language {language_in(d, f)!r}, not nginx")
+    tpl = "deploy/nginx/templates/site.conf.template"
+    want_link(problems, "(b) mounted include", d, tpl, "deploy/nginx/snippets/headers.conf", "maybe")
+    for h in (tpl, "deploy/nginx/nginx.conf"):
+        if records(d, "unresolved", h) or links_of(d, h) and h != tpl:
+            problems.append(f"(c) {h}: image files, conf.d globs and /run/secrets paths made links or records: "
+                            f"{links_of(d, h)!r} {records(d, 'unresolved', h)!r}")
+    check(not problems, " || ".join(problems))
+    return "an nginx include is linked through the bind mount; unmapped container paths name nothing"
+
+
+@case("X967", "STACK_READERS_LEAVE_THE_EARLIER_LANGUAGES_UNCHANGED")
+def x967(base):
+    """The readers add languages and change none: Python, shell and TS links
+    stay as they were, a Java input is no longer `language-not-read` while a
+    Kotlin one still is, and an `.html` file outside a templates root and an
+    unrelated YAML file hold no link."""
+    problems = []
+    files = {"py/a.py": "import b\n", "py/b.py": "B = 1\n",
+             "sh/run.sh": '#!/usr/bin/env bash\nbash "$(dirname "$0")/lib.sh"\n', "sh/lib.sh": "echo lib\n",
+             "web/app.ts": "import { x } from './util';\n", "web/util.ts": "export const x = 1;\n",
+             JMAIN + "app/Core.java": jv("app", "public class Core {}\n"),
+             "svc/Store.kt": "package svc\nclass Store\n", "page.html": "<p>hi</p>\n", "conf/x.yaml": "name: plain\n"}
+    p = Plant(base, "guard", files=files)
+    d = query(p, "build")
+    got = sorted((l["holder"], l["target"], l["kind"], l["link"], l["found"]) for l in d["links"])
+    want = sorted([("py/a.py", "py/b.py", "import", "certain", "resolved"), ("sh/run.sh", "sh/lib.sh", "invoke", "certain", "resolved"),
+                   ("web/app.ts", "web/util.ts", "import", "certain", "resolved")])
+    if got != want:
+        problems.append(f"(a) links changed: {got!r}")
+    for path, lang in (("page.html", "other"), ("svc/Store.kt", "other"), ("conf/x.yaml", "yaml")):
+        if language_in(d, path) != lang:
+            problems.append(f"(b) {path} is language {language_in(d, path)!r}, not {lang}")
+    j = query(p, "impact", JMAIN + "app/Core.java")
+    if "language-not-read" in reasons(j):
+        problems.append(f"(c) a Java input is still language-not-read: {j.get('incomplete')!r}")
+    k = query(p, "impact", "svc/Store.kt")
+    rec = [r for r in k.get("incomplete", []) if r.get("reason") == "language-not-read"]
+    if len(rec) != 1 or "kotlin" not in str(rec[0].get("detail")):
+        problems.append(f"(c) a Kotlin input is not one language-not-read record naming kotlin: {k.get('incomplete')!r}")
+    check(not problems, " || ".join(problems))
+    return "Python/shell/TS links as before; Java read, Kotlin still language-not-read"
 
 
 failed = []

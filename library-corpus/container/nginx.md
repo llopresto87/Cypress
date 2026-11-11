@@ -280,6 +280,32 @@ Upstream home: nginx.org (docs and CHANGES).
   `/etc/nginx` or the web root; move them to tmpfs first.
 - **SIGKILL to the master** orphans workers that keep the port bound; stop with
   SIGQUIT (graceful) or SIGTERM.
+- **`limit_req` logs each rejection at `error` by default, request line
+  included**, query string and all (an OIDC callback's `code=` and `state=`
+  among them). `limit_req_log_level` defaults to `error`, and delays log one
+  level lower than refusals ("Logging level for delays is one point less than
+  for refusals"). `limit_req_log_level notice` with an `error_log` level above
+  `notice` keeps the query strings out of the log; the delay lines then fall to
+  `info`.
+- **A failed client-body temp-file write logs at `crit`, request line
+  included.** Observed in practice, with the temp path on a full tmpfs:
+  `pwrite() ... failed (28: No space left on device)` names the request with
+  its query. The upstream docs are silent on the line's content. Raising
+  `error_log` above `crit` is not a fix, since it hides every other fault;
+  take the temp file away instead: a body limit no larger than the buffer
+  (`client_max_body_size` at most `client_body_buffer_size`) and
+  `proxy_max_temp_file_size 0`.
+- **`error_page` inheritance is replacement, not addition.** Directives are
+  "inherited from the previous configuration level if and only if there are no
+  `error_page` directives defined on the current level" (core module docs). A
+  location that declares any `error_page` (a custom 429 page, say) must repeat
+  every server-level one it still needs.
+- **`merge_slashes` is on by default**, collapsing "two or more adjacent
+  slashes in a URI into a single slash". A prefix location such as `/x/` (and a
+  rate-limit zone bound to it) therefore also catches `/x//y`; the docs call the
+  compression "essential for the correct matching of prefix string and regular
+  expression locations". Turning it off reopens the variant and is discouraged
+  for security reasons.
 - **TLS defaults are already modern** on current lines (see Major lines);
   restating them in config is documentation, not hardening.
 
@@ -348,6 +374,8 @@ stable line inherits the mainline changes before it.
 - https://nginx.org/en/docs/
 - `add_header` (the code list, `always`, inheritance): https://nginx.org/en/docs/http/ngx_http_headers_module.html
 - https://nginx.org/en/docs/http/ngx_http_proxy_module.html
+- `error_page` inheritance, `merge_slashes`: https://nginx.org/en/docs/http/ngx_http_core_module.html
+- `limit_req_log_level`: https://nginx.org/en/docs/http/ngx_http_limit_req_module.html
 - https://nginx.org/en/docs/http/websocket.html
 - https://nginx.org/en/docs/http/configuring_https_servers.html
 - https://nginx.org/en/docs/stream/ngx_stream_ssl_preread_module.html

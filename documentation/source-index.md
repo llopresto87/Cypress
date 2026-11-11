@@ -33,18 +33,25 @@ when it is a Git work tree, plus each nested work tree a node names in
   `ROOT / "tools" / "x.py"`, `os.path.join(...)` or a TS/JS `path.join(`;
 - TypeScript and JavaScript `import`, `export from`, `require()` and
   `import()`, resolved through the `paths` and `baseUrl` of `tsconfig` or
-  `jsconfig`.
+  `jsconfig`;
+- Java imports, same-package type references and classpath resource names;
+  Thymeleaf `th:replace`, `th:insert` and `th:include` fragments and the Java
+  strings that name a template; YAML scalars, with Compose `build`, bind-mount
+  `volumes` and secret `file:` keys; Dockerfile `COPY` and `ADD` sources; and
+  nginx `include` paths mapped through the Compose bind mounts. These readers
+  are stack-keyed modules in `source_readers.py`; each links only a path the
+  inventory holds, so a library import or a container path makes no record.
 
 A mention in Markdown is not a link. A hook command written in a host
 settings file, such as `.claude/settings.json`, is not read either, so a
 hook script has no dependent in any answer.
 
 The same pass reads each file's definitions for `symbols`: Python
-definitions by `ast`, shell functions and top-level or exported TS/JS
+definitions by `ast`, shell functions, Java types, SQL `CREATE` names and top-level or exported TS/JS
 declarations by reading lines.
 
 The tool needs the Python standard library and `git`, nothing else. It
-loads `source_paths.py`, `plant_walk.py` and `frontmatter.py` from beside
+loads `source_paths.py`, `plant_walk.py`, `frontmatter.py` and `source_readers.py` from beside
 itself, and `code-anchor.py` for `anchors --moved` only. The installer
 places all of them.
 
@@ -210,15 +217,15 @@ repo_kind: 2 definition(s)
   certain function tools/source_paths.py:237 repo_kind (ast)
 ```
 
-A Python definition, read with `ast`, is `certain`. A shell function, or a
-TS/JS declaration at the top level of its file or exported, is read line by
-line and is `maybe`. The kinds are `function`, `class`, `variable` and
+A Python definition, read with `ast`, is `certain`. A shell function, a
+TS/JS declaration at the top level of its file or exported, a Java type and a
+SQL `CREATE` name are read line by line and are `maybe`. The kinds are `function`, `class`, `variable` and
 `type`. A name with no definition says what was read and what was not:
 
 ```
 $ python3 docs/graph/source-index.py symbols no_such_name
 Cache: reused
-no_such_name: no definition (read: Python definitions, shell functions, TS/JS declarations; not read: docs/graph/, .cypress/, which are not code)
+no_such_name: no definition (read: Python definitions, shell functions, TS/JS declarations, Java types, SQL CREATE statements; not read: docs/graph/, .cypress/, which are not code)
 ```
 
 A file the tool could not read makes the answer `incomplete`, with the
@@ -301,7 +308,7 @@ Common reasons, all printed by the tool:
 | `config-refused` | `docs/graph/source-index.json` was refused; the defaults apply |
 | `git-unavailable`, `no-repository` | there is no `git`, or no governed Git repository |
 | `repository-unnamed` | a Git repository or work tree inside a governed one that no node's `repo:` names; its files are in no answer. `build` reports it, and `anchors --moved` names one in the moved list and answers the rest |
-| `language-not-read` | the input is in a language the index inventories but reads no links of (Go, for example), so an empty list of dependents is not an answer |
+| `language-not-read` | the input is in a language the index inventories but reads no links of (Go or Kotlin, for example), so an empty list of dependents is not an answer |
 | `reached-over-http` | a test reaches the code only through a URL, with no import the walk can follow; it is listed as a floor row |
 | `no-test-declaration`, `no-test-files` | `TEST_GLOBS` is unset, or matches no file |
 
@@ -506,8 +513,9 @@ from segments.
   gives no history rows, so every `--history` answer there is `incomplete`.
 - Hook commands in host settings files are not read, so a hook script has
   no dependent in any answer.
-- Only Python, shell, TypeScript and JavaScript files carry links. An input
-  in another language the index inventories gets a `language-not-read`
+- Only Python, shell, TypeScript, JavaScript, Java, Thymeleaf, YAML,
+  Dockerfile and nginx files carry links (a SQL file defines names and links
+  nothing). An input in another language the index inventories gets a `language-not-read`
   record instead of an empty answer.
 - The tool recommends. It never decides which gates run or how a change is
   tiered.

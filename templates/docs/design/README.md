@@ -10,3 +10,8 @@ and §9 (acceptance criteria).
   implementation notes (the floor itself is owned by `product`).
 - `tokens.md` — the project's design-token and component-system
   reference, kept current as specs extend it.
+
+A leaf here carrying node frontmatter is never routed: graph lint scans
+only the node and machinery directories. A leaf is reached through an
+`artifacts:` edge from its owning node, so add that edge when you add the
+leaf.

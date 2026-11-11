@@ -54,7 +54,10 @@ of each nested work tree a node's `repo:` names, and reads file-to-file
 links: Python imports and loads by file path (read with `ast`, never run),
 `python3`/`bash`/`sh`/`source` invocations, quoted path literals, and
 TS/JS `import`/`export from`/`require()`/`import()` through `tsconfig` or
-`jsconfig` `paths`. A Markdown mention is not a link. The same pass reads
+`jsconfig` `paths`. Stack readers add Java (imports, same-package
+references, classpath resource names), Thymeleaf templates, YAML and Compose
+paths, Dockerfile `COPY`/`ADD` sources and nginx includes; SQL files hold
+definitions only. A Markdown mention is not a link. The same pass reads
 definitions for `symbols`.
 
 ## 2. Interface & invocation
@@ -128,7 +131,7 @@ the protocol that owns it, then reruns `build`.
 - **A missing row is not a clean bill:** dynamic imports, generated paths
   and hook commands in host settings files are not read; the floor and the
   `incomplete` list say where the answer stops. Two stops name themselves:
-  an input in a language the tool has no reader for (Go, Java, C#, Ruby and
+  an input in a language the tool has no reader for (Go, Kotlin, C#, Ruby and
   the like) is `language-not-read`, and an end-to-end test that drives a
   started application over HTTP is `reached-over-http`, because no link
   leads from it to the code the server runs.

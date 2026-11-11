@@ -99,7 +99,10 @@ session itself learned, which no handback carries. The record and its
 shape belong to `method.stewardship-posture`
 (`stewardship-posture.session-record`). The brief names the path of every
 record the task wrote or appended to since the last close-out; it
-carries the paths ONLY, and the librarian reads each record itself. The
+carries the paths ONLY, and the librarian reads each record itself. When
+a compaction comes before close-out, what the session saves into the record
+first is `skill-corpus/pre-compaction-session-save.md`, which grow seeds into
+a plant as `docs/graph/skills/pre-compaction-session-save.md`. The
 librarian walks every item that has no line in the record's "Canonize
 status" and gives each exactly one outcome. An owner rule about how agents
 work with this owner goes to `crosscut.operator`

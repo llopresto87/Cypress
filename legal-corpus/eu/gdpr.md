@@ -14,7 +14,7 @@ Protection Regulation).
 **Official URL:** https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32016R0679
 · official Italian OJ PDF: https://eur-lex.europa.eu/eli/reg/2016/679/oj/ita/pdf
 **Legal status (whole instrument):** `in force` · **verified 2026-07-31**, with
-further entries verified **2026-08-05**, **2026-09-22** and **2026-10-14** (see
+further entries verified **2026-08-05**, **2026-09-22**, **2026-10-14** and **2026-11-11** (see
 each entry).
 
 ---
@@ -26,7 +26,7 @@ each entry).
 Most entries were re-derived from the full EUR-Lex GDPR text (EN and IT)
 retrieved by routing `curl` through the `r.jina.ai` read-only rendering proxy
 (the schema requires naming the proxy for any `proxy-sourced` grade). The page
-is therefore **split into four provenance groups**, and flattening it back to a
+is therefore **split into five provenance groups**, and flattening it back to a
 single banner would be the exact falsification `../_schema.md` rule 4 forbids:
 
 | Group | Provenance | Quotable? |
@@ -35,6 +35,7 @@ single banner would be the exact falsification `../_schema.md` rule 4 forbids:
 | **Group B** — Arts. 4, 7, 49 | `mirror-corroborated` from a site republishing the OJ text, `text_form: normalized summary` | **No** — cite substance and id only |
 | **Group C** — Art. 42 | `secondary-corroborated` from an unofficial consolidation | **No**, and weakest on the page |
 | **Group D** — Arts. 11, 12, 87, 88 and Recital 26 | `primary-fetched` direct from the Publications Office of the European Union; for the articles both editions were read and compared, for the recital the act as adopted and the corrigendum (a consolidated text carries no recitals) | **Yes**, as a quotation |
+| **Group E** — Arts. 2, 4(1), 4(2), 4(4), 4(5), 4(12), 6(4), 14(5), 23(1), 89(1) | `primary-fetched` direct from the Publications Office (CELLAR), EN and IT, the act as adopted and the consolidated text, fetched 2026-11-11 and compared line by line. **UNREVIEWED: not reviewed by a human** (admitted into the corpus on the owner's decision of 2026-11-11 on that footing) | **Yes**, as a quotation |
 
 Consequences, which are not negotiable:
 
@@ -74,9 +75,15 @@ secondary-corroborated.
 
 | id | provision | topic | Grade |
 |---|---|---|---|
+| `gdpr-art-2` | Art. 2 | material scope | D |
+| `gdpr-art-4-1` | Art. 4(1) | definition — personal data | D |
+| `gdpr-art-4-2` | Art. 4(2) | definition — processing | D |
+| `gdpr-art-4-4` | Art. 4(4) | definition — profiling | D |
+| `gdpr-art-4-5` | Art. 4(5) | definition — pseudonymisation | D |
 | `gdpr-art-4-7` | Art. 4(7) | definition — controller | M |
 | `gdpr-art-4-8` | Art. 4(8) | definition — processor | M |
 | `gdpr-art-4-11` | Art. 4(11) | definition — consent | M |
+| `gdpr-art-4-12` | Art. 4(12) | definition — personal data breach | D |
 | `gdpr-recital-26` | Recital 26 | **identifiability, pseudonymised and anonymous data** | D |
 | `gdpr-art-5-1-a` | Art. 5(1)(a) | lawfulness, fairness, transparency | P |
 | `gdpr-art-5-1-b` | Art. 5(1)(b) | purpose limitation | P |
@@ -88,12 +95,14 @@ secondary-corroborated.
 | `gdpr-art-6-1-a` | Art. 6(1)(a) | lawfulness — consent | P |
 | `gdpr-art-6-1-b` | Art. 6(1)(b) | lawfulness — contract necessity | P |
 | `gdpr-art-6-1-f` | Art. 6(1)(f) | lawfulness — legitimate interests | P |
+| `gdpr-art-6-4` | Art. 6(4) | compatibility of further processing | D |
 | `gdpr-art-7-1` | Art. 7(1) | demonstrable consent | M |
 | `gdpr-art-9` | Art. 9(1)–(2) | **special categories — prohibition + derogations** | P |
 | `gdpr-art-11` | Art. 11 | processing which does not require identification | D |
 | `gdpr-art-12` | Art. 12 | **modalities of the rights — the one-month response limit** | D |
 | `gdpr-art-13` | Art. 13 | **information duty — data collected from the data subject** | P |
 | `gdpr-art-14` | Art. 14 | information duty — data not obtained from the data subject | P |
+| `gdpr-art-14-5` | Art. 14(5) | information duty — the exceptions | D |
 | `gdpr-art-15` | Art. 15 | **right of access** | P |
 | `gdpr-art-16` | Art. 16 | right to rectification | P |
 | `gdpr-art-17-1` | Art. 17(1) | right to erasure — **six** grounds | P |
@@ -103,6 +112,7 @@ secondary-corroborated.
 | `gdpr-art-20` | Art. 20 | **right to data portability — basis-gated** | P |
 | `gdpr-art-21` | Art. 21 | right to object | P |
 | `gdpr-art-22` | Art. 22 | **automated individual decision-making incl. profiling** | P |
+| `gdpr-art-23-1` | Art. 23(1) | restrictions by Union or Member State law — the objectives | D |
 | `gdpr-art-24` | Art. 24 | responsibility of the controller | P |
 | `gdpr-art-25-1` | Art. 25(1) | data protection by design | P |
 | `gdpr-art-25-2` | Art. 25(2) | data protection by default | P |
@@ -136,6 +146,7 @@ secondary-corroborated.
 | `gdpr-art-82` | Art. 82 | right to compensation and liability | P |
 | `gdpr-art-87` | Art. 87 | **national identification number — a Member State enabling clause** | D |
 | `gdpr-art-88` | Art. 88 | **employment context — a Member State enabling clause** | D |
+| `gdpr-art-89-1` | Art. 89(1) | safeguards for archiving, research and statistical purposes | D |
 
 Standing fields, identical on every **Group A** entry below unless the entry
 says otherwise:
@@ -171,6 +182,132 @@ Where an entry states any of these fields inline, **the entry's own value wins.*
 ---
 
 ## Definitions
+
+### `gdpr-art-2`
+
+- **instrument:** Regulation (EU) 2016/679 (GDPR) — *regulation*
+- **provision:** Article 2, "Material scope" / "Ambito di applicazione
+  materiale", paragraphs 1–4
+- **text_form:** **verbatim**
+- **text (EN, verbatim):**
+
+  > 1. This Regulation applies to the processing of personal data wholly or partly by automated means and to the processing other than by automated means of personal data which form part of a filing system or are intended to form part of a filing system.
+  > 2. This Regulation does not apply to the processing of personal data:
+  > (a) in the course of an activity which falls outside the scope of Union law;
+  > (b) by the Member States when carrying out activities which fall within the scope of Chapter 2 of Title V of the TEU;
+  > (c) by a natural person in the course of a purely personal or household activity;
+  > (d) by competent authorities for the purposes of the prevention, investigation, detection or prosecution of criminal offences or the execution of criminal penalties, including the safeguarding against and the prevention of threats to public security.
+  > 3. For the processing of personal data by the Union institutions, bodies, offices and agencies, Regulation (EC) No 45/2001 applies. Regulation (EC) No 45/2001 and other Union legal acts applicable to such processing of personal data shall be adapted to the principles and rules of this Regulation in accordance with Article 98.
+  > 4. This Regulation shall be without prejudice to the application of Directive 2000/31/EC, in particular of the liability rules of intermediary service providers in Articles 12 to 15 of that Directive.
+- **official_url:** act as adopted, OJ L 119, 4.5.2016, p. 1:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679 ·
+  consolidated text:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02016R0679-20160504
+- **consulted:** the Publications Office's CELLAR endpoint at `publications.europa.eu`, fetched with `curl` to files and read from the files on 2026-11-11: the act as adopted (`https://publications.europa.eu/resource/celex/32016R0679`, EN) and the consolidated text (`https://publications.europa.eu/resource/celex/02016R0679-20160504`, EN). Every quoted line was found, whitespace- and quote-normalised, in both the original and the consolidated file — **verification_grade:** `primary-fetched`. **UNREVIEWED: not reviewed by a human.**
+- **language_version:** English, **consolidated** text (header
+  `04.05.2016 — 000.002`; what the date denotes is not stated in the file),
+  compared with the **original** OJ text: identical wording, line by line. The
+  Italian text was fetched too but is not transcribed here.
+- **verified:** 2026-11-11
+- **legal_status:** `in force` (whole-instrument status as at the page header; the in-force metadata was not re-queried on 2026-11-11)
+- **notes:** Para. 3 names Regulation (EC) No 45/2001 as the text reads in both editions; whether that reference has since been affected by a later act is `not recorded` here. The CJEU's reading of Art. 2(1)–(2) in one case is `cjeu-c-180-21` (`../case-law/index.md`).
+
+### `gdpr-art-4-1`
+
+- **instrument:** Regulation (EU) 2016/679 (GDPR) — *regulation*
+- **provision:** Article 4, point (1), "personal data" / punto 1, «dato
+  personale»
+- **text_form:** **verbatim**
+- **text (EN, verbatim):**
+
+  > (1) ‘personal data’ means any information relating to an identified or identifiable natural person (‘data subject’); an identifiable natural person is one who can be identified, directly or indirectly, in particular by reference to an identifier such as a name, an identification number, location data, an online identifier or to one or more factors specific to the physical, physiological, genetic, mental, economic, cultural or social identity of that natural person;
+- **text (IT, verbatim):**
+
+  > 1) «dato personale» : qualsiasi informazione riguardante una persona fisica identificata o identificabile («interessato»); si considera identificabile la persona fisica che può essere identificata, direttamente o indirettamente, con particolare riferimento a un identificativo come il nome, un numero di identificazione, dati relativi all'ubicazione, un identificativo online o a uno o più elementi caratteristici della sua identità fisica, fisiologica, genetica, psichica, economica, culturale o sociale;
+- **official_url:** act as adopted:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679 ·
+  consolidated:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02016R0679-20160504
+- **consulted:** the Publications Office's CELLAR endpoint at `publications.europa.eu`, fetched with `curl` to files and read from the files on 2026-11-11: the act as adopted (`https://publications.europa.eu/resource/celex/32016R0679`, EN and IT) and the consolidated text (`https://publications.europa.eu/resource/celex/02016R0679-20160504`, EN and IT). Every quoted line was found, whitespace- and quote-normalised, in both the original and the consolidated file of its language — **verification_grade:** `primary-fetched`. **UNREVIEWED: not reviewed by a human.**
+- **language_version:** English and Italian, **consolidated** text (headers EN
+  `04.05.2016 — 000.002`, IT `04.05.2016 — 000.003`), compared with the
+  **original** OJ text: identical wording in both languages.
+- **verified:** 2026-11-11
+- **legal_status:** `in force` (whole-instrument status as at the page header; the in-force metadata was not re-queried on 2026-11-11)
+- **notes:** The interpretive companion on identifiability is the recital `gdpr-recital-26`, which is not an operative provision. The 2016 CJEU precedent on dynamic IP addresses, decided under the predecessor Directive, is `cjeu-c-582-14-breyer`.
+
+### `gdpr-art-4-2`
+
+- **instrument:** Regulation (EU) 2016/679 (GDPR) — *regulation*
+- **provision:** Article 4, point (2), "processing" / punto 2, «trattamento»
+- **text_form:** **verbatim**
+- **text (EN, verbatim):**
+
+  > (2) ‘processing’ means any operation or set of operations which is performed on personal data or on sets of personal data, whether or not by automated means, such as collection, recording, organisation, structuring, storage, adaptation or alteration, retrieval, consultation, use, disclosure by transmission, dissemination or otherwise making available, alignment or combination, restriction, erasure or destruction;
+- **text (IT, verbatim):**
+
+  > 2) «trattamento» : qualsiasi operazione o insieme di operazioni, compiute con o senza l'ausilio di processi automatizzati e applicate a dati personali o insiemi di dati personali, come la raccolta, la registrazione, l'organizzazione, la strutturazione, la conservazione, l'adattamento o la modifica, l'estrazione, la consultazione, l'uso, la comunicazione mediante trasmissione, diffusione o qualsiasi altra forma di messa a disposizione, il raffronto o l'interconnessione, la limitazione, la cancellazione o la distruzione;
+- **official_url:** act as adopted:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679 ·
+  consolidated:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02016R0679-20160504
+- **consulted:** the Publications Office's CELLAR endpoint at `publications.europa.eu`, fetched with `curl` to files and read from the files on 2026-11-11: the act as adopted (`https://publications.europa.eu/resource/celex/32016R0679`, EN and IT) and the consolidated text (`https://publications.europa.eu/resource/celex/02016R0679-20160504`, EN and IT). Every quoted line was found, whitespace- and quote-normalised, in both the original and the consolidated file of its language — **verification_grade:** `primary-fetched`. **UNREVIEWED: not reviewed by a human.**
+- **language_version:** English and Italian, **consolidated** text (headers EN
+  `04.05.2016 — 000.002`, IT `04.05.2016 — 000.003`), compared with the
+  **original** OJ text: identical wording in both languages.
+- **verified:** 2026-11-11
+- **legal_status:** `in force` (whole-instrument status as at the page header; the in-force metadata was not re-queried on 2026-11-11)
+- **notes:** Pseudonymisation, defined separately, is `gdpr-art-4-5`.
+
+### `gdpr-art-4-4`
+
+- **instrument:** Regulation (EU) 2016/679 (GDPR) — *regulation*
+- **provision:** Article 4, point (4), "profiling" / punto 4, «profilazione»
+- **text_form:** **verbatim**
+- **text (EN, verbatim):**
+
+  > (4) ‘profiling’ means any form of automated processing of personal data consisting of the use of personal data to evaluate certain personal aspects relating to a natural person, in particular to analyse or predict aspects concerning that natural person's performance at work, economic situation, health, personal preferences, interests, reliability, behaviour, location or movements;
+- **text (IT, verbatim):**
+
+  > 4) «profilazione» : qualsiasi forma di trattamento automatizzato di dati personali consistente nell'utilizzo di tali dati personali per valutare determinati aspetti personali relativi a una persona fisica, in particolare per analizzare o prevedere aspetti riguardanti il rendimento professionale, la situazione economica, la salute, le preferenze personali, gli interessi, l'affidabilità, il comportamento, l'ubicazione o gli spostamenti di detta persona fisica;
+- **official_url:** act as adopted, OJ L 119, 4.5.2016, p. 1:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679 ·
+  consolidated:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02016R0679-20160504
+- **consulted:** the Publications Office's CELLAR endpoint at `publications.europa.eu`, fetched with `curl` to files and read from the files on 2026-11-11: the act as adopted (`https://publications.europa.eu/resource/celex/32016R0679`, EN and IT) and the consolidated text (`https://publications.europa.eu/resource/celex/02016R0679-20160504`, EN and IT). Every quoted line was found, whitespace- and quote-normalised, in both the original and the consolidated file of its language — **verification_grade:** `primary-fetched`. **UNREVIEWED: not reviewed by a human.**
+- **language_version:** English and Italian, **consolidated** text (headers EN
+  `04.05.2016 — 000.002`, IT `04.05.2016 — 000.003`), compared with the
+  **original** OJ text: identical wording in both languages (Italian layout
+  differs: the original prints `4) «profilazione»:`, the consolidated file a
+  bare `4)` label line).
+- **verified:** 2026-11-11
+- **legal_status:** `in force` (whole-instrument status as at the page header; the in-force metadata was not re-queried on 2026-11-11)
+- **notes:** The rule that uses this definition for decisions with legal or similarly significant effects is `gdpr-art-22`; the definition alone imposes no duty.
+
+### `gdpr-art-4-5`
+
+- **instrument:** Regulation (EU) 2016/679 (GDPR) — *regulation*
+- **provision:** Article 4, point (5), "pseudonymisation" / punto 5,
+  «pseudonimizzazione»
+- **text_form:** **verbatim**
+- **text (EN, verbatim):**
+
+  > (5) ‘pseudonymisation’ means the processing of personal data in such a manner that the personal data can no longer be attributed to a specific data subject without the use of additional information, provided that such additional information is kept separately and is subject to technical and organisational measures to ensure that the personal data are not attributed to an identified or identifiable natural person;
+- **text (IT, verbatim):**
+
+  > 5) «pseudonimizzazione» : il trattamento dei dati personali in modo tale che i dati personali non possano più essere attribuiti a un interessato specifico senza l'utilizzo di informazioni aggiuntive, a condizione che tali informazioni aggiuntive siano conservate separatamente e soggette a misure tecniche e organizzative intese a garantire che tali dati personali non siano attribuiti a una persona fisica identificata o identificabile;
+- **official_url:** act as adopted, OJ L 119, 4.5.2016, p. 1:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679 ·
+  consolidated:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02016R0679-20160504
+- **consulted:** the Publications Office's CELLAR endpoint at `publications.europa.eu`, fetched with `curl` to files and read from the files on 2026-11-11: the act as adopted (`https://publications.europa.eu/resource/celex/32016R0679`, EN and IT) and the consolidated text (`https://publications.europa.eu/resource/celex/02016R0679-20160504`, EN and IT). Every quoted line was found, whitespace- and quote-normalised, in both the original and the consolidated file of its language — **verification_grade:** `primary-fetched`. **UNREVIEWED: not reviewed by a human.**
+- **language_version:** English and Italian, **consolidated** text (headers EN
+  `04.05.2016 — 000.002`, IT `04.05.2016 — 000.003`), compared with the
+  **original** OJ text: identical wording in both languages (Italian layout
+  differs: the original prints the label inline, the consolidated file on its own line).
+- **verified:** 2026-11-11
+- **legal_status:** `in force` (whole-instrument status as at the page header; the in-force metadata was not re-queried on 2026-11-11)
+- **notes:** The definition states the conditions (additional information kept separately, under technical and organisational measures); it does not say that pseudonymised data stop being personal data. The recital on that point is `gdpr-recital-26`; the supervisory reading is `a29wp-wp216-pseudonymisation`. Whether data are personal for a recipient without the key is a separate question this entry does not answer. Pseudonymisation as a safeguard appears in `gdpr-art-89-1`.
 
 ### `gdpr-art-4-7`
 
@@ -231,6 +368,30 @@ Where an entry states any of these fields inline, **the entry's own value wins.*
 - **legal_status:** `in force`
 - **notes:** Reach for consent only after checking that it is the *correct*
   basis — see `gdpr-art-6-1-b`.
+
+### `gdpr-art-4-12`
+
+- **instrument:** Regulation (EU) 2016/679 (GDPR) — *regulation*
+- **provision:** Article 4, point (12), "personal data breach" / punto 12,
+  «violazione dei dati personali»
+- **text_form:** **verbatim**
+- **text (EN, verbatim):**
+
+  > (12) ‘personal data breach’ means a breach of security leading to the accidental or unlawful destruction, loss, alteration, unauthorised disclosure of, or access to, personal data transmitted, stored or otherwise processed;
+- **text (IT, verbatim):**
+
+  > 12) «violazione dei dati personali» : la violazione di sicurezza che comporta accidentalmente o in modo illecito la distruzione, la perdita, la modifica, la divulgazione non autorizzata o l'accesso ai dati personali trasmessi, conservati o comunque trattati;
+- **official_url:** act as adopted:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679 ·
+  consolidated:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02016R0679-20160504
+- **consulted:** the Publications Office's CELLAR endpoint at `publications.europa.eu`, fetched with `curl` to files and read from the files on 2026-11-11: the act as adopted (`https://publications.europa.eu/resource/celex/32016R0679`, EN and IT) and the consolidated text (`https://publications.europa.eu/resource/celex/02016R0679-20160504`, EN and IT). Every quoted line was found, whitespace- and quote-normalised, in both the original and the consolidated file of its language — **verification_grade:** `primary-fetched`. **UNREVIEWED: not reviewed by a human.**
+- **language_version:** English and Italian, **consolidated** text (headers EN
+  `04.05.2016 — 000.002`, IT `04.05.2016 — 000.003`), compared with the
+  **original** OJ text: identical wording in both languages.
+- **verified:** 2026-11-11
+- **legal_status:** `in force` (whole-instrument status as at the page header; the in-force metadata was not re-queried on 2026-11-11)
+- **notes:** The notification duties that use this definition are `gdpr-art-33-1`, `gdpr-art-33-3`, `gdpr-art-33-5` and `gdpr-art-34`.
 
 ### `gdpr-recital-26`
 
@@ -505,6 +666,40 @@ Where an entry states any of these fields inline, **the entry's own value wins.*
   and **rejected on its facts**, because a non-infringing technical alternative
   existed so the disclosure was not "necessary" — see `../case-law/index.md` →
   `lg-muenchen-i-3-o-17493-20`.
+
+### `gdpr-art-6-4`
+
+- **instrument:** Regulation (EU) 2016/679 (GDPR) — *regulation*
+- **provision:** Article 6(4) — compatibility of processing for a purpose other
+  than that of collection / art. 6, paragrafo 4
+- **text_form:** **verbatim**
+- **text (EN, verbatim):**
+
+  > 4. Where the processing for a purpose other than that for which the personal data have been collected is not based on the data subject's consent or on a Union or Member State law which constitutes a necessary and proportionate measure in a democratic society to safeguard the objectives referred to in Article 23(1), the controller shall, in order to ascertain whether processing for another purpose is compatible with the purpose for which the personal data are initially collected, take into account, inter alia:
+  > (a) any link between the purposes for which the personal data have been collected and the purposes of the intended further processing;
+  > (b) the context in which the personal data have been collected, in particular regarding the relationship between data subjects and the controller;
+  > (c) the nature of the personal data, in particular whether special categories of personal data are processed, pursuant to Article 9, or whether personal data related to criminal convictions and offences are processed, pursuant to Article 10;
+  > (d) the possible consequences of the intended further processing for data subjects;
+  > (e) the existence of appropriate safeguards, which may include encryption or pseudonymisation.
+- **text (IT, verbatim):**
+
+  > 4. Laddove il trattamento per una finalità diversa da quella per la quale i dati personali sono stati raccolti non sia basato sul consenso dell'interessato o su un atto legislativo dell'Unione o degli Stati membri che costituisca una misura necessaria e proporzionata in una società democratica per la salvaguardia degli obiettivi di cui all'articolo 23, paragrafo 1, al fine di verificare se il trattamento per un'altra finalità sia compatibile con la finalità per la quale i dati personali sono stati inizialmente raccolti, il titolare del trattamento tiene conto, tra l'altro:
+  > a) di ogni nesso tra le finalità per cui i dati personali sono stati raccolti e le finalità dell'ulteriore trattamento previsto;
+  > b) del contesto in cui i dati personali sono stati raccolti, in particolare relativamente alla relazione tra l'interessato e il titolare del trattamento;
+  > c) della natura dei dati personali, specialmente se siano trattate categorie particolari di dati personali ai sensi dell'articolo 9, oppure se siano trattati dati relativi a condanne penali e a reati ai sensi dell'articolo 10;
+  > d) delle possibili conseguenze dell'ulteriore trattamento previsto per gli interessati;
+  > e) dell'esistenza di garanzie adeguate, che possono comprendere la cifratura o la pseudonimizzazione.
+- **official_url:** act as adopted:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679 ·
+  consolidated:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02016R0679-20160504
+- **consulted:** the Publications Office's CELLAR endpoint at `publications.europa.eu`, fetched with `curl` to files and read from the files on 2026-11-11: the act as adopted (`https://publications.europa.eu/resource/celex/32016R0679`, EN and IT) and the consolidated text (`https://publications.europa.eu/resource/celex/02016R0679-20160504`, EN and IT). Every quoted line was found, whitespace- and quote-normalised, in both the original and the consolidated file of its language — **verification_grade:** `primary-fetched`. **UNREVIEWED: not reviewed by a human.**
+- **language_version:** English and Italian, **consolidated** text (headers EN
+  `04.05.2016 — 000.002`, IT `04.05.2016 — 000.003`), compared with the
+  **original** OJ text: identical wording in both languages.
+- **verified:** 2026-11-11
+- **legal_status:** `in force` (whole-instrument status as at the page header; the in-force metadata was not re-queried on 2026-11-11)
+- **notes:** Art. 23(1), which the paragraph cross-refers to, is `gdpr-art-23-1`. Purpose limitation itself is `gdpr-art-5-1-b`. A web-search summary attributed an Art. 6(4) holding to CJEU C-180/21; the judgment's operative part does not mention Art. 6(4) (see `cjeu-c-180-21`).
 
 ### `gdpr-art-7-1`
 
@@ -809,6 +1004,38 @@ answer under Arts. 13 to 22 and 34.
   Whether that fact pattern arises in a given deployment is a fact question about
   the data actually held, not something this entry decides.
 
+### `gdpr-art-14-5`
+
+- **instrument:** Regulation (EU) 2016/679 (GDPR) — *regulation*
+- **provision:** Article 14(5)(a)–(d) — the cases in which paras. 1–4 of
+  Art. 14 do not apply / art. 14, paragrafo 5
+- **text_form:** **verbatim**
+- **text (EN, verbatim):**
+
+  > 5. Paragraphs 1 to 4 shall not apply where and insofar as:
+  > (a) the data subject already has the information;
+  > (b) the provision of such information proves impossible or would involve a disproportionate effort, in particular for processing for archiving purposes in the public interest, scientific or historical research purposes or statistical purposes, subject to the conditions and safeguards referred to in Article 89(1) or in so far as the obligation referred to in paragraph 1 of this Article is likely to render impossible or seriously impair the achievement of the objectives of that processing. In such cases the controller shall take appropriate measures to protect the data subject's rights and freedoms and legitimate interests, including making the information publicly available;
+  > (c) obtaining or disclosure is expressly laid down by Union or Member State law to which the controller is subject and which provides appropriate measures to protect the data subject's legitimate interests; or
+  > (d) where the personal data must remain confidential subject to an obligation of professional secrecy regulated by Union or Member State law, including a statutory obligation of secrecy.
+- **text (IT, verbatim):**
+
+  > 5. I paragrafi da 1 a 4 non si applicano se e nella misura in cui:
+  > a) l'interessato dispone già delle informazioni;
+  > b) comunicare tali informazioni risulta impossibile o implicherebbe uno sforzo sproporzionato; in particolare per il trattamento a fini di archiviazione nel pubblico interesse, di ricerca scientifica o storica o a fini statistici, fatte salve le condizioni e le garanzie di cui all'articolo 89, paragrafo 1, o nella misura in cui l'obbligo di cui al paragrafo 1 del presente articolo rischi di rendere impossibile o di pregiudicare gravemente il conseguimento delle finalità di tale trattamento. In tali casi, il titolare del trattamento adotta misure appropriate per tutelare i diritti, le libertà e i legittimi interessi dell'interessato, anche rendendo pubbliche le informazioni;
+  > c) l'ottenimento o la comunicazione sono espressamente previsti dal diritto dell'Unione o dello Stato membro cui è soggetto il titolare del trattamento e che prevede misure appropriate per tutelare gli interessi legittimi dell'interessato; oppure
+  > d) qualora i dati personali debbano rimanere riservati conformemente a un obbligo di segreto professionale disciplinato dal diritto dell'Unione o degli Stati membri, compreso un obbligo di segretezza previsto per legge.
+- **official_url:** act as adopted:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679 ·
+  consolidated:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02016R0679-20160504
+- **consulted:** the Publications Office's CELLAR endpoint at `publications.europa.eu`, fetched with `curl` to files and read from the files on 2026-11-11: the act as adopted (`https://publications.europa.eu/resource/celex/32016R0679`, EN and IT) and the consolidated text (`https://publications.europa.eu/resource/celex/02016R0679-20160504`, EN and IT). Every quoted line was found, whitespace- and quote-normalised, in both the original and the consolidated file of its language — **verification_grade:** `primary-fetched`. **UNREVIEWED: not reviewed by a human.**
+- **language_version:** English and Italian, **consolidated** text (headers EN
+  `04.05.2016 — 000.002`, IT `04.05.2016 — 000.003`), compared with the
+  **original** OJ text: identical wording in both languages.
+- **verified:** 2026-11-11
+- **legal_status:** `in force` (whole-instrument status as at the page header; the in-force metadata was not re-queried on 2026-11-11)
+- **notes:** Paragraph 5 has its own home here, at its own grade, separate from the rest of Art. 14 (`gdpr-art-14`). Art. 89(1), cross-referred to in point (b), is `gdpr-art-89-1`. The one supervisory text in the corpus that reads point (b) is a consultation draft on web scraping for generative AI, `edpb-gl-03-2026-para-25` to `-para-30` (`edpb-guidelines-03-2026.md`): guidance, not law, and not final.
+
 ### `gdpr-art-15`
 
 - **instrument:** Regulation (EU) 2016/679 (General Data Protection Regulation)
@@ -1109,6 +1336,53 @@ answer under Arts. 13 to 22 and 34.
   accounting/tax record, not everything attached to a transaction. Retaining
   more than those provisions require is not covered by this exemption. Scope
   qualification is a fact-specific determination for the controller.
+
+### `gdpr-art-23-1`
+
+- **instrument:** Regulation (EU) 2016/679 (GDPR) — *regulation*
+- **provision:** Article 23, "Restrictions" / "Limitazioni", paragraph 1,
+  points (a)–(j). Paragraphs 2 and 3 are `not recorded` here (not transcribed).
+- **text_form:** **verbatim**
+- **text (EN, verbatim):**
+
+  > 1. Union or Member State law to which the data controller or processor is subject may restrict by way of a legislative measure the scope of the obligations and rights provided for in Articles 12 to 22 and Article 34, as well as Article 5 in so far as its provisions correspond to the rights and obligations provided for in Articles 12 to 22, when such a restriction respects the essence of the fundamental rights and freedoms and is a necessary and proportionate measure in a democratic society to safeguard:
+  > (a) national security;
+  > (b) defence;
+  > (c) public security;
+  > (d) the prevention, investigation, detection or prosecution of criminal offences or the execution of criminal penalties, including the safeguarding against and the prevention of threats to public security;
+  > (e) other important objectives of general public interest of the Union or of a Member State, in particular an important economic or financial interest of the Union or of a Member State, including monetary, budgetary and taxation a matters, public health and social security;
+  > (f) the protection of judicial independence and judicial proceedings;
+  > (g) the prevention, investigation, detection and prosecution of breaches of ethics for regulated professions;
+  > (h) a monitoring, inspection or regulatory function connected, even occasionally, to the exercise of official authority in the cases referred to in points (a) to (e) and (g);
+  > (i) the protection of the data subject or the rights and freedoms of others;
+  > (j) the enforcement of civil law claims.
+- **text (IT, verbatim):**
+
+  > 1. Il diritto dell'Unione o dello Stato membro cui è soggetto il titolare del trattamento o il responsabile del trattamento può limitare, mediante misure legislative, la portata degli obblighi e dei diritti di cui agli articoli da 12 a 22 e 34, nonché all'articolo 5, nella misura in cui le disposizioni ivi contenute corrispondano ai diritti e agli obblighi di cui agli articoli da 12 a 22, qualora tale limitazione rispetti l'essenza dei diritti e delle libertà fondamentali e sia una misura necessaria e proporzionata in una società democratica per salvaguardare:
+  > a) la sicurezza nazionale;
+  > b) la difesa;
+  > c) la sicurezza pubblica;
+  > d) la prevenzione, l'indagine, l'accertamento e il perseguimento di reati o l'esecuzione di sanzioni penali, incluse la salvaguardia contro e la prevenzione di minacce alla sicurezza pubblica;
+  > e) altri importanti obiettivi di interesse pubblico generale dell'Unione o di uno Stato membro, in particolare un rilevante interesse economico o finanziario dell'Unione o di uno Stato membro, anche in materia monetaria, di bilancio e tributaria, di sanità pubblica e sicurezza sociale;
+  > f) la salvaguardia dell'indipendenza della magistratura e dei procedimenti giudiziari;
+  > g) le attività volte a prevenire, indagare, accertare e perseguire violazioni della deontologia delle professioni regolamentate;
+  > h) una funzione di controllo, d'ispezione o di regolamentazione connessa, anche occasionalmente, all'esercizio di pubblici poteri nei casi di cui alle lettere da a), a e) e g);
+  > i) la tutela dell'interessato o dei diritti e delle libertà altrui;
+  > j) l'esecuzione delle azioni civili.
+- **official_url:** act as adopted, OJ L 119, 4.5.2016, p. 1:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679 ·
+  consolidated:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02016R0679-20160504
+- **consulted:** the Publications Office's CELLAR endpoint at `publications.europa.eu`, fetched with `curl` to files and read from the files on 2026-11-11: the act as adopted (`https://publications.europa.eu/resource/celex/32016R0679`, EN and IT) and the consolidated text (`https://publications.europa.eu/resource/celex/02016R0679-20160504`, EN and IT). Every quoted line was found, whitespace- and quote-normalised, in both the original and the consolidated file of its language — **verification_grade:** `primary-fetched`. **UNREVIEWED: not reviewed by a human.**
+- **language_version:** English and Italian, **consolidated** text (headers EN
+  `04.05.2016 — 000.002`, IT `04.05.2016 — 000.003`), compared with the
+  **original** OJ text: the whole article reads the same in both editions of
+  each language.
+- **verified:** 2026-11-11
+- **legal_status:** `in force` (whole-instrument status as at the page header; the in-force metadata was not re-queried on 2026-11-11)
+- **notes:** **"taxation a matters" in point (e) is the English text as both snapshots print it**; it is not a transcription slip, and a quotation should keep it. The clause grounds no restriction on its own: what limits a right is the Union or national legislative measure, which must be found and cited separately. Paragraphs 2 and 3 are `not recorded` here. A CJEU lead on points (f) and (j), C-268/21 (*Norra Stockholm Bygg*, 2 March 2023), is known only from its title descriptor and has **no entry** (lead, not fetched).
+
+---
 
 ## By design and by default
 
@@ -1921,17 +2195,44 @@ this section must carry with it.
   para. 3 was not searched in this pass, so no national page here is asserted to
   be an Art. 88 measure.
 
+### `gdpr-art-89-1`
+
+- **instrument:** Regulation (EU) 2016/679 (GDPR) — *regulation*
+- **provision:** Article 89, "Safeguards and derogations relating to processing
+  for archiving purposes in the public interest, scientific or historical
+  research purposes or statistical purposes" / "Garanzie e deroghe relative al
+  trattamento a fini di archiviazione nel pubblico interesse, di ricerca
+  scientifica o storica o a fini statistici", paragraph 1. Paragraphs 2–4 are
+  `not recorded` here (read by `research-scout`, not transcribed).
+- **text_form:** **verbatim**
+- **text (EN, verbatim):**
+
+  > 1. Processing for archiving purposes in the public interest, scientific or historical research purposes or statistical purposes, shall be subject to appropriate safeguards, in accordance with this Regulation, for the rights and freedoms of the data subject. Those safeguards shall ensure that technical and organisational measures are in place in particular in order to ensure respect for the principle of data minimisation. Those measures may include pseudonymisation provided that those purposes can be fulfilled in that manner. Where those purposes can be fulfilled by further processing which does not permit or no longer permits the identification of data subjects, those purposes shall be fulfilled in that manner.
+- **text (IT, verbatim):**
+
+  > 1. Il trattamento a fini di archiviazione nel pubblico interesse, di ricerca scientifica o storica o a fini statistici è soggetto a garanzie adeguate per i diritti e le libertà dell'interessato, in conformità del presente regolamento. Tali garanzie assicurano che siano state predisposte misure tecniche e organizzative, in particolare al fine di garantire il rispetto del principio della minimizzazione dei dati. Tali misure possono includere la pseudonimizzazione, purché le finalità in questione possano essere conseguite in tal modo. Qualora possano essere conseguite attraverso il trattamento ulteriore che non consenta o non consenta più di identificare l'interessato, tali finalità devono essere conseguite in tal modo.
+- **official_url:** act as adopted, OJ L 119, 4.5.2016, p. 1:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679 ·
+  consolidated:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02016R0679-20160504
+- **consulted:** the Publications Office's CELLAR endpoint at `publications.europa.eu`, fetched with `curl` to files and read from the files on 2026-11-11: the act as adopted (`https://publications.europa.eu/resource/celex/32016R0679`, EN and IT) and the consolidated text (`https://publications.europa.eu/resource/celex/02016R0679-20160504`, EN and IT). Every quoted line was found, whitespace- and quote-normalised, in both the original and the consolidated file of its language — **verification_grade:** `primary-fetched`. **UNREVIEWED: not reviewed by a human.**
+- **language_version:** English and Italian, **consolidated** text (headers EN
+  `04.05.2016 — 000.002`, IT `04.05.2016 — 000.003`), compared with the
+  **original** OJ text: the whole article reads the same in both editions of
+  each language.
+- **verified:** 2026-11-11
+- **legal_status:** `in force` (whole-instrument status as at the page header; the in-force metadata was not re-queried on 2026-11-11)
+- **notes:** The paragraph applies only to processing for the three purposes it names; it is not a general safeguard rule for other processing. It names pseudonymisation (`gdpr-art-4-5`) as a measure the safeguards *may* include, and makes processing that no longer permits identification mandatory where the purposes can be met that way. The compatibility presumption for further processing for these purposes sits in Art. 5(1)(b) (`gdpr-art-5-1-b`). Paragraphs 2–4 are `not recorded` here.
+
 ---
 
 ## Not transcribed — known coverage gaps
 
-- **Arts. 4, 7, 42 and 49** carry Group B/C grades
+- **Arts. 4(7), 4(8), 4(11), 7, 42 and 49** carry Group B/C grades
   (`mirror-corroborated` / `secondary-corroborated`), not a text taken from the
   publisher's own rendering. Lifting them requires a **new fetch, recorded** — a
   verification grade is never raised without one.
-- **Art. 4(1) and Art. 4(5)**, the definitions of personal data and of
-  pseudonymisation that `gdpr-recital-26` explains. Present in the fetched text,
-  not transcribed.
+- **Art. 4(1) and Art. 4(5)** are now recorded (`gdpr-art-4-1`, `gdpr-art-4-5`, Group E).
 - **No Art. 28(3)(i) exists.** A verified absence, checked against the full
   fetched text: the subparagraph runs (a)-(h) only. Recorded so the next reader
   does not go looking for one.
@@ -1948,7 +2249,7 @@ this section must carry with it.
   2026-10-14 the `eur-lex.europa.eu` front end served the document directly as
   well. Until an entry is actually re-read that way and re-recorded with its own
   date, its grade stands where it is.
-- **The rest of Chapter IX.** Arts. 85, 86, 89, 90 and 91 sit beside
+- **The rest of Chapter IX.** Arts. 85, 86, 89(2)–(4), 90 and 91 sit beside
   `gdpr-art-87` and `gdpr-art-88` in the fetched text and are `not recorded`
   here. Whether any national page in this corpus was adopted under a Chapter IX
   enabling clause was not established, so no such linkage is asserted.
@@ -1968,6 +2269,7 @@ this section must carry with it.
 - `eu-us-dpf-adequacy.md` — an adequacy decision under Chapter V, and its
   pending appeal.
 - `../case-law/index.md` — Breyer (IP addresses as personal data) and the rest.
+- `edpb-guidelines-03-2026.md` — a consultation draft that reads `gdpr-art-14-5`(b).
 - `a29wp-opinion-05-2014-anonymisation.md` — the supervisory opinion on
   anonymisation that reads the identifiability test `gdpr-recital-26` states.
 - `mdr.md` — the medical-devices Regulation; `gdpr-art-9` Art. 9(2)(i) uses the

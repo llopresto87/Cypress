@@ -433,13 +433,13 @@ case_session_metrics_in_plant() {
   rm -rf "$D"
 }
 
-# E15 SOURCE_INDEX_IS_PLACED (SPEC-0007): the source index and the two siblings
+# E15 SOURCE_INDEX_IS_PLACED (SPEC-0007): the source index and the three siblings
 # it loads by path are placed byte-identical; the installer writes no plant
 # config (the cache an install's build writes is INSTALL_RUNS_THE_BUILD's, X467);
 # the placed tool builds in the fresh plant.
 case_source_index_placed() {
   local D f out rc=0; D="$(mktemp -d)"; fresh_copy "$D" all --copy
-  for f in source-index.py source_paths.py plant_walk.py; do
+  for f in source-index.py source_paths.py plant_walk.py source_readers.py; do
     cmp -s "$ROOT/tools/$f" "$D/docs/graph/$f" \
       || die "E15 SOURCE_INDEX_IS_PLACED: docs/graph/$f is missing or differs from tools/$f"
   done

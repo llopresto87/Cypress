@@ -270,6 +270,19 @@ https://spring.io/projects/spring-boot#support, not here.
   rebuild reuses the dependency layers. Within the Boot 3 line the launcher
   classes moved to `org.springframework.boot.loader.launch`; scripts that name
   the old class must follow.
+- **A second `main` class in one executable jar.** Two classes with a `main`
+  make the build plugin's main-class detection ambiguous; pin the application
+  with the plugin's main-class setting, which the jar records as `Start-Class`
+  (the manifest's `Main-Class` is the launcher, and the launcher "ultimately
+  calls your `main()`" from `Start-Class`). Start the other class from the same
+  jar through `PropertiesLauncher`, whose `loader.main` property ("Name of main
+  class to launch"; also `LOADER_MAIN` or a manifest entry) overrides it:
+  `java -cp app.jar -Dloader.main=<other.Main>
+  org.springframework.boot.loader.launch.PropertiesLauncher args...`
+  (launcher package of the Boot 3 line on). It reads `BOOT-INF/lib/` by
+  default, so the nested jars are on the class path without `Class-Path`
+  entries. The `-cp` form is confirmed in practice on a real run; the
+  specification page shows `-Dloader.main` with `-jar` and does not show `-cp`.
 - Liveness and readiness health groups are on by default and can be served on
   the main or the management port.
 
@@ -339,6 +352,7 @@ is off by default.
 - https://docs.spring.io/spring-boot/reference/data/sql.html (embedded database support)
 - https://docs.spring.io/spring-boot/how-to/webserver.html (running behind a front-end proxy)
 - https://docs.spring.io/spring-boot/appendix/application-properties/index.html
+- https://docs.spring.io/spring-boot/specification/executable-jar/launching.html and https://docs.spring.io/spring-boot/specification/executable-jar/property-launcher.html (launchers, `Start-Class`, `loader.main`)
 - https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.0-Migration-Guide
 - https://github.com/spring-projects/spring-boot/wiki (migration guides per major)
 - https://spring.io/support-policy

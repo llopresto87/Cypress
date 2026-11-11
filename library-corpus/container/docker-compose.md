@@ -281,6 +281,24 @@ than the older standalone `docker-compose` binary.
 - **Image lists from `image:` lines skip build-only services.**
   `config --images` does print a name for them (`<project>-<service>`), so use
   it rather than reading the file.
+- **CLI output shapes a script parses** (observed in practice on one Compose
+  2.x line with the containerd image store; the reference pages say
+  "Print the image names, one per line" for `config --images` and name
+  `ps --format json` as JSON Lines, and say nothing on the points below, so
+  re-capture on the line you run):
+  - `config --images <svc>` prints the service's own image and its
+    dependencies' images, in no stable order (dependencies first for one
+    service, the service first for another), and `config` has no `--no-deps`.
+    Use the list to prove membership, never to pick a line.
+  - `config --format json` gives a build-only service no `image` key; the
+    image Compose builds for it is tagged `<project>-<service>`.
+  - `images -q <svc>` prints bare 64-hex IDs, while `docker image inspect`
+    `.Id` carries a `sha256:` prefix: normalise before comparing.
+  - `ps --all --format json <svc>` is one object per container per line, and
+    prints nothing at all when there is no container. `Image` is the image
+    name; the image ID appears only inside `Labels`
+    (`com.docker.compose.image=sha256:...`).
+  - `up --wait` and `stop` print nothing on stdout; progress goes to stderr.
 
 ## Testing
 - `docker compose config -q` (or a full `config` render) in CI for every

@@ -197,6 +197,20 @@ written and kept out of argv and logs.
      success and generated nothing, and the service crash-looped at runtime
      on a missing class. When a build runs a generator, assert that its
      output exists; a green build log is not that evidence.
+   - **A tar stream over ssh cut by a short timeout is silent.** Observed in
+     practice: `git archive | ssh <host> tar -x` run in the foreground under a
+     short wall-clock limit stopped part way, with no error from either end
+     (roughly two thirds of the files arrived). Count the files on the host
+     after every export and compare with the count shipped, rather than
+     trusting the exit status of a pipeline.
+   - **A backgrounded remote job that holds ssh's stdout makes the call hang.**
+     Observed in practice: `ssh <host> 'cmd &'` does not return while the job
+     keeps the session's output descriptors open, so a caller with a timeout
+     exits 124 while the remote job carries on. Detach it with all three
+     descriptors redirected, for example `(setsid nohup sh <script> >/dev/null
+     2>&1 </dev/null &)`, and poll its log or pid file in a second call. The
+     `setsid` binary is absent on some hosts (macOS has none), so check where
+     it runs.
    - **Two rsync implementations.** Recent macOS ships `openrsync` as
      `rsync`. Observed in practice: it and GNU rsync on the host disagreed on
      a transfer with several `--exclude` flags. When the exclude list

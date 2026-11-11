@@ -40,7 +40,11 @@ wave, or reaches its holder as handback rows. Each brief carries its worker's
 row and names the concurrent writers (`delegation.briefs`). A worker that finds
 it needs a write outside its row stops there and hands back with the edit it
 needs instead of making it in passing, because a fix in passing is a second
-writer the lane holder does not know about.
+writer the lane holder does not know about. A brief that lets a worker clean
+up on a shared host limits removal to what the spawn created and named
+itself (a name carrying the lane and spawn id, run with auto-removal), never
+by prefix or pattern, because a pattern also matches what other writers or
+the owner run there.
 
 ## The baseline, diffed after the wave (`delegation.wave-baseline`)
 

@@ -99,6 +99,16 @@ gitleaks git --baseline-path old.json --report-path new.json   # only new findin
 - **Narrow false positives precisely**: `condition = "AND"` (path and regex
   together), per-rule allowlists, or a shared one with `targetRules`, rather
   than a broad path exclusion.
+  Worked case, observed in practice: the default `generic-api-key` rule
+  flagged a type name in a record declaration (a JDK `X509Certificate`
+  parameter, where the keyword is part of the identifier). With `[extend]
+  useDefault = true` and one allowlist whose regex is anchored,
+  `^X509Certificate$`, the finding drops without muting any real secret that
+  merely contains the word. Allowlist regexes check the `Secret` of the finding
+  by default (`regexTarget`: `secret`, `match` or `line`), so the anchors bind
+  the captured secret, not the line; and `useDefault` and `path` cannot be
+  combined in one `[extend]`. The anchored form was a reviewer's
+  recommendation; the default-rule match itself was observed.
 - **Scan full history with `--redact`.** Raw reports hold the secret in
   `Secret` and `Match`. Observed in practice: keep raw reports out of the
   repository and of build artifacts; untracked raw copies sat one `git add -A`

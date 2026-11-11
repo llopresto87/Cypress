@@ -2289,9 +2289,12 @@ place_graph_scaffold() {
     # router; its cache under .cypress/source-index/ is derived scratch the
     # next query rebuilds (ADR-0029): the installer carries none, and its last
     # step runs the placed build (build_source_index), which writes it. It
-    # loads source_paths.py and plant_walk.py by path, beside it.
+    # loads source_paths.py, plant_walk.py and source_readers.py by path, beside it.
     place_file "$SEED_ROOT/tools/source-index.py" "$g/source-index.py"
     place_file "$SEED_ROOT/tools/plant_walk.py" "$g/plant_walk.py"
+    # ...and the stack readers (Java, Thymeleaf, YAML/Compose, SQL, Dockerfile,
+    # nginx) it loads by path, beside it; same fast-forward class.
+    place_file "$SEED_ROOT/tools/source_readers.py" "$g/source_readers.py"
     # the worth check (SPEC-0009): flags a test whose only assertions read back
     # a literal the same change adds. Config-free (it reads TEST_GLOBS from the
     # plant's spec-lint.py, as source-index.py does; its baseline,

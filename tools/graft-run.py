@@ -86,6 +86,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import time
 from contextlib import redirect_stdout
 from pathlib import Path
 
@@ -113,6 +114,8 @@ PLAN_TASK = "graft the new seed onto this plant and run its integrity gates"
 LEDGER_ROW = re.compile(r"^  ([A-Z-]+) +(\S+)  <- (\S+)$", re.M)
 DIVERGED = ("KEEP-PLANT", "MERGE")
 WORTH_BASELINE = "worth-baseline.txt"   # plant state beside docs/graph/worth-check.py
+COPY_ATTEMPTS = 3            # copies of the plant tried while Git's own maintenance repacks it (copy_tree)
+MAINTENANCE_WAIT = 30        # seconds copy_tree waits for that maintenance's lock to clear
 
 
 def parse_args(argv):
@@ -241,11 +244,41 @@ def gate_rows(seed: Path):
 
 def copy_tree(src: Path, dst: Path):
     """The plant, byte for byte: links stay links, and anything that is not a
-    regular file (a socket, a fifo) is skipped, because opening one blocks."""
+    regular file (a socket, a fifo) is skipped, because opening one blocks.
+
+    A commit in the plant may leave Git's detached auto-maintenance running
+    (`git maintenance run --auto --detach`, a geometric repack since Git 2.5x),
+    which packs the loose objects and deletes them while the copy walks
+    `.git/objects`. When every copy error is a file under the plant's `.git`
+    that vanished, the copy waits for Git's maintenance lock to clear and is
+    made again from scratch, at most COPY_ATTEMPTS times; any other error, or
+    the last attempt's, is raised."""
     def copy(s, d):
         if stat.S_ISREG(os.lstat(s).st_mode):
             shutil.copy2(s, d)
-    shutil.copytree(src, dst, symlinks=True, copy_function=copy)
+    git_dir = os.path.join(str(src), ".git") + os.sep
+    for attempt in range(1, COPY_ATTEMPTS + 1):
+        try:
+            shutil.copytree(src, dst, symlinks=True, copy_function=copy)
+            return
+        except shutil.Error as e:
+            errors = e.args[0] if e.args and isinstance(e.args[0], list) else []
+            vanished = errors and all(isinstance(x, tuple) and len(x) == 3 and str(x[0]).startswith(git_dir)
+                                      and "No such file or directory" in str(x[2]) for x in errors)
+            if not vanished or attempt == COPY_ATTEMPTS:
+                raise
+        shutil.rmtree(dst)
+        wait_for_git_maintenance(Path(git_dir))
+
+
+def wait_for_git_maintenance(git_dir: Path):
+    """Return once no Git maintenance or gc lock is held in `git_dir`, or after
+    MAINTENANCE_WAIT seconds."""
+    locks = [git_dir / "objects" / "maintenance.lock", git_dir / "gc.pid", git_dir / "gc.log.lock"]
+    deadline = time.monotonic() + MAINTENANCE_WAIT
+    time.sleep(0.2)
+    while any(p.exists() for p in locks) and time.monotonic() < deadline:
+        time.sleep(0.2)
 
 
 def links_into(tree: Path, root: str) -> list:

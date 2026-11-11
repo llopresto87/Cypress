@@ -143,6 +143,25 @@ docs list versions and do not prescribe this).
   Where nothing decodes, either send no `Accept-Encoding`, or send it on
   purpose, decompress by hand, and apply any response-size limit to the
   decompressed bytes rather than the wire bytes (observed in practice).
+- **`PROPAGATION_NESTED` is unusable with `JpaTransactionManager` and
+  Hibernate; use `PROPAGATION_REQUIRES_NEW`.** The class javadoc says its
+  `nestedTransactionAllowed` flag "defaults to false" and that "JPA itself does
+  not support nested transactions"; the flag, when set, only gives JDBC
+  savepoints on the connection, never on the `EntityManager`. Observed in
+  practice (read from the bytecode of one 7.0 release, not stated in the
+  javadoc): the constructor does not enable nesting, so a nested request fails
+  with "Transaction manager does not allow nested transactions", and
+  `HibernateJpaDialect`'s transaction data implements no `SavepointManager`,
+  so enabling the flag still fails with "JpaDialect does not support
+  savepoints". A per-item unit of work that must fail alone takes
+  `REQUIRES_NEW`; it costs a second pooled connection for the inner
+  transaction, so size the pool for it.
+- **`UrlResource.getDescription()` "includes the URL"** (javadoc), and the
+  javadoc does not say whether that is redacted: observed in practice, user
+  info and query string appear, so print a description raw only for resources
+  whose URL you chose. `FileUrlResource.getURL()` only returns the URL and
+  opens no connection, so a check on a `file:` resource's host, user info,
+  query and fragment has to be made on the URL before any read.
 
 ## Testing
 - The TestContext framework is annotation-driven and independent of the test
@@ -198,6 +217,20 @@ docs list versions and do not prescribe this).
   types such as JSON.
 - On 7, `spring-jcl` is replaced by Apache Commons Logging; transparent for most
   applications.
+- **Refresh order, for code that must run at a given point of startup.**
+  `SmartInitializingSingleton.afterSingletonsInstantiated` runs "at the end of
+  the singleton pre-instantiation phase" and is not called for lazy or
+  non-singleton beans (javadoc). `ScheduledAnnotationBeanPostProcessor`
+  activates registered tasks "in the ContextRefreshedEvent phase" when it has
+  an application context, and in `afterSingletonsInstantiated` when it has none
+  (javadoc). Observed in practice, from the bytecode of one 7.0 release and not
+  stated in the javadoc: `finishRefresh()` starts the `SmartLifecycle` beans by
+  phase before it publishes `ContextRefreshedEvent`, so no `@Scheduled` tick
+  runs before every `SmartLifecycle` has started; and a
+  `BeanDefinitionRegistryPostProcessor` that component scan finds runs after
+  the scanned definitions are registered, so it can still remove one before any
+  singleton exists. For work that must finish before the web server opens its
+  port, use a `SmartLifecycle` whose phase is just below the server's.
 - Not covered here (no fetch): data access beyond transactions (`JdbcTemplate`,
   `spring-orm`), JMS messaging, WebFlux internals, validation internals and
   scheduler configuration.
@@ -263,6 +296,9 @@ do not mention it).
 - https://docs.spring.io/spring-framework/reference/core/aop/proxying.html
 - https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html
 - https://docs.spring.io/spring-framework/reference/integration/rest-clients.html
+- https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/orm/jpa/JpaTransactionManager.html (nested transactions)
+- https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/beans/factory/SmartInitializingSingleton.html
+- https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/scheduling/annotation/ScheduledAnnotationBeanPostProcessor.html
 - https://docs.spring.io/spring-framework/reference/web/webmvc/filters.html
 - https://docs.spring.io/spring-framework/reference/testing/testcontext-framework.html
 - https://docs.spring.io/spring-framework/reference/testing/testcontext-framework/ctx-management/caching.html
