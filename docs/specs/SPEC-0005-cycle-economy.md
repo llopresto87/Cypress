@@ -585,6 +585,22 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   and `source: claude-code transcript`; a `<synthetic>` record counts for
   nothing; the second records `not recorded` for every count and the model
 
+### Contract: TOKEN_LEDGER_READS_A_REAL_SUBAGENT_TRANSCRIPT
+- **Test file:** `tests/test-brief.sh`
+- **Given:** a Claude Code subagent transcript as the host wrote it (13 records,
+  7 messages, one message streamed as up to three records), reduced to ids,
+  model and usage so it holds no content, and the totals computed apart from
+  the tool: the last record of each message id, summed
+- **When:** `brief.py --tokens <spawn_id> --transcript PATH` runs on it
+- **Then:** the recorded sums equal those totals: input 14, cache write 41153
+  (5m 41153, 1h 0), cache read 225501, output 4384, model `claude-sonnet-5-5`,
+  `source: claude-code transcript`
+- **And:** the same reader gave the same sums as the independent computation on
+  two larger subagent transcripts (52 and 151 messages) on 2026-11-11; the 1h
+  cache-write path was 0 in all three real transcripts, so only the synthetic
+  case (X506) exercises it, and the reader is verified against the shape the
+  host writes, not against what the provider bills
+
 ### Contract: BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS
 - **Test file:** `tests/test-brief.sh`
 - **Given:** a plant whose spawn log holds five spawns over three issue
@@ -3018,6 +3034,7 @@ gives.
 | BRIEF_DERIVES_THE_SPAWN_EFFORT | X502 six role, kind and label fixtures print their effort; the log records it; an unknown kind is refused; X503 a first review of trust paths reads `first-trust`; seen red first | tests/test-brief.sh | fixture | green |
 | BRIEF_DERIVES_THE_MODEL_CLASS | X517 every role and kind composes its prior brief byte for byte (hashes from the prior tip); a changed class row adds one Model line; seen red first | tests/test-brief.sh | fixture | green |
 | TOKEN_LEDGER_RECORDS_HOST_USAGE | X505 a full, a partial and an empty usage are stored as given or `not recorded`; an unknown spawn, a second record, a fractional count and an unknown key are refused; seen red first | tests/test-brief.sh | fixture | green |
+| TOKEN_LEDGER_READS_A_REAL_SUBAGENT_TRANSCRIPT | X950 a redacted real subagent transcript (7 messages, 13 records) sums to the independently computed totals; seen red against a reader that counts every record | tests/test-brief.sh | integration | green |
 | TOKEN_LEDGER_READS_A_CLAUDE_CODE_TRANSCRIPT | X506 a hand transcript with a repeated message id, a 1h write and a `<synthetic>` record sums once per message; an empty transcript records `not recorded`; seen red first | tests/test-brief.sh | fixture | green |
 | BRIEF_LOG_PRINTS_THE_DERIVABLE_METRICS | X515 a hand spawn log and ledger print `tests/fixtures/brief-log/log.out`; the three lines pass `session-metrics.py` in a delivery entry; no ledger, a broken ledger line and an empty log give their lines; seen red first | tests/test-brief.sh | fixture | green |
 | BRIEF_NOTICES_AN_UNDERSIZED_BATCH | X516 an undersized RED with two more ready notices once and logs it; the exact batch, a security and a concurrency GREEN of one, and a GREEN with nothing else ready do not; an unknown increment is skipped, not refused; seen red first | tests/test-brief.sh | integration (installed plant) | green |
@@ -3702,3 +3719,4 @@ kept outside the seed.
   pointer to the always-loaded rule position-free. Added
   FORBIDDEN_SENTENCE_IS_IN_NO_COMPOSED_PROMPT and
   FORBIDDEN_SENTENCE_IS_IN_NO_METHOD_SOURCE (X910, X911, each seen red first).
+- 2026-11-11: the token ledger's transcript reader was verified against real Claude Code subagent transcripts (three, 7 to 151 messages): its sums equal an independent computation. Added TOKEN_LEDGER_READS_A_REAL_SUBAGENT_TRANSCRIPT (X950, seen red against a reader that counts every record). The 1h cache-write path was 0 in every real transcript and stays covered by the synthetic case only; billing is not verified.
