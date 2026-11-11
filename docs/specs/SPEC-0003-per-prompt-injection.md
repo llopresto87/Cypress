@@ -702,6 +702,37 @@ host facts); a probe is evidence, not a gate row.
   missing guard never blocks every command, and `--check` reports it
   (OPENCODE_CHECK_NAMES_THE_EARLIER_SHAPE)
 
+### Contract: OPENCODE_PLUGIN_CASES_RUN_IN_CI
+- **Given:** `.github/workflows/gate.yml` and `tests/test-opencode-plugin.sh`
+- **When:** a push or pull request runs the gate workflow
+- **Then:** its `opencode-plugin` job installs one bun release named by
+  version, checks the archive against the checksum recorded in the workflow
+  before using it, and runs `bash tests/test-opencode-plugin.sh` with
+  `CYPRESS_REQUIRE_BUN=1`, so F1-F7 run on every push; no workflow pipes a
+  download into a shell
+- **And:** with `CYPRESS_REQUIRE_BUN=1` and no bun on PATH the test exits
+  non-zero naming the variable, so a bun that fails to land fails the job
+  instead of skipping the half; without the variable it passes in part and
+  prints `SKIPPED-PART: fixture half skipped: bun not found`, so a developer
+  machine without bun stays green and the gate summary names the gap
+  (GATE_SUMMARY_NAMES_A_SKIPPED_PART)
+- **Note:** the owner decided on 2026-11-11 that at least one CI job runs the
+  plugin's behaviour cases. `check_workflows` holds the job's shape; whether
+  the hosted runner ran it green is outside any check here (§11)
+
+### Contract: GATE_SUMMARY_NAMES_A_SKIPPED_PART
+- **Given:** a gate step that exits 0 and prints one line starting
+  `SKIPPED-PART:` for each half it left unrun, followed by what was skipped
+- **When:** `tests/run-parallel.py` (through `tests/gate_pool.py`) prints the
+  step and the closing summary
+- **Then:** the step's header reads `[PASS in part]`, its progress mark reads
+  `part`, and the summary closes with `run-parallel: N passed in part: <step>
+  (<what was skipped>)`, for example `1 passed in part:
+  test-opencode-plugin.sh (fixture half skipped: bun not found)`
+- **And:** the line never turns a failing step green, and a step whose
+  whole run was skipped keeps its `SKIP` verdict; the classification in
+  `tools/gate-registry.py` is unchanged
+
 ### Contract: EVERY_RESOLVER_PATH_IS_INSTALLED
 - **Given:** a plant installed by `install.sh`, the candidate lists of
   `route-hook.py` (`CANDIDATES`) and `status-hook.py` (`CANDIDATES`,
@@ -2000,8 +2031,11 @@ Techniques the cases rely on:
 | SESSION_INJECTION_WITHIN_BUDGET | X172; tests/fixtures/session-injection/scripted-session.json over the PLAN_* fixture plant; the ceiling is read from tests/ratchets.json | tests/test-prompt-hooks.sh | integration; red on arrival (no argv envelope, so no full injection; and `SESSION_INJECTION_MAX_BYTES` is not registered until GREEN measures it) | green |
 | PRIME_SESSION_ID_PASSED | X173 | tests/test-prompt-hooks.sh | unit; structural; red on arrival (no `getSessionId(`, `rlmDepth`, argv options) | green |
 | OPENCODE_PLUGIN_IS_A_THIN_ENVELOPE | X520 P1-P8 of tests/test-opencode-plugin.sh: imports, one no-shell spawn, timeout and kill, a `try` around each registration, the PYTHON line, no write, console, env or router, the core lookup; each seen red against a deliberately broken copy | tests/test-opencode-plugin.sh | unit; structural | green |
-| OPENCODE_PLUGIN_INJECTS_THE_CORES_TEXT_ONCE | X521 F1, F2 and F4 of tests/test-opencode-plugin.sh under bun (SKIPPED with a printed reason without it): the injected texts equal the cores' `additionalContext` byte for byte with `resume: false`, a child gets none, a failing `session.get` leaves `--depth` out; test-prompt-hooks.sh case OC1 holds the argv/stdin equality for an OpenCode session id | tests/test-opencode-plugin.sh | fixture | green |
+| OPENCODE_PLUGIN_INJECTS_THE_CORES_TEXT_ONCE | X521 F1, F2 and F4 of tests/test-opencode-plugin.sh under bun (SKIPPED with a printed reason and a `SKIPPED-PART:` line without it; the gate workflow's opencode-plugin job requires bun, OPENCODE_PLUGIN_CASES_RUN_IN_CI): the injected texts equal the cores' `additionalContext` byte for byte with `resume: false`, a child gets none, a failing `session.get` leaves `--depth` out; test-prompt-hooks.sh case OC1 holds the argv/stdin equality for an OpenCode session id | tests/test-opencode-plugin.sh | fixture | green |
 | OPENCODE_SHELL_GUARD_REFUSES_WITH_THE_CORES_REASON | X522 F3, F5, F6 and F7 of tests/test-opencode-plugin.sh under bun: a refused command is denied with the core's stderr byte for byte, an allowed one and a non-shell action are left alone, a missing or slow core and a throwing registration change nothing; test-bound-hook.sh holds five `opencode:` cases for the core's exit and stderr | tests/test-opencode-plugin.sh | fixture | green |
+| OPENCODE_PLUGIN_CASES_RUN_IN_CI | X930 of tests/test-opencode-plugin.sh runs the file again with a bun that cannot be found: it exits 0 with the `SKIPPED-PART:` line, and exits non-zero naming `CYPRESS_REQUIRE_BUN` when the variable is 1; red on arrival (2026-11-11: the child ran the fixture half and printed no `SKIPPED-PART:` line) | tests/test-opencode-plugin.sh | integration; the CI job itself is held structurally by the next row | green |
+| OPENCODE_PLUGIN_CASES_RUN_IN_CI | check_workflows | tests/seed-lint.py | structural: gate.yml names the test, `CYPRESS_REQUIRE_BUN: "1"`, `BUN_SHA256` and `sha256sum -c`, and no workflow pipes `curl` or `wget` into a shell; seen red 2026-11-11 against a copy with the variable set to "0" and one with a piped install | green |
+| GATE_SUMMARY_NAMES_A_SKIPPED_PART | test_gate_summary_names_a_skipped_part | tests/test_run_parallel.py | integration (X931, with test_a_failing_step_with_a_skipped_part_still_fails beside it); red on arrival 2026-11-11 (the step read `[PASS]` and the summary `all 2 steps passed`) | green |
 | PRIME_RESET_ON_EVENTS | X174 | tests/test-prompt-hooks.sh | unit; structural; red on arrival (status-extension.ts subscribes `before_agent_start` alone) | green |
 | STATUS_ONCE_PER_SESSION | X175 | tests/test-prompt-hooks.sh | unit; structural; red on arrival (`let shown`) | green |
 | PRIME_SESSION_UNKNOWN | X170 and X173, the cases of the contracts named in §7 (an unreadable depth is routed; no session id is full mode) | tests/test-prompt-hooks.sh | integration; each names this failure slug after its contract slug | green |
@@ -2050,6 +2084,7 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
 | How `pi.exec` decodes the child's line endings | The 7.28.0 extension matched an exact echo, which a decoded CR would break | **Moot 2026-10-01:** the core hashes the prompt it passes and the router hashes what it receives, so both see the same bytes; no echo is matched | architect | resolved |
 | `getSessionId()` in `before_agent_start`; `rlmDepth` or `parentSession` on the session header; the extension's own directory under jiti | Prime Agent residency (first), child suppression (second) and finding the hooks (third) rest on them | not recorded; each failure falls toward inclusion (§7 `PRIME_SESSION_UNKNOWN`) | orchestrator | a live probe on Prime Agent before the GREEN of plan increment 1, recorded as evidence |
 | Whether Claude Code's `UserPromptSubmit` envelope carries the turn's origin | The transcript records `origin.kind`; the hook would read it instead of `NON_HUMAN_MARKERS` | not recorded; the markers hold until a probe shows it. The prompt text the hook receives for a hand-back is the bare `<agent-message ` frame (2026-11-02 audit: 940 hand-backs of 8.1.1 routed as "too long" because the header marker never matched) | architect | a probe at the RED of plan increment 1 |
+| Whether the hosted runner runs the gate workflow's opencode-plugin job green | OPENCODE_PLUGIN_CASES_RUN_IN_CI rests on the job running F1-F7 on every push | The CI job was not executed in this environment. On 2026-11-11 its two shell steps were run by hand on a Linux x64 host (pinned download, checksum check, then the test with `CYPRESS_REQUIRE_BUN=1`: F1-F7 OK), the workflow parses, and `check_workflows` holds its shape | owner | the first push of 8.5.1, read from the Actions log |
 | The Claude Code default hook timeout | If the host kills the hook first, nothing is injected, not even the pointer line | not recorded. The seed sets none; `ROUTER_TIMEOUT` is 15 s and GC is bounded by `GC_SCAN_MAX` (plan §4.8, §11) | reliability | Unknown |
 | The reminder header, renamed in the first draft from the plan's `Not loaded, not listed before:` to `Peers not listed before:` | The plan's header contained "loaded", which contradicts I-6; the first rename lost the router's "not suggested" meaning | **Resolved, product 2026-09-23:** renamed to `Not suggested, not listed before (cross only if needed):` so the header keeps the router's "not suggested" meaning | product | resolved |
 | The reminder tail on Claude Code | On Claude Code "surfaced" means suggested, not opened, so "re-open" assumed a read | **Resolved, product 2026-09-23 (optional C6, taken):** `— open if not in view.` on Claude Code; the Prime Agent section keeps "re-open", where membership does mean the model opened the node | product | resolved |
@@ -2541,3 +2576,10 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
   host, a keyed instruction entry sits in the system section where a changed
   value would break the provider's cached prefix, and a synthetic message is
   appended history.
+- 2026-11-11 — 8.5.1. The owner decided on 2026-11-11 that at least one CI
+  job runs the OpenCode plugin's behaviour cases. Added
+  OPENCODE_PLUGIN_CASES_RUN_IN_CI (a gate workflow job with a pinned,
+  checksummed bun and `CYPRESS_REQUIRE_BUN=1`) and
+  GATE_SUMMARY_NAMES_A_SKIPPED_PART (a `SKIPPED-PART:` line makes the gate
+  summary name a step that passed in part), each seen red first. X930 and X931
+  are their labels.
