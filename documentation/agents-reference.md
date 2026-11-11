@@ -105,7 +105,7 @@ Coordinators as an edge list of `delegates_to` allowlists (every row is a shippe
 | `growth-orchestrator` | 2 | `growth-scout`, `seed-installer`, `docs-librarian`, `architect`, `research-scout`, `tester`, `ui-ux-designer` |
 | `multi-agent-architect` | 2 | `architect`, `tester`, `implementer`, `reviewer`, `data-ml`, `security`, `reliability` |
 
-`legal` ships in every install, its corpus only on request (`install.sh --legal-corpus yes`), and no coordinator's shipped `delegates_to` names it. `architect.legal-checkpoint` (`agents/01-architect.md`) reaches it only when the plant has extended both its roster and `architect`'s `delegates_to` to include it; otherwise `architect` stops and hands back naming `legal` as `recommended_next`.
+`legal` ships in every install, its corpus only on request (`install.sh --legal-corpus yes`), and `architect`'s shipped `delegates_to` names it. `architect.legal-checkpoint` (`agents/01-architect.md`) spawns it within the architect's depth cap; where a host cannot spawn it, `architect` stops and hands back naming `legal` as `recommended_next`.
 
 ## 7. Agent reference (per agent)
 
@@ -143,7 +143,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **Role:** Senior system architect. Owns boundaries, interfaces, data flow, dependency choices, and Architecture Decision Records (ADRs).
 - **model class:** `opus`
 - **effort (default):** `high`
-- **Delegation:** coordinator with `can_delegate: true`, `max_spawn_depth: 1`, `delegates_to:` `tester`, `research-scout`
+- **Delegation:** coordinator with `can_delegate: true`, `max_spawn_depth: 1`, `delegates_to:` `tester`, `research-scout`, `legal`
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`, `WebSearch`, `WebFetch`, `Task`
 - **tier (graph load-tier):** 2
 - **owns (facts):** `architect.charter`, `architect.spec-sections`, `architect.reversibility-tags`, `architect.legal-checkpoint`
@@ -636,7 +636,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **Role:** Senior regulatory-compliance analyst. Owns reasoning about externally-authored rules (regulatory codes, standards catalogs, compliance requirements) against a curated, verified legal corpus as its only knowledge source — never live search, never model memory. Every claim is bound to a corpus entry; a corpus gap produces an explicit refusal, never a reconstructed citation.
 - **model class:** `opus`
 - **effort (default):** `high`
-- **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary. No coordinator's default `delegates_to` names it — see §6 — so it is only reached via `architect.legal-checkpoint`'s conditional extension, or by a session dispatching it directly if the host projection registered it.
+- **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary. `architect`'s `delegates_to` names it — see §6 — so it is reached via `architect.legal-checkpoint`, or by a session dispatching it directly if the host projection registered it.
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`
 - **tier (graph load-tier):** 2
 - **owns (facts):** `legal.charter`, `legal.corpus-rule`, `legal.four-part-finding`, `legal.qualification-boundary`, `legal.citation-ledger`
