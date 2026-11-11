@@ -10,7 +10,8 @@
 # table (adversarial.tsv), with the documented limits of known-gaps.tsv held at
 # the verdict that file records; X810 to X812 gate the tester's round-two rows
 # on keyed security settings, a setUp that only reads and a read in a describe
-# body, each with a plant of its own cases besides. The check never runs over this repository's own suite, whose tests assert
+# body, each with a plant of its own cases besides; X820 gates the rows on a
+# key shaped like an HTTP header name. The check never runs over this repository's own suite, whose tests assert
 # documentation text on purpose.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -443,6 +444,7 @@ check_adv X806 WORTH_FLAGS_A_READ_BACK_TEST '.'
 check_adv X810 WORTH_SECURITY_KEY_IS_A_DECLARATION 'key is a string'
 check_adv X811 WORTH_SETUP_THAT_ONLY_READS_IS_A_READ 'setUp only copies'
 check_adv X812 WORTH_DESCRIBE_BODY_READ_IS_A_READ 'read in the describe body'
+check_adv X820 WORTH_HEADER_NAME_KEY_IS_A_SECURITY_DECLARATION 'header-shaped|X-Frame-Options'
 gaps="$(awk -F'\t' '$1 == "JSON" || $4 == "gap"' <<<"$adv")"
 [[ -n "$gaps" ]] && ! grep -q '^BAD\|^JSON' <<<"$gaps" \
   && ok "X806 HEURISTIC_SPARES_A_READ_BACK: the $(wc -l <<<"$gaps" | tr -d ' ') documented limit(s) of known-gaps.tsv keep the verdict that file records" \

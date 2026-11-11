@@ -41,8 +41,12 @@ model, and it errs toward sparing. It spares:
     or object key, the name a lookup reads (.get("X"), getattr(obj, "x"),
     toHaveProperty("X")), and the names a setUp attribute or a describe-body
     const was read from, so a control gets one verdict whether it is stored
-    as a constant or under a key. Words in a value the test compares against
-    never count, and a URL in a comment is read without its scheme;
+    as a constant or under a key. A key shaped like an HTTP header name
+    (X-Frame-Options, Cache-Control: capitalised words joined by hyphens) is
+    itself a security declaration, and a constant named for a standard
+    security header (X_FRAME_OPTIONS, referrerPolicy) names one. Words in a
+    value the test compares against never count, a header name among them,
+    and a URL in a comment is read without its scheme;
   - a negative control: an assertion that a named value is absent or refused
     (`"/admin" not in nav`, `.not.toContain("/admin")`, an expected exception);
   - a test whose only assertions are guards: a value is set or not empty
@@ -75,7 +79,9 @@ with no literal between them; a snapshot held in a file the runner writes
 (toMatchSnapshot, a snapshot fixture); a fixture parameter's value; a test
 whose name says regression; a test inside describe.each, whose parameters read
 as logic; a key that names a security subject for an unrelated reason
-(ROUTES["/login"]); a setUp or describe body that runs any code beside a read.
+(ROUTES["/login"]); a read-back under any header-shaped key (a plain
+HEADERS["Content-Type"] check); a setUp or describe body that runs any code
+beside a read.
 One limit can flag a good test: a setup file named only in the
 runner's configuration (jest globalSetup, vitest setupFiles) is not read, so a
 file it builds reads as a literal; keep such a test with a keep line naming
@@ -176,7 +182,20 @@ SECURITY_RE = re.compile(
     r"\b(?:secur\w*|auth\w*|csrf|xsrf|xss|inject\w*|travers\w*|secrets?|passw\w*|tokens?|"
     r"permission\w*|forbid\w*|denied|deny|sanitiz\w*|escap\w*|privileg\w*|csp|cors|tls|ssl|"
     r"https|session\w*|admin\w*|login|logout|credential\w*|encrypt\w*|decrypt\w*|debug|"
-    r"nonce|unsafe|untrusted|malicious|attack\w*|exploit\w*)\b", re.I)
+    r"nonce|unsafe|untrusted|malicious|attack\w*|exploit\w*|hsts|"
+    # The standard security response headers, as an identifier names one once
+    # words() has split it: X_FRAME_OPTIONS, xContentTypeOptions, referrerPolicy.
+    r"x[\s-]*frame[\s-]*options|x[\s-]*content[\s-]*type[\s-]*options|"
+    r"strict[\s-]*transport\w*|referrer[\s-]*policy|permissions?[\s-]*policy|"
+    r"cross[\s-]*origin[\s-]*(?:opener|embedder|resource)[\s-]*policy|"
+    r"frame[\s-]*ancestors|x[\s-]*xss[\s-]*protection)\b", re.I)
+# A string key shaped like an HTTP header name (capitalised words joined by
+# hyphens: X-Frame-Options, Cache-Control, Strict-Transport-Security) declares
+# a security control by its shape, so no word list has to name every header.
+# It is deliberately broad: a plain Content-Type read-back is spared with it,
+# since a missed flag costs nothing and a flagged security test costs a gate.
+# Only a key counts; a header name used as a compared value is content.
+HEADER_KEY_RE = re.compile(r"^[A-Z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)+$")
 # A string used as a key names a thing, as an identifier does, so the security
 # spare reads it: a subscript (`SETTINGS["SESSION_COOKIE_SECURE"]`), a dict or
 # object key, and the first argument of a lookup by name. A string compared
@@ -388,10 +407,12 @@ def names_a_bug(declared: str) -> bool:
     return False
 
 
-def about_security(declared: str) -> bool:
+def about_security(declared: str, keys=()) -> bool:
     """The declaration and the identifiers a test reads name a security
-    subject; a URL in a comment is read without its scheme."""
-    return bool(SECURITY_RE.search(words(URL_RE.sub(" ", declared))))
+    subject, or a key it uses is shaped like an HTTP header name; a URL in a
+    comment is read without its scheme."""
+    return any(HEADER_KEY_RE.match(k) for k in keys) \
+        or bool(SECURITY_RE.search(words(URL_RE.sub(" ", declared))))
 
 
 def py_keys(nodes) -> list[str]:
@@ -990,12 +1011,14 @@ def read_python(rel: str, src: str, root: Path | None = None):
             | {a.arg for a in ast.walk(fn.args) if isinstance(a, ast.arg)}
         # Keys name things as identifiers do, and an attribute a setUp bound
         # carries the names of what it was bound to.
-        named = sorted(ids) + py_keys(fn.body) + [attrs[n.attr][1] for n in ast.walk(fn)
+        keys = py_keys(fn.body)
+        named = sorted(ids) + keys + [attrs[n.attr][1] for n in ast.walk(fn)
                                                   if isinstance(n, ast.Attribute) and n.attr in attrs]
         declared = f"{above}\n{inside}\n{doc}\n{words(name)}\n{words(marks)}"
         kept, reason = keep_reason(lines, first, ("#",))
         out.append(verdict(rel, name, first, "python", t.logic, t.assertions,
                            declared=declared, security_text=declared + "\n" + " ".join(named),
+                           keys=keys,
                            literal_of=py_literal, kept=kept, reason=reason))
     return out, unread
 
@@ -1553,11 +1576,13 @@ class JsFile:
         ids = " ".join(x.value for x in body if x.kind == "id")
         # Keys name things as identifiers do, and a const an enclosing block
         # read carries the names of what it read.
-        named = " ".join(js_keys(body) + [self.scoped[x.value] for x in body
+        keys = js_keys(body)
+        named = " ".join(keys + [self.scoped[x.value] for x in body
                                           if x.kind == "id" and x.value in self.scoped])
         declared = f"{above}\n{inside}\n{title}"
         return verdict(self.rel, title, line, self.lang, logic, assertions,
                        declared=declared, security_text=f"{declared}\n{words(ids)}\n{named}",
+                       keys=keys,
                        literal_of=js_literal, kept=kept, reason=reason)
 
     def read_body(self, body: list[Tok], params: set):
@@ -1801,9 +1826,10 @@ def read_js(rel: str, src: str, lang: str):
 
 # --- the verdict --------------------------------------------------------------
 def verdict(path, name, line, lang, logic, assertions, declared, security_text,
-            literal_of, kept, reason) -> dict:
+            literal_of, kept, reason, keys=()) -> dict:
     """`declared` is the test's name or title, markers, comments and docstring;
-    `security_text` adds the identifiers it reads. Neither holds a literal."""
+    `security_text` adds the identifiers it reads. Neither holds a literal.
+    `keys` are the strings the test uses as keys."""
     rec = {"test": f"{path}::{name}", "path": path, "name": name, "line": line,
            "language": lang, "verdict": "spared", "why": "", "literals": [],
            "assertions": len(assertions), "keep_without_reason": False}
@@ -1820,7 +1846,7 @@ def verdict(path, name, line, lang, logic, assertions, declared, security_text,
         rec["why"] = "only guards that a value is set or empty; no literal is read back"
     elif names_a_bug(declared):
         rec["why"] = "a regression test for a bug"
-    elif about_security(security_text):
+    elif about_security(security_text, keys):
         rec["why"] = "a security control"
     else:
         lits, seen = [], set()

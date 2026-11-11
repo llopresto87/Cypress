@@ -1,6 +1,6 @@
 # The verdict an independent tester owes each case of tests/fixtures/worth/adversarial/,
 # written by hand before worth-check.py was run over it. tests/test-worth-check.sh
-# (X800 to X806, X810 to X812) gates every row at this verdict, except the documented limits of
+# (X800 to X806, X810 to X812, X820) gates every row at this verdict, except the documented limits of
 # tests/fixtures/worth/known-gaps.tsv, which it holds at the verdict recorded there.
 # Paths are as a test plant holds them (the adversarial tree copied under tests/).
 # Columns: test, verdict (flagged | spared), what the test is.
@@ -77,3 +77,15 @@ tests/adversarial/ts/adversarial-keys.test.ts::map setting read through get	spar
 tests/adversarial/ts/adversarial-keys.test.ts::plain label under a plain key	flagged	round 3: read-back of a plain label under a plain string key
 tests/adversarial/ts/adversarial-keys.test.ts::page built in a nested beforeAll carries the label	spared	round 3: reads a file a beforeAll inside describe had the code under test write
 tests/adversarial/ts/adversarial-keys.test.ts::page built in a node before hook carries the label	spared	round 3: reads a file a node:test before hook had the code under test write
+tests/adversarial/python/test_adversarial_headers.py::test_content_type_options_under_a_subscript	spared	header-shaped key: X-Content-Type-Options under a subscript
+tests/adversarial/python/test_adversarial_headers.py::test_referrer_policy_under_a_response_subscript	spared	header-shaped key: Referrer-Policy under a subscript of a response's headers
+tests/adversarial/python/test_adversarial_headers.py::test_permissions_policy_under_a_subscript	spared	header-shaped key: Permissions-Policy under a subscript
+tests/adversarial/python/test_adversarial_headers.py::test_opener_policy_in_a_dict_literal	spared	header-shaped key: Cross-Origin-Opener-Policy as a dict key
+tests/adversarial/python/test_adversarial_headers.py::test_hint_names_a_header	flagged	header-shaped value: a read-back whose compared value is a header name
+tests/adversarial/python/test_adversarial_headers.py::test_sniffing_constant	spared	header-shaped key: a constant named for X-Content-Type-Options
+tests/adversarial/ts/adversarial-headers.test.ts::content type options under a subscript	spared	header-shaped key: X-Content-Type-Options under a subscript
+tests/adversarial/ts/adversarial-headers.test.ts::referrer policy as a property	spared	header-shaped key: Referrer-Policy through toHaveProperty
+tests/adversarial/ts/adversarial-headers.test.ts::permissions policy in an object literal	spared	header-shaped key: Permissions-Policy as an object key
+tests/adversarial/ts/adversarial-headers.test.ts::opener policy under a response subscript	spared	header-shaped key: Cross-Origin-Opener-Policy under a subscript of a response's headers
+tests/adversarial/ts/adversarial-headers.test.ts::hint names a header	flagged	header-shaped value: a read-back whose compared value is a header name
+tests/adversarial/ts/adversarial-headers.test.ts::referrer constant	spared	header-shaped key: a constant named for Referrer-Policy
