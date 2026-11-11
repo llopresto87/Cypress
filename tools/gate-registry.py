@@ -172,7 +172,8 @@ GATES: dict[str, tuple[str, str, str, str]] = {
     "test-worth-check.sh": (
         "SPEC-0009 worth check: the placed worth-check.py flags each fixture read-back test in "
         "Python, TypeScript and JavaScript and spares the logic, regression and security "
-        "fixtures, lists an unread language as not checked, honours a keep line with a reason, "
+        "fixtures and an adversarial table an independent tester wrote, lists an unread language "
+        "or a parametrized test it cannot read as not checked, honours a keep line with a reason, "
         "and holds a baseline that only shrinks",
         TEMP, "representation",
         "a heuristic judged against a hand-written fixture suite in a fresh install, not a real "
