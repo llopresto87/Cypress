@@ -101,7 +101,7 @@ hosts and targets no frozen host.
 | Per-session injection dedup | mechanically enforced | unsupported⁸ | unsupported | degraded³ | mechanically enforced⁵ |
 | Pre-tool guard | mechanically enforced | mechanically enforced | unsupported | unsupported | unsupported |
 | Slash commands | mechanically enforced | mechanically enforced | unsupported | mechanically enforced | mechanically enforced |
-| Always-applied instructions | mechanically enforced (67 069 B, recorded exemption) | mechanically enforced (67 069 B, recorded exemption) | mechanically enforced (≤ 24 129 B)⁴ | mechanically enforced (29 773 B) | mechanically enforced (18 388 B) |
+| Always-applied instructions | mechanically enforced (67 065 B, recorded exemption) | mechanically enforced (67 065 B, recorded exemption) | mechanically enforced (≤ 24 125 B)⁴ | mechanically enforced (29 769 B) | mechanically enforced (18 388 B) |
 
 ¹ The leaf/coordinator split (who holds the spawn tool at all: `Agent` on Claude Code, `Task` accepted) is read by the
 harness from each agent's `tools:` line, and ADR-0003 classes that read
@@ -583,11 +583,11 @@ function's own computation against current sources:
 
 | Harness | Formula | Measured |
 |---|---|---|
-| Claude Code | kernel + agent descriptions + skill descriptions + orchestrator output style | 67 069 B (recorded exemption) |
-| opencode | kernel + agent descriptions + skill descriptions + orchestrator charter (the default agent) | 67 069 B (recorded exemption) |
-| Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 24 129 B |
+| Claude Code | kernel + agent descriptions + skill descriptions + orchestrator output style | 67 065 B (recorded exemption) |
+| opencode | kernel + agent descriptions + skill descriptions + orchestrator charter (the default agent) | 67 065 B (recorded exemption) |
+| Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 24 125 B |
 | Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 18 388 B |
-| GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 29 773 B |
+| GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 29 769 B |
 
 The component figures live in `check_eager_surface()` in `tests/seed-lint.py`,
 their one home, and `check_published_figures()` beside it holds this table to

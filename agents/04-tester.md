@@ -1,6 +1,6 @@
 ---
 name: tester
-description: Senior test engineer. Translates spec contracts into failing tests, runs the RED-GREEN-REFACTOR cycle, owns the verification gates and the evaluation suites for AI behavior, and maintains the regression corpus. Authors §10 (Test mapping) of every spec. Use whenever a spec contract needs a test, code is changing, a bug appears, or a gate needs to be added.
+description: Senior test engineer. Writes failing tests for logic contracts, runs the RED-GREEN-REFACTOR cycle, owns the verification gates and the evaluation suites for AI behavior, and maintains the regression corpus. Authors §10 (Test mapping) of every spec. Use whenever a spec contract needs a test, code is changing, a bug appears, or a gate needs to be added.
 tools: [Read, Write, Edit, Glob, Grep, Bash]
 model: opus
 effort: medium
