@@ -39,6 +39,7 @@ def all_absent():
     for a in r["agents"]:
         a.update(status="ABSENT", reason="its collections are absent-with-reason",
                  searched=["src/"])
+DECLINED = "the owner decided on 2026-11-11 that this fixture goes without it"
 def cover(name, rel):
     by("collections", name).update(status="COVERED", evidence=[rel], leaves=1,
                                    reason="", searched=[], blocker="")
@@ -60,6 +61,10 @@ build_bases() {
   PLANT_CACHE="$GA_BASES/cache" plant_base claude-code
   ln -s "$PLANT_BASE" "$GA_BASES/installed"
   cp -a "$PLANT_BASE" "$GA_BASES/planned"; plan "$GA_BASES/planned"
+  # A fresh growth fails on an open plant need (X720), so the bases carry the
+  # honest decline; the needs cases clear it with undecline.
+  patch_record "$GA_BASES/planned" 'for n in r["needs"]:
+    if not n["configured"]: n.update(status="ABSENT", reason=DECLINED)'
   cp -a "$GA_BASES/planned" "$GA_BASES/absent"
   patch_record "$GA_BASES/absent" 'all_absent()
 r["inventory"] = [{"kind": "domain", "name": "batch etl", "status": "ABSENT",
@@ -137,6 +142,8 @@ for it in r["inventory"]:
     it["expert"] = {"warranted": False, "why": "the expertise node and its "
                     "composition cover it; nothing here needs a different "
                     "tool, model, stance, or isolation"}
+for n in r["needs"]:      # a fresh growth closes each need, here by the owner's decline
+    if not n["configured"]: n.update(status="ABSENT", reason=DECLINED)
 PY
 ga "$p"; rc_is 0 "a fully grown plant did not pass the gate"
 has "coverage complete" "a passing audit did not say so"
@@ -1034,7 +1041,8 @@ has "plainleaf.md" "an authored leaf in an ordinary subdirectory of an ABSENT co
 
 # --- the model map is disclosed, not required (S4, ADR-0022) ---
 # A grown plant whose record predates the map: no models.md row, and the map
-# still the seed's template. Passing is the plant's configuration choice.
+# still the seed's template. After a graft, passing is the plant's configuration
+# choice.
 scn_model_map_disclosed() {
 local p="$TMP/mapd"
 fixture renamed "$p"
@@ -1042,7 +1050,9 @@ ga "$p"; rc_is 0 "setup: the renamed all-ABSENT plant no longer passes, so this 
 rm -f "$p/docs/graph/models.unfilled.md"
 cp "$ROOT/templates/docs/models.md" "$p/docs/graph/models.md"
 patch_record "$p" 'r["collections"] = [c for c in r["collections"] if c["name"] != "models.md"]'
-ga "$p"; rc_is 0 "a grown plant with the template model map and no models.md row failed the gate"
+# a grown plant re-audited is the after-a-graft reading (X720 holds the fresh one)
+patch_record "$p" 'for n in r.get("needs", []): n.update(status="", reason="")'
+ga "$p" --after-graft; rc_is 0 "a grown plant with the template model map and no models.md row failed the gate"
 grep -i 'docs/graph/models.md' <<<"$out" | grep -qi 'unfilled' \
   || { printf '%s\n' "$out" >&2; fail "the audit did not name docs/graph/models.md as unfilled"; }
 echo "  an unfilled model map is disclosed, not required — OK"
@@ -1216,21 +1226,22 @@ echo "  the build report follows the verdicts as advice; a failed build is one l
 
 # --- X665-X670: the plant needs of the landed capabilities (SPEC-0011) ---
 # A capability the seed landed reads a fact only the plant can supply. On the
-# green all-ABSENT plant each need is owed by --plan, named by the lint as not
-# configured without failing it, carried when the owner declines it, and closed
-# once the fixture supplies the answer.
+# green all-ABSENT plant each need is owed by --plan, named by the lint after a
+# graft as not configured without failing it, carried when the owner declines
+# it, and closed once the fixture supplies the answer.
+undecline() { patch_record "$1" 'for n in r.get("needs", []): n.update(status="", reason="")'; }
 plant_needs() { check_record "$1" 'print(" ".join(sorted(n["name"] for n in r.get("needs", []) if not n.get("configured"))))'; }
 # replan <plant>: --plan into $po, then the base's honest ABSENT domain row back
 # (a re-plan unions the obligations a domain row owes, which is case 61's matter)
 replan() {
-  po="$(python3 "$AUDIT" "$1" "$ROOT" --plan 2>&1 || true)"
+  po="$(python3 "$AUDIT" "$1" "$ROOT" --plan "${@:2}" 2>&1 || true)"
   patch_record "$1" 'it = r["inventory"][0]; it["expect"] = []; it["grounding"] = {"required": False, "sources": []}; it.pop("expert", None)'
 }
 scn_x665() {
 local p="$TMP/needs" po
 fixture renamed "$p"
 ga "$p"; rc_is 0 "setup: the renamed all-ABSENT plant no longer passes"
-replan "$p"
+undecline "$p"; replan "$p"
 for n in gate-output model-map cache-lifetime trust-paths test-layout; do
   grep -q "PLANT NEED   $n — not configured for this plant" <<<"$po" \
     || { printf '%s\n' "$po" >&2; fail "X665 PLAN_OWES_A_ROW_PER_PLANT_NEED: --plan did not owe $n"; }
@@ -1244,7 +1255,7 @@ assert names == ["cache-lifetime", "cycle-driver", "gate-output", "model-map", "
   || fail "X665 PLAN_OWES_A_ROW_PER_PLANT_NEED: the record does not carry one row per need of a claude-code plant"
 echo "  X665 PLAN_OWES_A_ROW_PER_PLANT_NEED — OK"
 
-ga "$p"; rc_is 0 "X666 UNCONFIGURED_NEED_IS_NAMED_AND_NEVER_BLOCKS: an unconfigured need failed the gate"
+ga "$p" --after-graft; rc_is 0 "X666 UNCONFIGURED_NEED_IS_NAMED_AND_NEVER_BLOCKS: an unconfigured need failed the gate after a graft"
 has "note: plant need gate-output is not configured for this plant — docs/graph/runbooks/verification.md does not exist" "X666 UNCONFIGURED_NEED_IS_NAMED_AND_NEVER_BLOCKS: the ungrown runbook was not named"
 has "note: plant need test-layout is not configured for this plant — TEST_GLOBS in docs/graph/spec-lint.py is still the seed's default" "X666 UNCONFIGURED_NEED_IS_NAMED_AND_NEVER_BLOCKS: the default test layout was not named"
 has "note: plant need trust-paths is not configured for this plant — no crosscut node" "X666 UNCONFIGURED_NEED_IS_NAMED_AND_NEVER_BLOCKS: the unmarked trust paths were not named"
@@ -1253,14 +1264,14 @@ has "note: plant need trust-paths is not configured for this plant — no crossc
 # the placeholder rows of the template runbook are the ungrown state
 rm -f "$p/docs/graph/runbooks/verification.unfilled.md"
 cp "$ROOT/templates/docs/runbooks/verification.md" "$p/docs/graph/runbooks/verification.md"
-ga "$p"; has "note: plant need gate-output is not configured for this plant — docs/graph/runbooks/verification.md still holds the template's placeholder gate row" "X666 UNCONFIGURED_NEED_IS_NAMED_AND_NEVER_BLOCKS: the template runbook was not named"
+ga "$p" --after-graft; has "note: plant need gate-output is not configured for this plant — docs/graph/runbooks/verification.md still holds the template's placeholder gate row" "X666 UNCONFIGURED_NEED_IS_NAMED_AND_NEVER_BLOCKS: the template runbook was not named"
 rm "$p/docs/graph/runbooks/verification.md"   # a scaffold in an ABSENT collection is case 41's matter
 echo "  X666 UNCONFIGURED_NEED_IS_NAMED_AND_NEVER_BLOCKS — OK"
 
 # X668 the owner's word that the plant goes without is carried, never clean
 patch_record "$p" 'next(n for n in r["needs"] if n["name"] == "trust-paths").update(
     status="ABSENT", reason="the owner decided on 2026-11-10 that this plant has no trust path")'
-ga "$p"; rc_is 0 "X668 OWNER_DECLINED_NEED_IS_CARRIED_AS_NOT_CONFIGURED: a declined need failed the gate"
+ga "$p" --after-graft; rc_is 0 "X668 OWNER_DECLINED_NEED_IS_CARRIED_AS_NOT_CONFIGURED: a declined need failed the gate"
 has "note: plant need trust-paths is not configured for this plant, by the owner's decision: the owner decided on 2026-11-10" "X668 OWNER_DECLINED_NEED_IS_CARRIED_AS_NOT_CONFIGURED: the declined need was not carried with its reason"
 grep -q "plant need(s) not configured for this plant: .*trust-paths (declined)" <<<"$(tail -1 <<<"$out")" \
   || { printf '%s\n' "$out" >&2; fail "X668 OWNER_DECLINED_NEED_IS_CARRIED_AS_NOT_CONFIGURED: the summary dropped the declined need"; }
@@ -1282,7 +1293,7 @@ t = t.split("\n## Billing and cache lifetime", 1)[0] + "\n" if "\n## Billing and
 open(sys.argv[2], "w").write(t)
 PY
 rm -f "$p/docs/graph/models.unfilled.md"
-ga "$p"; has "note: plant need model-map is not configured for this plant — docs/graph/models.md is unfilled, so every agent runs on its caller's model" "X669 MODEL_MAP_NEED_READS_THE_CELLS_NOT_THE_BYTES: an untouched older model map was not disclosed"
+ga "$p" --after-graft; has "note: plant need model-map is not configured for this plant — docs/graph/models.md is unfilled, so every agent runs on its caller's model" "X669 MODEL_MAP_NEED_READS_THE_CELLS_NOT_THE_BYTES: an untouched older model map was not disclosed"
 has "note: plant need cache-lifetime is not configured for this plant — docs/graph/models.md records no billing mode" "X669 MODEL_MAP_NEED_READS_THE_CELLS_NOT_THE_BYTES: an older map's missing billing section was not named"
 echo "  X669 MODEL_MAP_NEED_READS_THE_CELLS_NOT_THE_BYTES — OK"
 
@@ -1345,14 +1356,84 @@ ga "$p" --plan; has "NEEDS TESTING IDIOM language dotnet" "X671 LANGUAGE_EXPERTI
 patch_record "$p" "write('nodes/expertise.dotnet.md', $EXPERTISE_NODE)" $'libraries:\n  - dotnet\n'
 ga "$p"; has "HOLLOW *language dotnet" "X671 LANGUAGE_EXPERTISE_OWNS_ITS_TESTING_IDIOM: a language node without its testing idiom was not HOLLOW"
 has "nodes/expertise.dotnet.md owns no .dotnet.testing-idiom." "X671 LANGUAGE_EXPERTISE_OWNS_ITS_TESTING_IDIOM: the missing testing idiom was not named"
+# X722 after a graft the same gap is a note, and the exit code is the plant's other verdicts'
+ga "$p" --after-graft; lacks "HOLLOW *language dotnet" "X722 TESTING_IDIOM_IS_A_NOTE_AFTER_A_GRAFT: the missing testing idiom was a failing verdict after a graft"
+has "note: plant need dotnet.testing-idiom is not configured for this plant — docs/graph/nodes/expertise.dotnet.md owns no" "X722 TESTING_IDIOM_IS_A_NOTE_AFTER_A_GRAFT: the missing testing idiom was not noted after a graft"
+rc_without=$rc
 patch_record "$p" "write('nodes/expertise.dotnet.md', ($EXPERTISE_NODE).replace('  - dotnet.composition\n', '  - dotnet.composition\n  - dotnet.testing-idiom\n'))" $'libraries:\n  - dotnet\n'
 ga "$p"; lacks "testing-idiom" "X671 LANGUAGE_EXPERTISE_OWNS_ITS_TESTING_IDIOM: a node owning its testing idiom was still reported"
+ga "$p" --after-graft; lacks "testing-idiom" "X722 TESTING_IDIOM_IS_A_NOTE_AFTER_A_GRAFT: a node owning its testing idiom was still noted after a graft"
+rc_with=$rc
 ga "$p" --plan; lacks "NEEDS TESTING IDIOM" "X671 LANGUAGE_EXPERTISE_OWNS_ITS_TESTING_IDIOM: --plan still owes a supplied testing idiom"
 # a runtime's node owes none
 expertise_plant "$p.rt" core runtime
 patch_record "$p.rt" "write('nodes/expertise.dotnet.md', $EXPERTISE_NODE)" $'libraries:\n  - dotnet\n'
 ga "$p.rt"; lacks "testing-idiom" "X671 LANGUAGE_EXPERTISE_OWNS_ITS_TESTING_IDIOM: a runtime node was held to a language's testing idiom"
+[ "$rc_without" -eq "$rc_with" ] || fail "X722 TESTING_IDIOM_IS_A_NOTE_AFTER_A_GRAFT: the missing testing idiom moved the exit code after a graft ($rc_without, $rc_with with it supplied)"
 echo "  X671 LANGUAGE_EXPERTISE_OWNS_ITS_TESTING_IDIOM — OK"
+echo "  X722 TESTING_IDIOM_IS_A_NOTE_AFTER_A_GRAFT — OK"
+}
+
+# --- X720-X724: where a plant need blocks (SPEC-0011) ---
+# The owner decided on 2026-11-11 that an open plant need fails the coverage
+# gate of a fresh growth until it is supplied or honestly declined, is a note
+# after a graft, listed under "Grafted but not yet grown", and blocks no daily work.
+scn_x720() {
+local p="$TMP/x720" po
+fixture renamed "$p"
+ga "$p"; rc_is 0 "setup: the renamed all-ABSENT plant, its needs declined, no longer passes"
+undecline "$p"
+ga "$p"; rc_is 1 "X720 OPEN_NEED_BLOCKS_A_FRESH_GROWTH: an open need passed the coverage gate of a fresh growth"
+has "UNGROWN      plant need trust-paths" "X720 OPEN_NEED_BLOCKS_A_FRESH_GROWTH: the open need was no failing verdict naming it"
+has "not configured for this plant — no crosscut node under docs/graph/nodes/ carries" "X720 OPEN_NEED_BLOCKS_A_FRESH_GROWTH: the verdict did not say what is missing"
+has "Supply the trust-path marking" "X720 OPEN_NEED_BLOCKS_A_FRESH_GROWTH: the verdict did not name what satisfies the need"
+has "status: ABSENT. with the owner's reason" "X720 OPEN_NEED_BLOCKS_A_FRESH_GROWTH: the verdict did not name the honest decline"
+lacks "note: plant need trust-paths" "X720 OPEN_NEED_BLOCKS_A_FRESH_GROWTH: an open need was a note in a fresh growth"
+patch_record "$p" 'for n in r["needs"]:
+    if not n["configured"]: n.update(status="ABSENT", reason=DECLINED)'
+ga "$p"; rc_is 0 "X720 OPEN_NEED_BLOCKS_A_FRESH_GROWTH: a need the owner declined still failed a fresh growth"
+has "note: plant need trust-paths is not configured for this plant, by the owner's decision" "X720 OPEN_NEED_BLOCKS_A_FRESH_GROWTH: the declined need was not carried"
+echo "  X720 OPEN_NEED_BLOCKS_A_FRESH_GROWTH — OK"
+
+undecline "$p"
+replan "$p" --after-graft
+grep -q "PLANT NEED   trust-paths — not configured for this plant: .*lists it under \"Grafted but not yet grown\" with its reason" <<<"$po" \
+  || { printf '%s\n' "$po" >&2; fail "X721 PLAN_SAYS_WHERE_AN_OPEN_NEED_GOES: --plan --after-graft did not send the open need to the graft's report"; }
+replan "$p"
+grep -q "PLANT NEED   trust-paths — not configured for this plant: .*the coverage gate fails until then" <<<"$po" \
+  || { printf '%s\n' "$po" >&2; fail "X721 PLAN_SAYS_WHERE_AN_OPEN_NEED_GOES: --plan did not say a fresh growth's gate fails on the open need"; }
+echo "  X721 PLAN_SAYS_WHERE_AN_OPEN_NEED_GOES — OK"
+}
+
+# X723 both places a graft runs the audit say it is after a graft
+scn_x723() {
+local f
+for f in "\"growth-audit.py\", copy, seed, \"--plan\", \"--after-graft\")" \
+         "\"growth-audit.py\", copy, seed, \"--after-graft\")"; do
+  grep -qF -- "$f" "$ROOT/tools/graft-run.py" \
+    || fail "X723 GRAFT_AUDITS_AS_AFTER_A_GRAFT: tools/graft-run.py runs no $f"
+done
+for f in "python3 <seed>/tools/growth-audit.py <plant> <seed> --plan --after-graft" \
+         "python3 <seed>/tools/growth-audit.py <plant> <seed> --after-graft"; do
+  grep -qF -- "$f" "$ROOT/protocols/graft.md" \
+    || fail "X723 GRAFT_AUDITS_AS_AFTER_A_GRAFT: protocols/graft.md names no $f"
+done
+! grep -E "growth-audit\.py <plant> <seed>( --plan)?(\`|$| )" "$ROOT/protocols/graft.md" | grep -v -- "--after-graft" | grep -v -- "--agents" \
+  || fail "X723 GRAFT_AUDITS_AS_AFTER_A_GRAFT: protocols/graft.md runs the coverage audit of a graft as a fresh growth"
+echo "  X723 GRAFT_AUDITS_AS_AFTER_A_GRAFT — OK"
+}
+
+# X724 nothing placed in a plant runs the coverage audit or reads its needs
+scn_x724() {
+local d="$GA_BASES/installed" readers
+[ -z "$(find -L "$d" -name growth-audit.py -print)" ] \
+  || fail "X724 NEED_BLOCKS_NO_DAILY_WORK: the installer placed growth-audit.py in the plant"
+readers="$(cd "$d" && grep -rlE "coverage\.json" --include='*.py' --include='*.sh' --include='*.js' --include='*.ts' --include='*.mjs' --include='*.json' . | sort | tr '\n' ' ')"
+[ "$readers" = "./docs/graph/graph-lint.py ./docs/graph/templates/knowledge-graph/graph-lint.py " ] \
+  || fail "X724 NEED_BLOCKS_NO_DAILY_WORK: a placed tool or hook reads the coverage record: $readers"
+! grep -qE "[\"']needs[\"']" "$d/docs/graph/graph-lint.py" \
+  || fail "X724 NEED_BLOCKS_NO_DAILY_WORK: the plant's graph-lint reads the needs of the coverage record"
+echo "  X724 NEED_BLOCKS_NO_DAILY_WORK — OK"
 }
 
 # --- dispatch: `__case scn_<name>` runs ONE scenario; bases come from the parent ---
@@ -1371,7 +1452,8 @@ for s in scn_shared scn_s9 scn_absent scn_staff scn_nostaff scn_dflt scn_rows \
          scn_copy scn_x28 scn_x31 scn_x32 scn_x33 scn_x34 scn_x35 scn_x38 \
          scn_x39 scn_x40 scn_x41 scn_x42 scn_x43 scn_x44 scn_x45 scn_rawbase \
          scn_x58 scn_x61 scn_x62x63 scn_x64 scn_x65 scn_x68 scn_x382 scn_walk \
-         scn_model_map_disclosed scn_x69 scn_x70 scn_x468 scn_x665 scn_x671; do
+         scn_model_map_disclosed scn_x69 scn_x70 scn_x468 scn_x665 scn_x671 \
+         scn_x720 scn_x723 scn_x724; do
   printf '%s\t%s\n' "$s" "bash \"$SELF\" __case $s" >> "$SCN"
 done
 rc=0

@@ -2,7 +2,7 @@
 status: back-written
 status_date: 2026-11-10
 owner: architect
-status_evidence: tests/test-growth-audit.sh (X665 to X671) and tests/test-cycle.sh (X663, X664), wired into tests/run.sh through their existing steps; every case was seen failing first against the tools without the change (no PLANT NEED line, no testing-idiom finding, the old model-map byte comparison, an empty cycle printed with exit 0, a refusal at the first older engine), then green
+status_evidence: tests/test-growth-audit.sh (X665 to X671, X720 to X724) and tests/test-cycle.sh (X663, X664), wired into tests/run.sh through their existing steps; every case was seen failing first against the tools without the change (no PLANT NEED line, no testing-idiom finding, the old model-map byte comparison, an empty cycle printed with exit 0, a refusal at the first older engine), then green
 ---
 
 # SPEC-0011: grown, not carried
@@ -13,21 +13,24 @@ status_evidence: tests/test-growth-audit.sh (X665 to X671) and tests/test-cycle.
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-11-10
-- **Last reviewed:** 2026-11-10
+- **Last reviewed:** 2026-11-11
 - **Related grill section:** docs/plans/grill-8.5.0-tester-surfaces.md, the
   requirements that carry the earlier rounds through to plants (F3, F4)
 - **Related ADRs:** adr-0022-the-plant-model-map (an unfilled map means
   inherit, disclosed and passed); adr-0034-a-test-is-owed-only-where-it-can-catch-something
   (the trust-path reading and the testing idiom a tester writes against);
-  adr-0003-enforcement-layering-honesty (a need is detective: it names, it
-  never blocks)
+  adr-0003-enforcement-layering-honesty (a need is soft in a fresh growth,
+  where the coverage gate fails on it, and detective after a graft)
 - **Related specs:** SPEC-0005-cycle-economy (the cycle driver, the token
   ledger, the model classes); SPEC-0006-session-metrics (the `Tokens` line
   that may read `not recorded`); SPEC-0008-who-writes-the-test (the
   trust-path reading); SPEC-0009-worth-check (the same `TEST_GLOBS`)
 - **Related wiki pages:** none (stdlib Python only)
-- **Design latitude:** balanced. A need never fails the growth gate, because
-  every capability it serves has a safe default; it is never reported clean
+- **Design latitude:** balanced. The owner decided on 2026-11-11 that an open
+  need fails the coverage gate of a fresh growth until it is supplied or
+  honestly declined, is a note after a graft, and blocks no daily work,
+  because every capability it serves keeps a safe default; it is never
+  reported clean
 - **Supersedes:** none
 - **Superseded by:** none
 - **Sign-offs:** product [ ] · architect [ ] · tester [ ]
@@ -47,13 +50,17 @@ that reports usage; the merged test-and-code spawn needs the plant's trust
 paths marked; the worth check and the spec lint need the plant's test layout;
 a tester needs the stack's testing idiom. `tools/growth-audit.py` makes each
 of these visible as a plant need: `--plan` owes a row for it, the lint names
-it while it is not configured, and it closes when the plant supplies it.
+it while it is not configured, and it closes when the plant supplies it. In a
+fresh growth an open need fails the coverage gate; after a graft it is a note
+the graft's report lists under "Grafted but not yet grown"; no tool a plant
+runs day to day reads one.
 
 ## 2. Scope
 
 In scope: the `needs` rows of `.cypress/coverage.json`, the probes that answer
 them, their lines in `--plan` and the lint, the testing-idiom finding on a
-language's expertise node, and the cycle driver's two unconfigured states.
+language's expertise node, where each blocks (a fresh growth, after a graft,
+day to day), and the cycle driver's two unconfigured states.
 
 Out of scope: any change to what a capability does when its fact is absent
 (each keeps its safe default); the opencode lead's launch list for a plant's
@@ -65,11 +72,20 @@ owner (`docs/plans/owner-decisions-8.5.0-tester-surfaces.md`).
 `growth-audit.py <plant> <seed> --plan` prints, beside its other prompts,
 `PLANT NEED   <id> — not configured for this plant: <what is missing>. Supply
 <what> (grow.plant-needs), or record the owner's decision to go without in
-this row` for each open need, and writes one `needs` row per need the plant
-owes. The lint prints `note: plant need <id> is not configured for this plant
-— <what is missing>` after its verdicts, and a passing run ends
-`coverage complete; <n> plant need(s) not configured for this plant: <ids>`
-instead of a bare `coverage complete`. The exit code is the verdicts' alone.
+this row; the coverage gate fails until then` for each open need (with
+`--after-graft`: `; until then the graft lists it under "Grafted but not yet
+grown" with its reason`), and writes one `needs` row per need the plant owes.
+
+In a fresh growth (no option) the lint reports each open need as
+`UNGROWN      plant need <id>` with `not configured for this plant — <what is
+missing>. Supply <what> (grow.plant-needs), or record the owner's decision to
+go without in this need's row of .cypress/coverage.json: `status: ABSENT` with
+the owner's reason`, and exits 1. After a graft (`--after-graft`) it prints
+`note: plant need <id> is not configured for this plant — <what is missing>`
+instead, a language's missing testing idiom among them as
+`<slug>.testing-idiom`, and a passing run ends `coverage complete; <n> plant
+need(s) not configured for this plant: <ids>`; the exit code is the verdicts'
+alone. A declined need is a note in both modes.
 
 With no token-ledger record, `brief.py --log` prints
 `- Tokens: not recorded: no spawn has a record in the token ledger tokens.jsonl`
@@ -97,7 +113,7 @@ under `docs/graph/templates/knowledge-graph/` and says so on an `engine:` line.
 
 ### Contract: UNCONFIGURED_NEED_IS_NAMED_AND_NEVER_BLOCKS
 - **Given:** a plant whose every coverage row passes and whose needs are open
-- **When:** the lint runs
+- **When:** the lint runs after a graft (`--after-graft`)
 - **Then:** it exits 0, prints `note: plant need <id> is not configured for
   this plant — <detail>` per open need, and its last line lists the open
   needs after `coverage complete;`, so no output reads clean
@@ -115,16 +131,18 @@ under `docs/graph/templates/knowledge-graph/` and says so on an `engine:` line.
 ### Contract: OWNER_DECLINED_NEED_IS_CARRIED_AS_NOT_CONFIGURED
 - **Given:** a need's row with `status: ABSENT` and the owner's words in
   `reason`
-- **When:** the lint runs, and `--plan` runs again
+- **When:** the lint runs, in a fresh growth or after a graft, and `--plan`
+  runs again
 - **Then:** the lint prints `note: plant need <id> is not configured for this
   plant, by the owner's decision: <reason>`, lists it as `<id> (declined)` on
-  its summary line, and exits 0; `--plan` keeps the status and the reason
+  its summary line, and its exit code is the verdicts'; `--plan` keeps the
+  status and the reason
 
 ### Contract: MODEL_MAP_NEED_READS_THE_CELLS_NOT_THE_BYTES
 - **Given:** a `docs/graph/models.md` copied from an earlier seed's template
   and never edited (its text differs from today's template; every map cell
   still holds its placeholder)
-- **When:** the lint runs
+- **When:** the lint runs after a graft
 - **Then:** it prints `note: plant need model-map is not configured for this
   plant — docs/graph/models.md is unfilled, so every agent runs on its
   caller's model`, as it does for today's untouched template, and names the
@@ -148,6 +166,45 @@ under `docs/graph/templates/knowledge-graph/` and says so on an `engine:` line.
   prints `NEEDS TESTING IDIOM language <name>` and the lint reports `HOLLOW`
   naming the missing key; once it does, neither appears
 - **And:** a node of another kind is not held to it
+
+### Contract: OPEN_NEED_BLOCKS_A_FRESH_GROWTH
+- **Given:** a plant whose every coverage row passes and whose needs are open,
+  none declined
+- **When:** the lint runs with no option, as a fresh growth runs it
+- **Then:** each open need is a failing verdict `UNGROWN      plant need <id>`
+  naming what is missing, what satisfies it (`Supply <what>`), and the honest
+  decline (`status: ABSENT` with the owner's reason, in the need's row), and
+  the lint exits 1
+- **And:** once the owner declines each one, the lint exits 0 and carries
+  each as a note with its reason
+
+### Contract: PLAN_SAYS_WHERE_AN_OPEN_NEED_GOES
+- **Given:** a plant with an open need
+- **When:** `--plan` runs, then `--plan --after-graft`
+- **Then:** the first `PLANT NEED` line ends `the coverage gate fails until
+  then`; the second ends `until then the graft lists it under "Grafted but not
+  yet grown" with its reason`
+
+### Contract: TESTING_IDIOM_IS_A_NOTE_AFTER_A_GRAFT
+- **Given:** a `language` row whose expertise node owns no `<slug>.testing-idiom`
+- **When:** the lint runs with `--after-graft`
+- **Then:** it prints `note: plant need <slug>.testing-idiom is not configured
+  for this plant — <the gap>`, reports no `HOLLOW` for it, and exits as it
+  does once the node owns the key; without the option the `HOLLOW` stands
+
+### Contract: GRAFT_AUDITS_AS_AFTER_A_GRAFT
+- **Given:** the two places a graft runs the coverage audit
+- **When:** `tools/graft-run.py` builds its coverage step, and a reader follows
+  `protocols/graft.md` Phase 5 and `graft.gate.coverage`
+- **Then:** each runs `growth-audit.py` with `--after-graft`, `--plan` and
+  the lint alike, and graft.md runs no coverage audit without it
+
+### Contract: NEED_BLOCKS_NO_DAILY_WORK
+- **Given:** a plant fresh from `install.sh`
+- **When:** its placed tools and hooks are read
+- **Then:** `growth-audit.py` is not among them, and the only placed code that
+  names `.cypress/coverage.json` is `graph-lint.py` (the plant's and its
+  template copy), which reads whether the record exists and no `needs` key
 
 ### Contract: CYCLE_DRIVER_NAMES_A_PLAN_WITHOUT_INCREMENTS
 - **Given:** a plan whose §9 holds no increment, as a fresh plant's template
@@ -193,6 +250,19 @@ plant's configuration page, ADR-0022), the `trust:` field of crosscut nodes
 (`grow.gate.spec-wired`), the gate table of `runbooks/verification.md`, and
 the expertise node an inventory `language` row already owes.
 
+### Why the audit is told it runs after a graft
+
+Where a need blocks depends on the run: a fresh growth, a graft, daily work.
+The audit takes it as an explicit option, `--after-graft`, with a fresh growth
+the default, which graft Phase 5, `graft.gate.coverage` and
+`tools/graft-run.py` pass. Inferring it from state was the other choice: the
+record's `run` field, the stamp's history, or a record that predates the seed.
+Each of those is a fact a later edit or an earlier run can leave behind, so a
+wrong guess would block a graft or let a fresh growth through; the caller
+always knows which run it is, so the caller says. Daily work needs no mode:
+nothing a plant runs day to day runs the audit or reads a need
+(NEED_BLOCKS_NO_DAILY_WORK).
+
 ### The needs (`NEEDS` in `tools/growth-audit.py`, the one home)
 
 | Need | Owed by | Not configured while |
@@ -217,12 +287,20 @@ decision to go without.
 
 ### Output
 
-`--plan`: `  PLANT NEED   <id> — not configured for this plant: <detail>. ...`.
-Lint: `  note: plant need <id> is not configured for this plant — <detail>`, or
-`..., by the owner's decision: <reason>`; the passing summary line
+`--plan`: `  PLANT NEED   <id> — not configured for this plant: <detail>. ...;
+the coverage gate fails until then`, or with `--after-graft` `...; until then
+the graft lists it under "Grafted but not yet grown" with its reason`.
+Lint, fresh growth: `  UNGROWN      plant need <id>` and the indented
+`not configured for this plant — <detail>. Supply <what> (grow.plant-needs), or
+record the owner's decision to go without in this need's row of
+.cypress/coverage.json: `status: ABSENT` with the owner's reason`.
+Lint, after a graft: `  note: plant need <id> is not configured for this plant
+— <detail>`, a missing testing idiom as `<slug>.testing-idiom`. A declined need
+in either mode: `..., by the owner's decision: <reason>`; the passing summary line
 `  coverage complete[ (<n> named blocker(s) carried)]; <n> plant need(s) not configured for this plant: <id>[ (declined)], ...`.
 `--json`: `{"plant_needs": [{"name", "configured", "detail", "declined"}]}`
-before the source-index item.
+before the source-index item, listing the needs printed as notes (in a fresh
+growth, the declined ones; an open one is among the verdicts).
 
 ## 7. Failure modes
 
@@ -237,7 +315,7 @@ before the source-index item.
 ## 8. Examples
 
 ```
-$ python3 <seed>/tools/growth-audit.py . <seed>
+$ python3 <seed>/tools/growth-audit.py . <seed> --after-graft
   note: plant need gate-output is not configured for this plant — docs/graph/runbooks/verification.md still holds the template's placeholder gate row `<gate>`, so no gate of this plant is recorded as printing its failing ids ...
   note: plant need trust-paths is not configured for this plant, by the owner's decision: the owner decided on 2026-11-10 that this plant has no trust path
   audited 23 collection(s), 15 agent(s), 0 expert(s), 4 inventory item(s)
@@ -255,6 +333,11 @@ $ python3 <seed>/tools/growth-audit.py . <seed>
   MODEL_MAP_NEED_READS_THE_CELLS_NOT_THE_BYTES, HOST_NEEDS_FOLLOW_THE_STAMPED_HOSTS
 - [x] AC-3: a language's expertise node owns its testing idiom; maps to
   LANGUAGE_EXPERTISE_OWNS_ITS_TESTING_IDIOM
+- [x] AC-5: an open need fails a fresh growth until supplied or declined, is
+  a note after a graft (a missing testing idiom too), and blocks no daily
+  work; maps to OPEN_NEED_BLOCKS_A_FRESH_GROWTH, PLAN_SAYS_WHERE_AN_OPEN_NEED_GOES,
+  TESTING_IDIOM_IS_A_NOTE_AFTER_A_GRAFT, GRAFT_AUDITS_AS_AFTER_A_GRAFT,
+  NEED_BLOCKS_NO_DAILY_WORK
 - [x] AC-4: the cycle driver names a plan with no increments and drives an
   older plant through the template engine; maps to
   CYCLE_DRIVER_NAMES_A_PLAN_WITHOUT_INCREMENTS, CYCLE_DRIVER_FALLS_BACK_TO_THE_TEMPLATE_ENGINE
@@ -268,12 +351,17 @@ all-ABSENT plant; the cycle cases on a copy of one fresh install. Every row was
 | Contract / Failure | Test case | Test file | Level | Status |
 |---|---|---|---|---|
 | PLAN_OWES_A_ROW_PER_PLANT_NEED | X665 scn_x665: five needs owed on a claude-code plant, cycle-driver met, token-ledger not owed; the record's six rows | tests/test-growth-audit.sh | integration (fixture) | green |
-| UNCONFIGURED_NEED_IS_NAMED_AND_NEVER_BLOCKS | X666 scn_x665: exit 0, one note per need, the summary lists them; the template runbook is named | tests/test-growth-audit.sh | integration (fixture) | green |
+| UNCONFIGURED_NEED_IS_NAMED_AND_NEVER_BLOCKS | X666 scn_x665: after a graft, exit 0, one note per need, the summary lists them; the template runbook is named | tests/test-growth-audit.sh | integration (fixture) | green |
 | NEED_CLOSES_WHEN_THE_PLANT_SUPPLIES_IT | X667 scn_x665: runbook, map, billing lines, a trust crosscut and TEST_GLOBS supplied; no line, plain summary | tests/test-growth-audit.sh | integration (fixture) | green |
 | OWNER_DECLINED_NEED_IS_CARRIED_AS_NOT_CONFIGURED | X668 scn_x665: the declined row's reason printed, `(declined)` on the summary, kept by --plan | tests/test-growth-audit.sh | integration (fixture) | green |
 | MODEL_MAP_NEED_READS_THE_CELLS_NOT_THE_BYTES | X669 scn_x665: the earlier template's text, untouched, is named unfilled; seen red first (the byte comparison printed nothing) | tests/test-growth-audit.sh | integration (fixture) | green |
 | HOST_NEEDS_FOLLOW_THE_STAMPED_HOSTS | X670 scn_x665: opencode stamped, one opencode cell open, an older engine | tests/test-growth-audit.sh | integration (fixture) | green |
 | LANGUAGE_EXPERTISE_OWNS_ITS_TESTING_IDIOM | X671 scn_x671: owed by --plan, HOLLOW without the key, closed with it; a runtime node is not held to it | tests/test-growth-audit.sh | integration (fixture) | green |
+| OPEN_NEED_BLOCKS_A_FRESH_GROWTH | X720 scn_x720: five open needs fail the lint as UNGROWN with what satisfies each and the decline form; declined, exit 0; seen red first (exit 0, notes only) | tests/test-growth-audit.sh | integration (fixture) | green |
+| PLAN_SAYS_WHERE_AN_OPEN_NEED_GOES | X721 scn_x720: the fresh plan's line says the gate fails, the after-graft plan's names the report section; seen red first (no such tail; the option unknown) | tests/test-growth-audit.sh | integration (fixture) | green |
+| TESTING_IDIOM_IS_A_NOTE_AFTER_A_GRAFT | X722 scn_x671: after a graft the gap is a note, no HOLLOW, the exit code as with the key; seen red first (the option unknown) | tests/test-growth-audit.sh | integration (fixture) | green |
+| GRAFT_AUDITS_AS_AFTER_A_GRAFT | X723 scn_x723: graft-run.py's two coverage calls and graft.md's commands carry the option; seen red first (graft-run.py passed none) | tests/test-growth-audit.sh | unit (source) | green |
+| NEED_BLOCKS_NO_DAILY_WORK | X724 scn_x724: an installed plant places no growth-audit.py, and only graph-lint.py names the record, reading no needs; characterization, green before the change | tests/test-growth-audit.sh | integration (fixture) | green |
 | CYCLE_DRIVER_NAMES_A_PLAN_WITHOUT_INCREMENTS | X663 the template plan of a fresh install: one stderr line, exit 2; seen red first (an empty cycle, exit 0) | tests/test-cycle.sh | integration (temp install) | green |
 | CYCLE_DRIVER_FALLS_BACK_TO_THE_TEMPLATE_ENGINE | X664 an older plant engine: the report through the template with its engine line; both engines older: the refusal; seen red first (refused at the first engine) | tests/test-cycle.sh | integration (temp install) | green |
 | A_NEED_PROBE_READS_A_FORM_AS_A_FACT | none: a probe checks presence, a reviewer judges truth | none | none | none |
@@ -282,7 +370,8 @@ all-ABSENT plant; the cycle cases on a copy of one fresh install. Every row was
 
 | Question | Why it matters | Current assumption | Owner | Resolves by |
 |---|---|---|---|---|
-| Should an open need block a graft's coverage gate? | a need never blocks, so a graft can close with every need open | named in the delivery and the changelog (`grow.gate.plant-needs`), as an UNKNOWN row is | owner | the first graft whose delivery drops an open need |
+| Should the rows that predate the needs (collections, agents, experts, inventory) also turn to notes after a graft? | they still fail a graft's coverage gate, as they fail a fresh growth; the owner's decision of 2026-11-11 named the needs and the testing idiom | unchanged: they block in both runs, never day to day | owner | the owner's answer |
+| How does a plant decline a language's testing idiom? | a fresh growth fails on it until the node owns the key, and no `needs` row carries it | the node owns the key; the row has no decline form yet | owner | the first plant whose language has no test idiom of its own |
 | Should the testing idiom be owed by a framework row too? | a test framework is the idiom's other home | a `language` row owes it; its node may compose a framework's | architect | the first plant whose idiom lives in its framework |
 
 ## 12. Changelog
@@ -290,3 +379,8 @@ all-ABSENT plant; the cycle cases on a copy of one fresh install. Every row was
 - 2026-11-10 — created by the implementer of the round's F3 and F4 work from
   the investigation of what the landed capabilities need from a plant. Nine
   contracts; each case seen failing first, then green.
+- 2026-11-11 — the owner decided on 2026-11-11 that an open need blocks a
+  fresh growth, is a note after a graft and never blocks daily work: five
+  contracts added (OPEN_NEED_BLOCKS_A_FRESH_GROWTH to NEED_BLOCKS_NO_DAILY_WORK),
+  three amended to run after a graft, the `--after-graft` option recorded in §6,
+  and the open question on a graft's gate answered.
