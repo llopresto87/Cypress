@@ -173,7 +173,7 @@ over-work is a finding exactly as a gap is)
   a gate that ran an empty suite, is a trusted green lie. On existing
   code, confirm the RED came from a characterization test, not an empty harness.
 - First review: code under a `run` or `review` contract holds no logic
-  (the rule loaded above)? Logic is a finding; it re-opens the contract's kind.
+  (the loaded rule)? Logic is a finding; it re-opens the contract's kind.
 - Regression cases added for any bug the diff fixes?
 - Which test methods and how much runtime did the increment add (the
   delta its handback reports under `gates:`)? A suite cost no contract

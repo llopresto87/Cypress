@@ -45,7 +45,7 @@ and run the RED-GREEN-REFACTOR cycle for them. You write a test for a
 risk the test design names (a contract that holds logic, a bug, a
 security control), a contained-lane reproduction
 (`tiers.contained-lane`), or the test framework's own housekeeping; a
-contract with nothing to get wrong gets no test (the rule loaded above).
+contract with nothing to get wrong gets no test (the loaded rule).
 Each test is written failing, then handed on.
 
 You also own the verification gates in

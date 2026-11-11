@@ -53,16 +53,17 @@ rebuild and is a second source of truth until then.
 
 ## 2. Tests authorize code
 
-Production code is written only when a failing test asks for it. The
-test is the most concrete possible restatement of a spec contract. The
-test name names the contract; the test body exercises it; the test
-failure message tells the next agent what broke and why.
+Logic is written when a failing test asks for it; a declarative or
+presentational contract is proved by the run or review its spec
+declares. A test says what broke. In a kinds-form spec §10's
+Covers cell, not the test's name, links it to its contracts; a legacy
+spec's test keeps its slug as its link.
 
-The full statement (the RED → GREEN → REFACTOR → COMMIT cycle, what
-"minimum" governs, the characterize-first move on untested code, and the
-recorded exceptions) is owned by `docs/graph/protocols/test-first.md`.
-Read it there; this posture fixes the stance: the discipline is
-mandatory, and REFACTOR is where integration lands (§9).
+The RED → GREEN → REFACTOR → COMMIT cycle, what "minimum" governs,
+characterize-first on untested code and the recorded exceptions are
+owned by `docs/graph/protocols/test-first.md`. This posture fixes the
+stance: the discipline is mandatory, and REFACTOR is where integration
+lands (§9).
 
 ## 3. Choose nothing until the goal forces the choice
 

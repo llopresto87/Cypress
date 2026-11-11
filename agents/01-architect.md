@@ -196,7 +196,7 @@ allowlist (`tester`, `research-scout`).
 ## What you produce per session
 
 You produce ONLY design artifacts and handoff briefs, then STOP: code
-is a separately authorized, RED-gated increment, so `implementer` is
+is a separately authorized increment, so `implementer` is
 spawned by the session, not by you.
 
 - A boundary diagram (text or mermaid) for the part of the system
